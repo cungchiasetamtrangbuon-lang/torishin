@@ -221,6 +221,14 @@
       }catch(e){}
       S.months.forEach(m=>{ if(!S.data[m.id]) S.data[m.id]=initMonthData(m.days); });
     }
+    function onStorageChange(e){
+      if(e.key === STORAGE_KEY){
+        try{
+          const saved = JSON.parse(e.newValue||'null');
+          if(saved){ Object.assign(S, saved); fillFormFromDate($('date')?.value); }
+        }catch(err){}
+      }
+    }
     function saveState(){
       try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(S)); }catch(e){}
     }
@@ -249,6 +257,7 @@
       updateDateLabel();
       const billTotal = updateBillSummary();
       if($('closeValue')) $('closeValue').textContent = fmt(billTotal);
+      syncDailyDraft();
     }
 
     function updateBillSummary(){
@@ -266,6 +275,28 @@
       if($('bill-qty-total')) $('bill-qty-total').textContent = qtyTotal;
       if($('bill-total')) $('bill-total').textContent = fmt(valueTotal);
       return valueTotal;
+    }
+    function syncDailyDraft(){
+      const date = ($('date')?.value) || new Date().toISOString().slice(0,10);
+      const mid = getMonthIdForDate(date);
+      const idx = getDayIndex(date);
+      const md = monthData(mid);
+      const cash = parseNum($('cash')?.value);
+      const card = parseNum($('card')?.value);
+      const transfer = parseNum($('transfer')?.value);
+      const capichi = parseNum($('capichi')?.value);
+      const grab = parseNum($('grab')?.value);
+      const bills = {};
+      BILLS.forEach(amount => { bills[amount] = parseNum($('bill_' + amount)?.value); });
+      const dt = md.doanhThu[idx] || {};
+      dt.rev = cash + card + transfer + capichi + grab;
+      dt.cash = cash; dt.card = card; dt.transfer = transfer; dt.capichi = capichi; dt.grab = grab;
+      dt.bills = bills;
+      dt.staff = ($('staff')?.value || '').trim();
+      dt.note = ($('note')?.value || '').trim();
+      md.doanhThu[idx] = dt;
+      S.curMonth = mid;
+      saveState();
     }
     function updateDateLabel(){
       const date = new Date(($('date')?.value) || new Date().toISOString().slice(0,10));
@@ -402,6 +433,7 @@
       loadSharedState();
       const today = new Date().toISOString().slice(0,10);
       if($('date')) $('date').value = today;
+      window.addEventListener('storage', onStorageChange);
       ['cash','card','transfer','capichi','grab'].forEach(id=>{
         const el = $(id);
         if(el) el.addEventListener('input', updateTotals);
