@@ -1,0 +1,1173 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>🍣 Torishin — Quản Lý Kinh Doanh</title>
+<style>
+:root{
+  --ink:#0f172a;--sidebar:#1e293b;--accent:#dc2626;--accent2:#b91c1c;
+  --bg:#f1f5f9;--card:#fff;--border:#e2e8f0;--muted:#94a3b8;
+  --good:#059669;--warn:#d97706;--bad:#dc2626;--info:#2563eb;
+  --font:'Segoe UI',system-ui,sans-serif;--radius:12px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font);background:var(--bg);color:var(--ink);height:100vh;display:flex;flex-direction:column;overflow:hidden}
+
+/* HEADER */
+.hdr{background:var(--ink);color:#fff;height:52px;display:flex;align-items:center;gap:0;flex-shrink:0;z-index:100;overflow:hidden}
+.hdr-logo{padding:0 18px;display:flex;align-items:center;gap:8px;font-size:17px;font-weight:800;letter-spacing:.5px;border-right:1px solid #ffffff18;white-space:nowrap;flex-shrink:0}
+.hdr-logo span{color:var(--accent)}
+.hdr-months{display:flex;align-items:flex-end;gap:1px;padding:0 8px;flex:1;overflow-x:auto;height:100%;scrollbar-width:none;-ms-overflow-style:none}
+.hdr-months::-webkit-scrollbar{display:none}
+.m-tab{padding:0 14px;height:100%;display:flex;align-items:center;font-size:13px;font-weight:600;color:rgba(255,255,255,.5);cursor:pointer;border-bottom:3px solid transparent;white-space:nowrap;transition:.15s;gap:4px}
+.m-tab:hover{color:#fff;background:rgba(255,255,255,.06)}
+.m-tab.active{color:#fff;border-bottom-color:var(--accent);background:rgba(255,255,255,.06)}
+.m-tab-badge{font-size:10px;opacity:.6;font-weight:400}
+.m-add{padding:5px 10px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.8);border-radius:6px;cursor:pointer;font-size:12px;margin-left:6px;align-self:center;white-space:nowrap;flex-shrink:0}
+.m-add:hover{background:rgba(255,255,255,.2);color:#fff}
+.hdr-actions{display:flex;gap:5px;padding:0 12px;border-left:1px solid #ffffff18;flex-shrink:0}
+.hdr-btn{padding:5px 10px;border:1px solid rgba(255,255,255,.2);background:none;color:rgba(255,255,255,.75);border-radius:6px;cursor:pointer;font-size:11.5px;white-space:nowrap}
+.hdr-btn:hover{background:rgba(255,255,255,.1);color:#fff}
+
+/* LAYOUT */
+.app-body{display:flex;flex:1;overflow:hidden}
+
+/* SIDEBAR */
+.sidebar{width:196px;background:var(--sidebar);flex-shrink:0;overflow-y:auto;padding:12px 0}
+.nav-section{padding:8px 16px 4px;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.3);font-weight:600}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 16px;cursor:pointer;color:rgba(255,255,255,.6);font-size:13.5px;border-left:3px solid transparent;transition:.12s}
+.nav-item:hover{color:#fff;background:rgba(255,255,255,.07)}
+.nav-item.active{color:#fff;background:rgba(220,38,38,.15);border-left-color:var(--accent);font-weight:600}
+.nav-icon{font-size:15px;width:18px;text-align:center}
+
+/* MAIN */
+.main{flex:1;overflow-y:auto;padding:20px 20px}
+.main::-webkit-scrollbar{width:6px}
+.main::-webkit-scrollbar-track{background:#f1f5f9}
+.main::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:3px}
+
+/* PAGE HEADER */
+.page-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px}
+.page-title{font-size:20px;font-weight:800;color:var(--ink)}
+.page-sub{font-size:13px;color:var(--muted);margin-top:2px}
+.page-actions{display:flex;gap:8px}
+
+/* BUTTONS */
+.btn{padding:7px 14px;border-radius:8px;border:none;cursor:pointer;font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:5px;transition:.15s}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{background:var(--accent2)}
+.btn-ghost{background:var(--border);color:var(--ink)}
+.btn-ghost:hover{background:#cbd5e1}
+.btn-sm{padding:5px 10px;font-size:12px}
+
+/* KPI GRID */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:12px;margin-bottom:20px}
+.kpi{background:var(--card);border-radius:var(--radius);padding:16px 18px;box-shadow:0 1px 4px rgba(0,0,0,.05);border:1px solid var(--border);position:relative;overflow:hidden}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+.kpi:nth-child(1)::before{background:linear-gradient(90deg,#2563eb,#60a5fa)}
+.kpi:nth-child(2)::before{background:linear-gradient(90deg,#059669,#34d399)}
+.kpi:nth-child(3)::before{background:linear-gradient(90deg,#7c3aed,#a78bfa)}
+.kpi:nth-child(4)::before{background:linear-gradient(90deg,#dc2626,#f87171)}
+.kpi:nth-child(5)::before{background:linear-gradient(90deg,#d97706,#fbbf24)}
+.kpi:nth-child(6)::before{background:linear-gradient(90deg,#0891b2,#22d3ee)}
+.kpi-icon{font-size:20px;margin-bottom:8px}
+.kpi-label{font-size:10.5px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);font-weight:700;margin-bottom:5px;line-height:1.3}
+.kpi-value{font-size:20px;font-weight:800;color:var(--ink);letter-spacing:-.5px;line-height:1}
+.kpi-value.big{font-size:17px}
+.kpi-sub{font-size:11px;color:var(--muted);margin-top:5px}
+.kpi-badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;margin-top:5px}
+.badge-good{background:#d1fae5;color:#065f46}
+.badge-warn{background:#fef3c7;color:#92400e}
+.badge-bad{background:#fee2e2;color:#991b1b}
+.badge-info{background:#dbeafe;color:#1e40af}
+
+/* CARDS */
+.card{background:var(--card);border-radius:var(--radius);border:1px solid var(--border);box-shadow:0 1px 4px rgba(0,0,0,.05);margin-bottom:18px;overflow:hidden}
+.card-hdr{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.card-title{font-size:14px;font-weight:700;color:var(--ink)}
+.card-body{overflow-x:auto}
+
+/* TABLES */
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th{background:#f8fafc;color:var(--muted);font-weight:600;padding:9px 8px;text-align:center;border-bottom:2px solid var(--border);white-space:nowrap;position:sticky;top:0;z-index:2;font-size:11.5px}
+td{padding:7px 8px;border-bottom:1px solid #f1f5f9;text-align:right;vertical-align:middle}
+td.left{text-align:left;font-weight:500;white-space:nowrap}
+td.center{text-align:center}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#fafbfd}
+tr.sum-row td{background:#f8fafc;font-weight:700;border-top:2px solid var(--border);color:var(--ink)}
+tr.sum-row:hover td{background:#f1f5f9}
+
+/* Editable cells */
+.editable{cursor:text;transition:.1s}
+.editable:hover{background:#f0f9ff!important}
+.editable:focus{background:#fffbeb!important;outline:2px solid #f59e0b;outline-offset:-1px}
+.editable[contenteditable]{min-width:50px}
+
+/* Ratio badge in cells */
+.r-good{color:var(--good);font-weight:700}
+.r-warn{color:var(--warn);font-weight:700}
+.r-bad{color:var(--bad);font-weight:700}
+.r-muted{color:var(--muted)}
+
+/* Day label */
+.day-label{font-size:11px;color:var(--muted);font-weight:400}
+.dow-label{display:inline-block;width:22px;height:22px;border-radius:50%;font-size:10px;font-weight:700;text-align:center;line-height:22px;margin-right:4px}
+.dow-sun{background:#fee2e2;color:#991b1b}
+.dow-sat{background:#ede9fe;color:#5b21b6}
+.dow-week{background:#f1f5f9;color:var(--muted)}
+
+/* Shift input cells */
+.shift-input{width:38px;border:1px solid var(--border);border-radius:5px;text-align:center;padding:3px 2px;font-size:12px;font-family:var(--font);background:#fff;color:var(--ink);transition:.1s}
+.shift-input:focus{border-color:#6366f1;background:#f0f4ff;outline:none}
+.shift-input.kyuu{background:#fef9c3;border-color:#fbbf24;color:#92400e}
+
+/* Bar chart */
+.bar-wrap{display:flex;flex-direction:column;gap:6px;padding:16px 18px}
+.bar-row{display:flex;align-items:center;gap:8px;font-size:12px}
+.bar-label{width:28px;color:var(--muted);text-align:right;flex-shrink:0}
+.bar-track{flex:1;background:#f1f5f9;border-radius:4px;height:20px;overflow:hidden;position:relative}
+.bar-fill{height:100%;border-radius:4px;transition:width .3s;display:flex;align-items:center;padding-left:6px;font-size:11px;font-weight:600;color:#fff;min-width:2px}
+.bar-rev{background:linear-gradient(90deg,#2563eb,#60a5fa)}
+.bar-cost{background:linear-gradient(90deg,#dc2626,#f87171)}
+.bar-val{width:90px;text-align:right;color:var(--muted);flex-shrink:0;font-size:11px}
+
+/* Chart legend */
+.legend{display:flex;gap:12px;padding:0 18px 12px;flex-wrap:wrap}
+.legend-item{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--muted)}
+.legend-dot{width:10px;height:10px;border-radius:3px}
+
+/* Grid layout for dashboard */
+.dash-grid{display:grid;grid-template-columns:1.6fr 1fr;gap:18px}
+@media(max-width:900px){.dash-grid{grid-template-columns:1fr}}
+
+/* Supplier table */
+.sup-table th,.sup-table td{padding:8px 10px}
+.sup-rank{display:inline-block;width:22px;height:22px;border-radius:50%;background:var(--ink);color:#fff;text-align:center;line-height:22px;font-size:11px;font-weight:700;margin-right:4px}
+.sup-rank.r1{background:#f59e0b}
+.sup-rank.r2{background:#94a3b8}
+.sup-rank.r3{background:#cd7c3a}
+
+/* Empty state */
+.empty{padding:48px 24px;text-align:center;color:var(--muted)}
+.empty-icon{font-size:48px;margin-bottom:12px}
+.empty h3{font-size:16px;margin-bottom:6px;color:var(--ink)}
+.empty p{font-size:13px}
+
+/* Salary summary */
+.salary-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;padding:16px}
+.salary-card{border:1px solid var(--border);border-radius:8px;padding:12px;text-align:center}
+.salary-name{font-size:12px;font-weight:700;color:var(--ink);margin-bottom:4px}
+.salary-type{font-size:10px;color:var(--muted);margin-bottom:8px}
+.salary-amount{font-size:16px;font-weight:800;color:var(--accent)}
+.salary-days{font-size:11px;color:var(--muted);margin-top:4px}
+
+/* Add month modal */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1000;display:flex;align-items:center;justify-content:center}
+.modal{background:#fff;border-radius:16px;padding:28px;width:360px;box-shadow:0 20px 60px rgba(0,0,0,.2)}
+.modal h2{font-size:18px;font-weight:800;margin-bottom:20px}
+.field{margin-bottom:14px}
+.field label{display:block;font-size:13px;font-weight:600;margin-bottom:5px;color:var(--ink)}
+.field input,.field select{width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;font-family:var(--font)}
+.field input:focus,.field select:focus{border-color:var(--accent);outline:none}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:20px}
+
+/* ── BẢNG KÊ NGÀY / 日報 ── */
+.bk-date-nav{display:flex;align-items:center;gap:8px;margin-bottom:16px;background:#fff;border-radius:12px;padding:14px 16px;border:1px solid var(--border);box-shadow:0 1px 4px rgba(0,0,0,.05)}
+.bk-date-label{font-size:16px;font-weight:800;text-align:center;flex:1;line-height:1.25}
+.bk-date-sub{font-size:11.5px;color:var(--muted);margin-top:2px;font-weight:400;text-align:center}
+.bk-nav-btn{width:38px;height:38px;border:1px solid var(--border);background:#fff;border-radius:8px;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:.12s}
+.bk-nav-btn:hover{background:var(--bg);border-color:#cbd5e1}
+.bk-total-card{border-radius:12px;margin-bottom:14px;padding:20px;text-align:center;background:linear-gradient(135deg,#1e293b 0%,#334155 100%)}
+.bk-total-label{font-size:11px;color:rgba(255,255,255,.55);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px}
+.bk-total-val{font-size:30px;font-weight:900;color:#fff;letter-spacing:-.5px;line-height:1}
+.bk-total-sub{font-size:11.5px;color:rgba(255,255,255,.5);margin-top:6px;line-height:1.4}
+.bk-section{background:#fff;border-radius:12px;border:1px solid var(--border);margin-bottom:12px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.04)}
+.bk-section-hdr{padding:10px 16px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);background:var(--bg);border-bottom:1px solid var(--border)}
+.bk-row{display:flex;align-items:center;padding:10px 14px;border-bottom:1px solid var(--border);gap:10px}
+.bk-row:last-child{border-bottom:none}
+.bk-row-label{flex:1;min-width:0}
+.bk-row-label .jp{font-size:10.5px;color:var(--muted);display:block;margin-bottom:1px}
+.bk-row-label .vn{font-size:13.5px;font-weight:600;color:var(--ink);display:block}
+.bk-input{width:140px;padding:9px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:15px;font-weight:700;text-align:right;font-family:var(--font);background:#fafafa;transition:.12s}
+.bk-input:focus{border-color:var(--accent);outline:none;background:#fff}
+.bill-row{display:grid;grid-template-columns:90px 56px 1fr;gap:8px;align-items:center;padding:8px 14px;border-bottom:1px solid var(--border)}
+.bill-row:last-child{border-bottom:none}
+.bill-denom{font-weight:700;font-size:12.5px;text-align:right;color:var(--ink)}
+.bill-count{padding:8px 6px;border:1.5px solid var(--border);border-radius:6px;text-align:center;font-size:16px;font-weight:800;font-family:var(--font);width:100%;background:#fafafa;transition:.12s}
+.bill-count:focus{border-color:var(--info);outline:none;background:#fff}
+.bill-sub{font-size:12.5px;font-weight:600;text-align:right;color:var(--info)}
+.bk-diff{padding:10px 16px;font-size:13px;font-weight:700;display:flex;justify-content:space-between;align-items:center}
+.bk-diff.ok{background:#f0fdf4;color:var(--good)}
+.bk-diff.err{background:#fef2f2;color:var(--bad)}
+.bk-diff.neu{background:var(--bg);color:var(--muted)}
+.bk-save-btn{width:100%;padding:15px;background:var(--accent);color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:800;cursor:pointer;margin-top:6px;letter-spacing:.3px;transition:.15s}
+.bk-save-btn:hover{background:var(--accent2)}
+.bk-save-btn:active{transform:scale(.985)}
+.bk-today-btn{padding:4px 10px;font-size:11px;border:1px solid var(--border);background:#fff;border-radius:6px;cursor:pointer;color:var(--muted);margin-left:4px}
+.bk-today-btn:hover{background:var(--bg);color:var(--ink)}
+
+/* Print */
+@media print{
+  .hdr,.sidebar,.page-actions,.hdr-actions{display:none!important}
+  body{overflow:visible;height:auto}
+  .app-body{display:block}
+  .main{overflow:visible;padding:8px}
+  body,.main{background:#fff}
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="hdr">
+  <div class="hdr-logo">🍣 <span>TORISHIN</span></div>
+  <div class="hdr-months" id="monthTabs"></div>
+  <div class="hdr-actions">
+    <button class="hdr-btn" onclick="exportJSON()" title="Xuất dữ liệu JSON">⬇ Xuất</button>
+    <button class="hdr-btn" onclick="importJSON()" title="Nhập dữ liệu JSON">⬆ Nhập</button>
+    <button class="hdr-btn" onclick="window.print()" title="In trang">🖨</button>
+  </div>
+</header>
+
+<div class="app-body">
+  <nav class="sidebar" id="sidebar"></nav>
+  <main class="main" id="main"></main>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// CONFIG
+// ═══════════════════════════════════════════════════════════════
+const TP_COLS = ['Simba','Akuruhi','Gà','Rau','Hải sản','Chef Meat','Xúc xích','Trứng cút','BH Xanh','Thần tài','Gas','Dụng cụ','Lotte Mart','Kimchi'];
+const RU_COLS = ['San Miguel','Bia HN','Huda Tiger','Sapporo','Coca','Traf Ôlong','Than','Huefoods'];
+const STAFF = [
+  {id:'trung',  name:'Trung 店長', short:'Trung',  type:'lcb', base:12000000},
+  {id:'khuong', name:'Khương',     short:'Khương', type:'lcb', base:10000000},
+  {id:'thuy',   name:'Thúy',       short:'Thúy',   type:'lcb', base:10000000},
+  {id:'kha',    name:'Khá',        short:'Khá',    type:'pt',  rate:30000},
+  {id:'tham',   name:'Thắm',       short:'Thắm',   type:'pt',  rate:33000},
+  {id:'nhi',    name:'Nhi',        short:'Nhi',    type:'pt',  rate:30000},
+];
+const SHIFT_TABLE = {
+  '2':  {r:7,  n:2, label:'14H–24H (nghỉ 1H)'},
+  '2.5':{r:6.5,n:2, label:'14:30H–24H (nghỉ 1H)'},
+  '3':  {r:6,  n:2, label:'15H–24H (nghỉ 1H)'},
+  '4':  {r:6,  n:2, label:'16H–24H'},
+  '5':  {r:4.5,n:2, label:'17H–24H (nghỉ 30p)'},
+  '5.5':{r:4,  n:2, label:'17:30H–24H (nghỉ 30p)'},
+  '6':  {r:4,  n:2, label:'18H–24H'},
+  '6.5':{r:3.5,n:1, label:'18:30H–23H'},
+  '12': {r:10, n:2, label:'12 giờ'},
+  '休': {r:0,  n:0, label:'Nghỉ'},
+};
+const DOW_VN  = ['T2','T3','T4','T5','T6','T7','CN'];
+const DOW_CLS = ['dow-week','dow-week','dow-week','dow-week','dow-week','dow-sat','dow-sun'];
+const SECTIONS = [
+  {id:'dashboard', icon:'📊', label:'Dashboard'},
+  {id:'baoke',     icon:'📝', label:'Bảng Kê Ngày'},
+  {id:'doanhthu',  icon:'💰', label:'Doanh Thu'},
+  {id:'thucpham',  icon:'🍱', label:'Thực Phẩm'},
+  {id:'ruou',      icon:'🍺', label:'Rượu / ĐU'},
+  {id:'bangluong', icon:'👥', label:'Bảng Lương'},
+];
+const BILLS=[500000,200000,100000,50000,20000,10000,5000,2000,1000];
+const DOW_FULL_VN=['Chủ Nhật','Thứ Hai','Thứ Ba','Thứ Tư','Thứ Năm','Thứ Sáu','Thứ Bảy'];
+let bkDayOff=0; // offset from today, 0=today
+
+// ═══════════════════════════════════════════════════════════════
+// SEED DATA (from Excel)
+// ═══════════════════════════════════════════════════════════════
+const SEED_DATA={"T4":{"num":4,"year":2026,"days":30,"doanhThu":[{"rev":13617880},{"rev":10865760},{"rev":9317440},{"rev":8324960},{"rev":7089800},{"rev":3584500},{"rev":5118360},{"rev":8217200},{"rev":11304440},{"rev":12577760},{"rev":8713600},{"rev":14986660},{"rev":7423980},{"rev":8263300},{"rev":6955720},{"rev":21059560},{"rev":13567140},{"rev":10725860},{"rev":5693680},{"rev":4592940},{"rev":10033440},{"rev":10276160},{"rev":12156020},{"rev":12635020},{"rev":14344820},{"rev":13101960},{"rev":6182380},{"rev":4668240},{"rev":7175560},{"rev":5763600}],"thucPham":[[null,null,null,199000,null,266000,90000,null,152720,null,null,null,null,null],[1692184,null,1175000,348000,870000,266000,442800,80000,190900,295000,null,null,null,null],[2199960,816480,159600,147000,null,null,null,null,193200,null,null,140000,null,null],[334800,null,1012000,180000,null,266000,null,null,190900,null,null,null,null,null],[null,null,795000,180000,null,null,null,null,190900,null,null,null,null,null],[410400,null,null,null,null,null,null,null,152720,null,null,null,null,null],[425280,null,1055000,104000,null,null,null,80000,null,null,null,null,null,96000],[null,null,null,154000,null,null,null,null,228380,null,null,202000,null,null],[942200,null,null,142000,130000,399000,null,80000,null,null,null,null,null,null],[918320,null,1268000,358000,null,null,null,null,164200,null,null,null,null,null],[1991780,null,811000,135000,420000,399000,532800,null,284760,null,null,null,null,null],[null,null,null,118000,null,null,null,null,208500,null,541000,null,null,null],[1495760,null,1090000,383000,null,null,null,null,203780,null,null,null,null,null],[789000,null,null,200000,710000,266000,90000,80000,190900,null,null,645000,null,null],[null,null,1320000,184000,null,null,null,null,null,null,null,333750,null,null],[1020920,null,null,110000,null,null,442800,null,334440,null,null,null,null,144000],[null,null,1157000,380000,null,399000,null,80000,190900,260000,null,607000,null,null],[1588580,null,null,477000,null,399000,90000,null,410800,null,null,null,null,null],[null,null,1675000,250000,510000,null,null,80000,190900,null,null,null,null,null],[761504,null,null,112000,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,190900,null,null,null,null,null],[1424000,842400,915000,222000,null,null,null,null,null,null,null,null,null,null],[null,null,1389000,225000,null,null,null,null,219900,null,null,null,null,null],[1966800,null,null,307000,null,399000,754200,null,190900,null,null,null,null,null],[null,null,920000,204000,130000,399000,null,80000,208400,345000,null,393000,null,null],[null,null,1154000,286000,null,null,null,null,179400,null,null,null,null,null],[269900,null,1119000,298000,null,null,null,null,190900,null,null,null,null,null],[null,null,null,null,960000,null,null,null,238900,null,null,null,null,null],[487404,null,null,null,null,532000,null,80000,179400,null,501000,235000,152800,null],[null,null,932000,221000,null,null,null,null,null,null,null,null,null,null]],"ruou":[[null,null,260000,null,703000,null,null,null],[null,null,886000,1320000,null,null,null,null],[null,2100000,null,null,null,null,null,null],[null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null],[null,1260000,978000,null,42700,null,null,null],[null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null],[4750000,null,null,null,null,null,null,null],[null,1680000,null,null,null,null,null,null],[null,null,null,null,null,null,null,null],[null,null,null,null,null,null,1836000,null],[null,null,1246000,null,null,null,null,null],[null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null],[null,null,null,null,538000,null,null,null],[null,null,null,null,null,null,null,null],[null,null,978000,null,null,null,null,null],[null,null,null,null,null,null,null,1530000],[null,null,623000,null,null,null,null,null],[null,null,null,1320000,null,null,null,null],[null,null,null,null,null,null,null,null],[null,2520000,null,null,null,null,null,null],[3800000,null,null,null,null,null,null,null]],"bangLuong":{"shifts":{"trung":["2","2","2","2","2","2","休","2","2","2","2","2","2","2","2","休","休","休","2","2","2","2","2","2","2","2","2","2","2","2"],"khuong":["2","2","2","休","2","2","2","2","休","休","2","2","2","2","2","2","2","2","2","2","2","2","2","2","2","2","2","2","2","2"],"thuy":["2","2","休","2","2","2","2","2","2","2","休","休","2","2","2","2","2","2","2","2","2","2","2","2","2","休","2","2","2","2"],"kha":["休","2","2","2","2","4","2","休","4","2","2","2","2","休","2","2","2","2","休","休","2","2","2","2","2","2","2","休","2","2"],"tham":["5.5","5.5","5.5","5","休","6","6","6","6","休","6","3","5","6","休","6","6","6","6","6","4","6","6","6","休","3","6","5","6","6"],"nhi":["6","休","6","6","休","休","休","休","休","6.5","6.5","6.5","6.5","休","6.5","6.5","休","6.5","6.5","休","6.5","6.5","休","6.5","6.5","休","6","6.5","休","休"]}}},"T5":{"num":5,"year":2026,"days":31,"doanhThu":[{"rev":11744800},{"rev":12024280},{"rev":4582600},{"rev":11707240},{"rev":9508760},{"rev":7852620},{"rev":7477720},{"rev":9300360},{"rev":7664500},{"rev":4069840},{"rev":9364640},{"rev":10790160},{"rev":5260380},{"rev":6156280},{"rev":6163420},{"rev":8822180},{"rev":8785540},{"rev":7029560},{"rev":16485840},{"rev":15321680},{"rev":11686840},{"rev":6183920},{"rev":10808160},{"rev":9717780},{"rev":8212480},{"rev":7713920},{"rev":10958380},{"rev":12110380},{"rev":9575480},{"rev":7179100},{"rev":9382060}],"thucPham":[[null,null,null,null,1470000,null,null,null,244400,135000,null,190000,null,null],[1571400,null,766000,212000,null,null,null,null,null,null,null,null,476300,null],[906660,null,726000,201000,null,null,null,80000,262140,null,null,null,null,null],[null,null,null,null,null,266000,532800,null,null,null,null,1804000,null,null],[1921200,null,1232000,192000,null,null,null,null,324550,null,null,null,null,null],[222800,null,753000,95000,130000,null,null,null,243700,null,null,950000,null,null],[476880,null,null,208000,null,266000,null,null,289900,null,null,720000,null,null],[null,null,952000,null,null,null,null,null,190900,null,null,null,null,null],[1322400,null,210000,142000,null,399000,532800,80000,null,null,null,null,null,null],[null,null,963000,207000,null,null,null,null,215540,null,null,25000,null,null],[845000,3363400,null,null,null,null,null,null,null,null,null,null,null,240000],[674460,null,1014000,null,null,null,null,80000,214700,null,null,null,621700,null],[1020000,null,null,158000,580000,266000,null,null,29000,null,null,null,null,null],[null,null,908000,158000,670000,null,90000,null,null,null,null,null,null,null],[434700,null,null,175000,null,null,null,null,189500,null,null,null,null,null],[null,null,null,null,null,266000,null,null,null,null,null,null,null,null],[null,null,1016000,336000,null,null,null,null,272300,130000,null,null,null,null],[484920,null,678000,96000,null,null,442800,80000,null,null,null,null,null,null],[null,null,622000,183000,null,266000,null,null,null,null,null,null,null,null],[720240,null,840000,300000,null,null,90000,80000,218500,null,null,null,null,null],[568800,null,976000,206000,650000,266000,null,null,213300,null,null,null,null,null],[1704800,null,754000,91000,null,399000,null,null,189500,null,501000,null,null,null],[932100,379000,null,null,75000,null,null,80000,189500,null,null,null,null,null],[null,null,891000,169000,null,null,null,null,209100,null,null,null,null,null],[2289600,null,null,306000,740000,null,90000,null,null,120000,null,null,44300,null],[null,null,837000,null,null,null,null,null,347500,null,null,null,null,null],[584780,null,null,270000,null,null,null,80000,259900,null,null,null,null,null],[232200,null,1132000,120000,null,null,null,null,null,null,null,null,null,null],[534384,null,634000,110000,null,266000,null,null,240900,null,null,null,null,null],[null,null,null,111000,null,266000,311400,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null]],"ruou":[[null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null],[null,null,885000,null,null,null,null,null],[null,null,null,null,null,null,1866240,null],[null,null,null,1320000,null,null,null,null],[null,null,null,null,null,null,null,null],[null,null,null,null,548000,null,null,null],[null,null,1240000,null,170000,736128,null,null],[2850000,1260000,null,null,null,null,null,null],[null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,928000],[null,null,null,null,null,null,null,null],[null,null,1246000,null,null,null,null,null],[null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null],[null,null,891000,null,null,null,null,null],[null,2100000,null,null,null,null,null,null],[null,null,null,null,null,null,null,null],[1900000,null,null,null,328000,null,null,null],[null,null,null,null,null,null,null,null],[null,2100000,null,880000,null,null,null,null],[null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null],[null,null,1246000,null,null,null,null,null],[null,null,null,null,576000,null,null,null],[null,null,null,null,null,null,null,null],[1900000,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null]],"bangLuong":{"shifts":{"trung":[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"khuong":[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"thuy":[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"kha":[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"tham":[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"nhi":[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null]}}},"T6":{"num":6,"year":2026,"days":30,"doanhThu":[{"rev":9291800},{"rev":12536180},{"rev":9494980},{"rev":4945760},{"rev":13327760},{"rev":3135220},{"rev":7580340},{"rev":8896700},{"rev":6731000},{"rev":10426080},{"rev":7514180},{"rev":16320520},{"rev":8837160},{"rev":8323120},{"rev":12274420},{"rev":7534620},{"rev":4231440},{"rev":7576700},{"rev":8710800},{"rev":8553120},{"rev":9221560},{"rev":4752060},{"rev":8000000},{"rev":10000000},{"rev":10000000},{"rev":10000000},{"rev":10000000},{"rev":10000000},{"rev":10000000},{"rev":10000000}],"thucPham":[[2184940,1318400,1689000,232000,null,null,null,80000,184500,290000,null,null,null,null],[null,null,507000,150000,null,532000,532800,null,229000,null,null,null,null,null],[1504200,null,536000,262000,null,null,null,null,184500,null,null,null,null,null],[1501740,null,null,234000,635000,null,null,80000,184500,null,null,54146,null,null],[null,null,862000,50000,null,null,null,null,184500,null,null,null,null,null],[563000,null,910000,99000,null,399000,null,null,241240,null,null,null,1886001,240000],[null,null,null,135000,80000,null,null,null,null,null,null,null,null,null],[554364,null,null,190000,null,null,null,80000,213500,null,null,null,162000,null],[null,null,819000,98000,null,null,754200,null,184500,175000,null,null,null,null],[null,null,null,99000,440000,null,null,null,null,null,null,null,null,null],[1475000,null,866000,151000,540000,null,45000,null,52200,null,null,null,null,null],[null,385000,null,130000,null,null,null,null,176700,null,null,null,null,null],[963900,null,1238000,136000,null,null,null,80000,193500,null,null,null,null,null],[null,null,787000,270000,null,null,null,null,null,null,null,null,null,null],[469800,null,null,111000,null,399000,null,null,235500,135000,501000,null,null,null],[null,null,731000,115000,null,null,null,null,null,null,null,null,null,null],[null,null,708000,184000,null,null,null,80000,213500,null,null,null,null,null],[null,null,null,84000,80000,399000,null,null,null,null,null,null,null,null],[779720,null,673000,158000,null,null,null,null,213500,null,null,null,null,null],[558900,null,751000,177000,null,null,null,null,204000,null,null,null,null,null],[null,null,null,null,null,null,null,null,184500,null,null,null,null,null],[682560,null,null,139000,940000,null,443800,80000,271000,null,null,null,null,null],[null,null,628000,null,null,null,null,null,38000,null,null,null,null,null],[null,null,null,81000,null,null,null,null,null,null,null,null,null,null],[null,null,null,170000,null,266000,null,null,206500,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null]],"ruou":[[null,2520000,1601000,null,null,null,null,null],[null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null],[2050000,2520000,null,null,null,null,null,null],[null,null,null,null,null,null,null,null],[null,null,null,null,null,null,1836000,null],[null,null,null,null,null,null,null,null],[null,2520000,null,null,null,null,null,null],[null,null,1514000,null,null,null,null,null],[null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null],[null,null,null,null,530000,null,null,null],[3075000,null,null,880000,null,null,null,null],[null,null,null,null,null,null,null,null],[null,2100000,1246000,null,null,null,null,null],[null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null],[null,2520000,null,null,null,null,null,null],[null,null,536000,null,null,null,null,null],[null,null,null,null,null,null,null,null],[null,null,710000,null,null,null,null,null],[null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null]],"bangLuong":{"shifts":{"trung":[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"khuong":[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"thuy":[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"kha":[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"tham":[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"nhi":[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null]}}},"T7":{"num":7,"year":2026,"days":31,"doanhThu":[{"rev":null},{"rev":null},{"rev":null},{"rev":null},{"rev":null},{"rev":null},{"rev":null},{"rev":null},{"rev":null},{"rev":null},{"rev":null},{"rev":null},{"rev":null},{"rev":null},{"rev":null},{"rev":null},{"rev":null},{"rev":null},{"rev":null},{"rev":null},{"rev":null},{"rev":null},{"rev":null},{"rev":null},{"rev":null},{"rev":null},{"rev":null},{"rev":null},{"rev":null},{"rev":null},{"rev":null}],"thucPham":[[null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null]],"ruou":[[null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null]],"bangLuong":{"shifts":{"trung":[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"khuong":[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"thuy":[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"kha":[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"tham":[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"nhi":[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null]}}}};
+
+// ═══════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════
+let S = {
+  curMonth: 'T7',
+  curTab: 'dashboard',
+  months: [
+    {id:'T4',num:4,year:2026,days:30},
+    {id:'T5',num:5,year:2026,days:31},
+    {id:'T6',num:6,year:2026,days:30},
+    {id:'T7',num:7,year:2026,days:31},
+  ],
+  data: {}
+};
+
+function initMonthData(days){
+  return {
+    doanhThu: Array.from({length:days},()=>({rev:null})),
+    thucPham: Array.from({length:days},()=>Array(TP_COLS.length).fill(null)),
+    ruou:     Array.from({length:days},()=>Array(RU_COLS.length).fill(null)),
+    bangLuong:{shifts:Object.fromEntries(STAFF.map(s=>[s.id,Array(days).fill(null)]))}
+  };
+}
+
+function seedMonthData(mid,days){
+  const sd=SEED_DATA[mid];
+  if(!sd) return initMonthData(days);
+  const trim=(arr,n,empty)=>arr.slice(0,n).concat(Array.from({length:Math.max(0,n-arr.length)},()=>empty()));
+  const d=initMonthData(days);
+  d.doanhThu=trim(sd.doanhThu,days,()=>({rev:null}));
+  d.thucPham=trim(sd.thucPham,days,()=>Array(TP_COLS.length).fill(null));
+  d.ruou=trim(sd.ruou,days,()=>Array(RU_COLS.length).fill(null));
+  const shifts={};
+  STAFF.forEach(st=>{
+    const sc=(sd.bangLuong?.shifts?.[st.id]||[]).slice(0,days);
+    shifts[st.id]=sc.concat(Array(Math.max(0,days-sc.length)).fill(null));
+  });
+  d.bangLuong={shifts};
+  return d;
+}
+
+function loadState(){
+  try{
+    const saved = localStorage.getItem('torishin_rev_v3');
+    if(saved){ const p=JSON.parse(saved); Object.assign(S,p); }
+  }catch(e){}
+  S.months.forEach(m=>{
+    if(!S.data[m.id]) S.data[m.id]=seedMonthData(m.id,m.days);
+  });
+}
+
+function saveState(){
+  try{ localStorage.setItem('torishin_rev_v3', JSON.stringify(S)); }catch(e){}
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CALCULATIONS
+// ═══════════════════════════════════════════════════════════════
+function monthCfg(mid){ return S.months.find(m=>m.id===mid)||S.months[0]; }
+function monthData(mid){ return S.data[mid]||(S.data[mid]=initMonthData(monthCfg(mid).days)); }
+
+function dayDate(m,i){
+  const cfg=monthCfg(m);
+  return new Date(cfg.year, cfg.num-1, i+1);
+}
+function dayDOW(m,i){ return dayDate(m,i).getDay(); } // 0=Sun,6=Sat
+
+function dayFoodCost(md,i){ return (md.thucPham[i]||[]).reduce((s,v)=>s+(v||0),0); }
+function dayDrinkCost(md,i){ return (md.ruou[i]||[]).reduce((s,v)=>s+(v||0),0); }
+function dayCost(md,i){ return dayFoodCost(md,i)+dayDrinkCost(md,i); }
+function dayRev(md,i){ return md.doanhThu[i]?.rev||0; }
+function dayRatio(md,i){ const r=dayRev(md,i); return r?dayCost(md,i)/r:null; }
+
+function monthTotals(mid){
+  const md=monthData(mid), cfg=monthCfg(mid), n=cfg.days;
+  let rev=0,cost=0,food=0,drink=0;
+  for(let i=0;i<n;i++){rev+=dayRev(md,i);cost+=dayCost(md,i);food+=dayFoodCost(md,i);drink+=dayDrinkCost(md,i);}
+  return {rev,cost,food,drink,ratio:rev?cost/rev:null};
+}
+
+function getShiftHours(code){
+  if(!code||code.trim()==='') return {r:0,n:0};
+  return SHIFT_TABLE[String(code).trim()]||{r:0,n:0};
+}
+
+function calcStaff(staff, shifts){
+  let reg=0,night=0,workDays=0,mealDays=0;
+  shifts.forEach(code=>{
+    const h=getShiftHours(code);
+    reg+=h.r; night+=h.n;
+    if(code&&code!=='休'&&h.r+h.n>0) workDays++;
+    if(h.r+h.n>=6) mealDays++;
+  });
+  const totalHrs=reg+night;
+  const meal=mealDays*25000;
+  let salary=0;
+  if(staff.type==='lcb'){
+    const hr=staff.base/273;
+    salary=staff.base+night*hr*0.25+Math.max(0,totalHrs-208)*hr*0.25;
+  } else {
+    salary=reg*staff.rate+night*staff.rate*1.25+Math.max(0,totalHrs-208)*staff.rate*0.25;
+  }
+  return {reg,night,totalHrs,workDays,mealDays,meal,salary,total:Math.round(salary+meal)};
+}
+
+function payrollSummary(mid){
+  const md=monthData(mid), cfg=monthCfg(mid);
+  return STAFF.map(s=>{
+    const shifts=md.bangLuong.shifts[s.id]||Array(cfg.days).fill(null);
+    return {...s, ...calcStaff(s,shifts)};
+  });
+}
+
+function totalPayroll(mid){
+  return payrollSummary(mid).reduce((s,r)=>({
+    salary:s.salary+r.salary, meal:s.meal+r.meal, total:s.total+r.total
+  }),{salary:0,meal:0,total:0});
+}
+
+function supRanking(mid){
+  const md=monthData(mid),cfg=monthCfg(mid);
+  const foodTotals=TP_COLS.map((name,ci)=>({
+    name,total:Array.from({length:cfg.days},(_,ri)=>md.thucPham[ri]?.[ci]||0).reduce((a,b)=>a+b,0)
+  })).filter(x=>x.total>0).sort((a,b)=>b.total-a.total);
+  const drinkTotals=RU_COLS.map((name,ci)=>({
+    name,total:Array.from({length:cfg.days},(_,ri)=>md.ruou[ri]?.[ci]||0).reduce((a,b)=>a+b,0)
+  })).filter(x=>x.total>0).sort((a,b)=>b.total-a.total);
+  return {food:foodTotals,drink:drinkTotals};
+}
+
+// ═══════════════════════════════════════════════════════════════
+// FORMAT
+// ═══════════════════════════════════════════════════════════════
+const num=(v,unit='đ')=>v!=null&&v!==0?Math.round(v).toLocaleString('vi-VN')+(unit||''):'—';
+const mn=(v)=>v!=null&&v!==0?(Math.round(v)/1000000).toFixed(2)+'M':'—';
+const pct=(v)=>v!=null?(v*100).toFixed(1)+'%':'—';
+const ratioClass=(v)=>!v?'r-muted':v<0.28?'r-good':v<0.35?'r-warn':'r-bad';
+const ratioBadge=(v)=>!v?'badge-info':v<0.28?'badge-good':v<0.35?'badge-warn':'badge-bad';
+const ratioLabel=(v)=>!v?'Chưa có':v<0.28?'✓ Tốt':v<0.35?'⚠ Trung bình':'✗ Vượt ngưỡng';
+const payRatioClass=(v)=>!v?'r-muted':v<0.35?'r-good':v<0.42?'r-warn':'r-bad';
+
+function dowHTML(m,i){
+  const d=dayDate(m,i); const dow=d.getDay();
+  const label=DOW_VN[dow===0?6:dow-1];
+  const cls=dow===0?'dow-sun':dow===6?'dow-sat':'dow-week';
+  return `<span class="dow-label ${cls}">${label}</span>`;
+}
+
+function parseNum(str){
+  if(!str||str.trim()==='') return null;
+  const cleaned=str.replace(/[đ,.\s]/g,'').replace(/\./g,'');
+  const n=parseInt(cleaned,10);
+  return isNaN(n)?null:n;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RENDER SHELL
+// ═══════════════════════════════════════════════════════════════
+function renderShell(){
+  // Month tabs
+  document.getElementById('monthTabs').innerHTML=
+    S.months.map(m=>`<div class="m-tab${m.id===S.curMonth?' active':''}" onclick="setMonth('${m.id}')"><span>${m.id}</span><span class="m-tab-badge">${m.year}</span></div>`).join('')+
+    `<button class="m-add" onclick="openAddMonth()">＋</button>`;
+
+  // Sidebar
+  document.getElementById('sidebar').innerHTML=
+    `<div class="nav-section">Tháng ${monthCfg(S.curMonth).id}</div>`+
+    SECTIONS.map(s=>`<div class="nav-item${s.id===S.curTab?' active':''}" onclick="setTab('${s.id}')"><span class="nav-icon">${s.icon}</span>${s.label}</div>`).join('');
+}
+
+function setMonth(id){
+  S.curMonth=id; saveState(); renderShell(); renderContent();
+}
+function setTab(id){
+  S.curTab=id; saveState(); renderShell(); renderContent();
+}
+
+function renderContent(){
+  const map={dashboard:renderDashboard,baoke:renderBaoKe,doanhthu:renderDoanhThu,thucpham:renderThucPham,ruou:renderRuou,bangluong:renderBangLuong};
+  (map[S.curTab]||renderDashboard)();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// BẢNG KÊ NGÀY / 日報
+// ═══════════════════════════════════════════════════════════════
+function bkGetDate(){
+  const now=new Date();
+  const d=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+  d.setDate(d.getDate()+bkDayOff);
+  return d;
+}
+function bkDayIndex(d){
+  const cfg=monthCfg(S.curMonth);
+  if(d.getFullYear()!==cfg.year||d.getMonth()!==cfg.num-1) return -1;
+  return d.getDate()-1;
+}
+function bkParseInput(id){
+  const el=document.getElementById(id); if(!el) return null;
+  const v=el.value.replace(/[^0-9]/g,''); return v?parseInt(v,10):null;
+}
+function bkNav(delta){ bkDayOff+=delta; renderBaoKe(); }
+function bkToday(){ bkDayOff=0; renderBaoKe(); }
+
+function bkUpdateTotal(){
+  const cash=bkParseInput('rev_cash')||0;
+  const card=bkParseInput('rev_card')||0;
+  const tf=bkParseInput('rev_transfer')||0;
+  const cap=bkParseInput('rev_capichi')||0;
+  const grb=bkParseInput('rev_grab')||0;
+  const total=cash+card+tf+cap+grb;
+  const el=document.getElementById('bk-grand-total');
+  const sub=document.getElementById('bk-grand-sub');
+  if(el) el.textContent=total>0?total.toLocaleString('vi-VN')+'đ':'0đ';
+  if(sub){
+    const p=[];
+    if(cash) p.push('Mặt: '+(cash/1e6).toFixed(2)+'M');
+    if(card) p.push('Thẻ: '+(card/1e6).toFixed(2)+'M');
+    if(tf)   p.push('CK: '+(tf/1e6).toFixed(2)+'M');
+    if(cap)  p.push('Capichi: '+(cap/1e6).toFixed(2)+'M');
+    if(grb)  p.push('Grab: '+(grb/1e6).toFixed(2)+'M');
+    sub.textContent=p.length?p.join(' · '):'Nhập từng loại bên dưới';
+  }
+  bkUpdateBills();
+}
+
+function bkUpdateBills(){
+  let billSum=0;
+  BILLS.forEach(b=>{
+    const el=document.getElementById('bill_'+b);
+    const sub=document.getElementById('bill_sub_'+b);
+    if(!el) return;
+    const cnt=parseInt(el.value)||0; const amt=cnt*b; billSum+=amt;
+    if(sub) sub.textContent=cnt>0?amt.toLocaleString('vi-VN')+'đ':'—';
+  });
+  const btEl=document.getElementById('bill-total');
+  if(btEl) btEl.textContent=billSum>0?billSum.toLocaleString('vi-VN')+'đ':'—';
+  const cashIn=bkParseInput('rev_cash')||0;
+  const df=document.getElementById('bk-diff-row');
+  if(!df) return;
+  if(billSum>0&&cashIn>0){
+    const diff=billSum-cashIn;
+    df.innerHTML=diff===0
+      ?`<div class="bk-diff ok"><span>✓ Tiền mặt khớp chính xác!</span><span>現金一致</span></div>`
+      :`<div class="bk-diff err"><span>⚠ Chênh lệch</span><span>${diff>0?'+':''}${diff.toLocaleString('vi-VN')}đ</span></div>`;
+  } else {
+    df.innerHTML=`<div class="bk-diff neu"><span>Nhập tiền mặt & đếm tờ tiền để kiểm tra</span></div>`;
+  }
+}
+
+function bkSave(){
+  const d=bkGetDate(), idx=bkDayIndex(d);
+  if(idx<0){ alert('Ngày này không thuộc tháng '+S.curMonth); return; }
+  const md=monthData(S.curMonth);
+  const cash=bkParseInput('rev_cash');
+  const card=bkParseInput('rev_card');
+  const tf=bkParseInput('rev_transfer');
+  const cap=bkParseInput('rev_capichi');
+  const grb=bkParseInput('rev_grab');
+  const hasBreakdown=cash!==null||card!==null||tf!==null||cap!==null||grb!==null;
+  const total=(cash||0)+(card||0)+(tf||0)+(cap||0)+(grb||0);
+  const bills={};
+  BILLS.forEach(b=>{const cnt=parseInt(document.getElementById('bill_'+b)?.value)||0;if(cnt)bills[b]=cnt;});
+  const dt=md.doanhThu[idx]||{};
+  if(hasBreakdown) dt.rev=total;
+  if(cash!==null) dt.cash=cash; if(card!==null) dt.card=card;
+  if(tf!==null) dt.transfer=tf; if(cap!==null) dt.capichi=cap; if(grb!==null) dt.grab=grb;
+  if(Object.keys(bills).length) dt.bills=bills;
+  md.doanhThu[idx]=dt;
+  saveState();
+  const btn=document.querySelector('.bk-save-btn');
+  if(btn){btn.textContent='✓ Đã lưu thành công!';btn.style.background='var(--good)';
+    setTimeout(()=>{btn.textContent='💾 Lưu Bảng Kê / 保存';btn.style.background='';},2000);}
+}
+
+function renderBaoKe(){
+  const mid=S.curMonth, cfg=monthCfg(mid), md=monthData(mid);
+  const d=bkGetDate(), idx=bkDayIndex(d);
+  const dt=idx>=0?md.doanhThu[idx]:null;
+  const dow=DOW_FULL_VN[d.getDay()];
+  const dateStr=`${dow}, ${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
+  const dateJP=`${d.getMonth()+1}月${d.getDate()}日`;
+  const isToday=bkDayOff===0;
+  const inMonth=idx>=0;
+
+  const revFields=[
+    {id:'cash',     jp:'現金売り上げ',    vn:'Tiền mặt'},
+    {id:'card',     jp:'カード売り上げ',   vn:'Thẻ ngân hàng'},
+    {id:'transfer', jp:'振り込み売り上げ', vn:'Chuyển khoản'},
+    {id:'capichi',  jp:'カピチ売り上げ',   vn:'Capichi'},
+    {id:'grab',     jp:'グラブ売り上げ',   vn:'Grab'},
+  ];
+  const DENOM_LABEL=['500.000','200.000','100.000','50.000','20.000','10.000','5.000','2.000','1.000'];
+  const bills=dt?.bills||{};
+
+  const revTotal=dt?((dt.cash||0)+(dt.card||0)+(dt.transfer||0)+(dt.capichi||0)+(dt.grab||0)||dt.rev||0):0;
+  const revBreakHtml=revFields.map(f=>`
+    <div class="bk-row">
+      <div class="bk-row-label">
+        <span class="jp">${f.jp}</span>
+        <span class="vn">${f.vn}</span>
+      </div>
+      <input class="bk-input" type="text" inputmode="numeric" id="rev_${f.id}"
+        value="${dt?.[f.id]!=null?dt[f.id].toLocaleString('vi-VN'):''}" placeholder="0"
+        oninput="bkUpdateTotal()">
+    </div>`).join('');
+
+  const billHtml=BILLS.map((b,i)=>`
+    <div class="bill-row">
+      <div class="bill-denom">${DENOM_LABEL[i]}đ</div>
+      <input class="bill-count" type="number" min="0" max="999" id="bill_${b}"
+        value="${bills[b]||''}" inputmode="numeric" oninput="bkUpdateBills()">
+      <div class="bill-sub" id="bill_sub_${b}">${bills[b]?(bills[b]*b).toLocaleString('vi-VN')+'đ':'—'}</div>
+    </div>`).join('');
+
+  const billSum=BILLS.reduce((s,b)=>s+(bills[b]||0)*b,0);
+
+  document.getElementById('main').innerHTML=`
+  <div class="page-hdr">
+    <div><div class="page-title">📝 Bảng Kê Ngày / 日報</div>
+    <div class="page-sub">Nhập doanh thu và đếm tiền mặt cuối ngày — ${mid}/${cfg.year}</div></div>
+  </div>
+
+  <div class="bk-date-nav">
+    <button class="bk-nav-btn" onclick="bkNav(-1)" title="Ngày trước">‹</button>
+    <div style="flex:1;text-align:center">
+      <div class="bk-date-label">${dateStr}</div>
+      <div class="bk-date-sub">${dateJP}
+        ${isToday?'<span style="background:var(--accent);color:#fff;border-radius:4px;padding:1px 6px;font-size:10px;margin-left:4px">Hôm nay</span>':''}
+        ${!isToday?`<button class="bk-today-btn" onclick="bkToday()">↩ Hôm nay</button>`:''}
+      </div>
+    </div>
+    <button class="bk-nav-btn" onclick="bkNav(1)" title="Ngày sau">›</button>
+  </div>
+
+  ${!inMonth?`<div class="card" style="text-align:center;padding:32px;color:var(--muted)">
+    <div style="font-size:36px;margin-bottom:10px">📅</div>
+    <div style="font-size:15px;font-weight:700;margin-bottom:6px">Ngày nằm ngoài tháng ${mid}</div>
+    <div style="font-size:13px">Chuyển sang tháng khác hoặc nhấn ↩ Hôm nay</div>
+  </div>`:`
+
+  <div class="bk-total-card">
+    <div class="bk-total-label">総売上 / Tổng Doanh Thu Ngày</div>
+    <div class="bk-total-val" id="bk-grand-total">${revTotal>0?revTotal.toLocaleString('vi-VN')+'đ':'0đ'}</div>
+    <div class="bk-total-sub" id="bk-grand-sub">${dt?.rev&&!dt?.cash?'Đã nhập trực tiếp — phân loại bên dưới':'Nhập từng loại bên dưới'}</div>
+  </div>
+
+  <div class="bk-section">
+    <div class="bk-section-hdr">💴 Phân Loại Doanh Thu / 売上内訳</div>
+    ${revBreakHtml}
+  </div>
+
+  <div class="bk-section">
+    <div class="bk-section-hdr">💵 Đếm Tiền Mặt / レジ金内訳</div>
+    ${billHtml}
+    <div class="bk-row" style="background:var(--bg)">
+      <div class="bk-row-label">
+        <span class="jp">合計 / Tổng tờ tiền đếm được</span>
+        <span class="vn" style="color:var(--info);font-weight:700;font-size:14px">Tổng tiền mặt</span>
+      </div>
+      <div style="font-size:15px;font-weight:800;color:var(--info)" id="bill-total">${billSum>0?billSum.toLocaleString('vi-VN')+'đ':'—'}</div>
+    </div>
+    <div id="bk-diff-row">
+      ${(()=>{const ci=dt?.cash||0;const diff=billSum-ci;
+        return billSum>0&&ci>0
+          ?(diff===0?'<div class="bk-diff ok"><span>✓ Tiền mặt khớp chính xác!</span><span>現金一致</span></div>'
+            :'<div class="bk-diff err"><span>⚠ Chênh lệch</span><span>'+(diff>0?'+':'')+diff.toLocaleString('vi-VN')+'đ</span></div>')
+          :'<div class="bk-diff neu"><span>Nhập tiền mặt & đếm tờ tiền để kiểm tra</span></div>';
+      })()}
+    </div>
+  </div>
+
+  <button class="bk-save-btn" onclick="bkSave()">💾 Lưu Bảng Kê / 保存</button>
+  <div style="height:20px"></div>
+  `}`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// DASHBOARD
+// ═══════════════════════════════════════════════════════════════
+function renderDashboard(){
+  const mid=S.curMonth, cfg=monthCfg(mid), md=monthData(mid);
+  const T=monthTotals(mid), pay=totalPayroll(mid);
+  const payRatio=T.rev?pay.total/T.rev:null;
+  const rank=supRanking(mid);
+
+  // Build bar chart data (max 15 days for readability)
+  const maxRev=Math.max(...Array.from({length:cfg.days},(_,i)=>dayRev(md,i)),1);
+  const barHtml=Array.from({length:cfg.days},(_,i)=>{
+    const r=dayRev(md,i), c=dayCost(md,i);
+    const d=dayDate(mid,i); const dow=d.getDay();
+    const revW=r?Math.round(r/maxRev*100):0;
+    const costW=r?Math.round(c/maxRev*100):0;
+    const isWE=dow===0||dow===6;
+    if(!r&&!c) return '';
+    return `<div class="bar-row">
+      <div class="bar-label" style="${isWE?'color:var(--accent)':''}">${i+1}</div>
+      <div style="flex:1;display:flex;flex-direction:column;gap:2px">
+        <div class="bar-track"><div class="bar-fill bar-rev" style="width:${revW}%">${r>maxRev*.15?mn(r):''}</div></div>
+        <div class="bar-track" style="height:12px"><div class="bar-fill bar-cost" style="width:${costW}%;height:100%;background:linear-gradient(90deg,#dc262655,#f87171)"></div></div>
+      </div>
+      <div class="bar-val">${mn(r)}</div>
+    </div>`;
+  }).filter(Boolean).join('');
+
+  const supTableFood=rank.food.slice(0,8).map((s,i)=>`<tr><td class="left"><span class="sup-rank r${i<3?i+1:''}">${i+1}</span>${s.name}</td><td>${num(s.total)}</td><td class="${T.food?'r-muted':''}">${T.food?pct(s.total/T.food):'—'}</td></tr>`).join('');
+  const supTableDrink=rank.drink.slice(0,8).map((s,i)=>`<tr><td class="left"><span class="sup-rank r${i<3?i+1:''}">${i+1}</span>${s.name}</td><td>${num(s.total)}</td><td>${T.drink?pct(s.total/T.drink):'—'}</td></tr>`).join('');
+
+  document.getElementById('main').innerHTML=`
+  <div class="page-hdr">
+    <div><div class="page-title">📊 Dashboard &mdash; ${cfg.id} / ${cfg.num}月 ${cfg.year}</div>
+    <div class="page-sub">Tổng hợp kinh doanh tháng ${cfg.num}/${cfg.year}</div></div>
+  </div>
+
+  <div class="kpi-grid">
+    <div class="kpi"><div class="kpi-icon">💴</div><div class="kpi-label">Tổng Doanh Thu / 売上合計</div>
+      <div class="kpi-value big">${mn(T.rev)}</div><div class="kpi-sub">${num(T.rev)}</div></div>
+    <div class="kpi"><div class="kpi-icon">🍱</div><div class="kpi-label">Chi Thực Phẩm / 食材原価</div>
+      <div class="kpi-value big">${mn(T.food)}</div><div class="kpi-sub">${num(T.food)}</div></div>
+    <div class="kpi"><div class="kpi-icon">🍺</div><div class="kpi-label">Chi Đồ Uống / 飲料原価</div>
+      <div class="kpi-value big">${mn(T.drink)}</div><div class="kpi-sub">${num(T.drink)}</div></div>
+    <div class="kpi"><div class="kpi-icon">📈</div><div class="kpi-label">Tỉ Lệ Chi / 原価率</div>
+      <div class="kpi-value ${ratioClass(T.ratio)}">${pct(T.ratio)}</div>
+      <span class="kpi-badge ${ratioBadge(T.ratio)}">${ratioLabel(T.ratio)}</span></div>
+    <div class="kpi"><div class="kpi-icon">👥</div><div class="kpi-label">Tổng Lương NV / 人件費</div>
+      <div class="kpi-value big">${mn(pay.total)}</div><div class="kpi-sub">${num(pay.salary)} lương + ${num(pay.meal,'đ')} ăn</div></div>
+    <div class="kpi"><div class="kpi-icon">⚖️</div><div class="kpi-label">% Lương / Doanh Thu</div>
+      <div class="kpi-value ${payRatioClass(payRatio)}">${pct(payRatio)}</div>
+      <span class="kpi-badge ${payRatio&&payRatio<0.35?'badge-good':payRatio?'badge-warn':'badge-info'}">${payRatio?(payRatio<0.35?'✓ FL Cost OK':'⚠ Cao'):'Chưa có'}</span></div>
+  </div>
+
+  <div class="dash-grid">
+    <div class="card">
+      <div class="card-hdr"><span class="card-title">📅 Doanh Thu Từng Ngày</span>
+        <div class="legend"><div class="legend-item"><div class="legend-dot" style="background:#2563eb"></div>Doanh thu</div><div class="legend-item"><div class="legend-dot" style="background:#dc2626"></div>Chi phí</div></div>
+      </div>
+      <div class="bar-wrap">${barHtml||'<div class="empty"><p>Chưa có dữ liệu doanh thu</p></div>'}</div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:18px">
+      <div class="card">
+        <div class="card-hdr"><span class="card-title">🥇 Top Thực Phẩm</span></div>
+        <table class="sup-table"><thead><tr><th style="text-align:left">Nhà CC</th><th>Số tiền</th><th>Tỉ trọng</th></tr></thead>
+        <tbody>${supTableFood||'<tr><td colspan="3" class="r-muted" style="text-align:center;padding:16px">Chưa có dữ liệu</td></tr>'}</tbody></table>
+      </div>
+      <div class="card">
+        <div class="card-hdr"><span class="card-title">🥇 Top Đồ Uống</span></div>
+        <table class="sup-table"><thead><tr><th style="text-align:left">Nhà CC</th><th>Số tiền</th><th>Tỉ trọng</th></tr></thead>
+        <tbody>${supTableDrink||'<tr><td colspan="3" class="r-muted" style="text-align:center;padding:16px">Chưa có dữ liệu</td></tr>'}</tbody></table>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// DOANH THU
+// ═══════════════════════════════════════════════════════════════
+function renderDoanhThu(){
+  const mid=S.curMonth, cfg=monthCfg(mid), md=monthData(mid);
+  let totRev=0,totCost=0;
+  const rows=Array.from({length:cfg.days},(_,i)=>{
+    const d=dayDate(mid,i), dow=d.getDay();
+    const rev=dayRev(md,i), cost=dayCost(md,i);
+    const ratio=rev?cost/rev:null;
+    const profit=rev?rev-cost:null;
+    totRev+=rev; totCost+=cost;
+    const isWE=dow===0||dow===6;
+    return `<tr style="${isWE?'background:#fffbf5':''}">
+      <td class="left">${dowHTML(mid,i)}<strong>${i+1}</strong> <span class="day-label">${d.toLocaleDateString('vi-VN',{month:'numeric',day:'numeric'})}</span></td>
+      <td>${cost?num(cost):'<span class="r-muted">—</span>'}</td>
+      <td class="editable" contenteditable tabindex="0"
+        data-m="${mid}" data-r="doanhthu" data-i="${i}" data-c="0"
+        onblur="saveCell(this)" onkeydown="navCell(event,this)">${rev||''}</td>
+      <td class="${ratioClass(ratio)}">${pct(ratio)}</td>
+      <td style="color:${profit!=null?(profit>=0?'var(--good)':'var(--bad)'):'var(--muted)'}">${profit!=null?num(Math.abs(profit))+(profit<0?' ↓':' ↑'):'—'}</td>
+    </tr>`;
+  }).join('');
+  const totRatio=totRev?totCost/totRev:null;
+
+  document.getElementById('main').innerHTML=`
+  <div class="page-hdr">
+    <div><div class="page-title">💰 Doanh Thu — ${cfg.id}/${cfg.year}</div>
+    <div class="page-sub">Nhập doanh thu từng ngày. Chi phí tự tính từ Thực Phẩm + Rượu.</div></div>
+  </div>
+  <div class="card">
+    <div class="card-body"><table>
+      <thead><tr>
+        <th style="text-align:left;width:130px">Ngày / 日付</th>
+        <th>Chi phí / 仕入</th><th>Doanh thu / 売上 ✎</th>
+        <th>Tỉ lệ / 比率</th><th>Lợi nhuận / 粗利</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+      <tfoot><tr class="sum-row">
+        <td class="left"><strong>TỔNG / 合計</strong></td>
+        <td>${num(totCost)}</td><td>${num(totRev)}</td>
+        <td class="${ratioClass(totRatio)}">${pct(totRatio)}</td>
+        <td style="color:var(--good)">${num(totRev-totCost)}</td>
+      </tr></tfoot>
+    </table></div>
+  </div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// THỰC PHẨM
+// ═══════════════════════════════════════════════════════════════
+function renderThucPham(){
+  const mid=S.curMonth, cfg=monthCfg(mid), md=monthData(mid);
+  const colTotals=Array(TP_COLS.length).fill(0);
+  const rows=Array.from({length:cfg.days},(_,i)=>{
+    const d=dayDate(mid,i), dow=d.getDay();
+    const isWE=dow===0||dow===6;
+    const rowTotal=dayFoodCost(md,i);
+    const cells=TP_COLS.map((col,ci)=>{
+      const v=md.thucPham[i]?.[ci]||null;
+      colTotals[ci]+=(v||0);
+      return `<td class="editable" contenteditable tabindex="0"
+        data-m="${mid}" data-r="thucpham" data-i="${i}" data-c="${ci}"
+        onblur="saveCell(this)" onkeydown="navCell(event,this)">${v||''}</td>`;
+    }).join('');
+    return `<tr style="${isWE?'background:#fffbf5':''}">
+      <td class="left">${dowHTML(mid,i)}<strong>${i+1}</strong></td>
+      ${cells}
+      <td style="font-weight:700;color:var(--info)">${rowTotal?num(rowTotal):'—'}</td>
+    </tr>`;
+  }).join('');
+  const totRow=colTotals.map(v=>`<td style="font-weight:700">${v?num(v):'—'}</td>`).join('');
+  const grandTotal=colTotals.reduce((a,b)=>a+b,0);
+
+  document.getElementById('main').innerHTML=`
+  <div class="page-hdr">
+    <div><div class="page-title">🍱 Chi Thực Phẩm — ${cfg.id}/${cfg.year}</div>
+    <div class="page-sub">Nhập chi phí từng nhà cung cấp mỗi ngày.</div></div>
+  </div>
+  <div class="card">
+    <div class="card-body"><table>
+      <thead><tr>
+        <th style="text-align:left;min-width:80px">Ngày</th>
+        ${TP_COLS.map(c=>`<th>${c}</th>`).join('')}
+        <th style="color:var(--info)">Tổng ngày</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+      <tfoot><tr class="sum-row">
+        <td class="left">TỔNG</td>${totRow}
+        <td style="font-weight:800;color:var(--info)">${num(grandTotal)}</td>
+      </tr></tfoot>
+    </table></div>
+  </div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RƯỢU
+// ═══════════════════════════════════════════════════════════════
+function renderRuou(){
+  const mid=S.curMonth, cfg=monthCfg(mid), md=monthData(mid);
+  const colTotals=Array(RU_COLS.length).fill(0);
+  const rows=Array.from({length:cfg.days},(_,i)=>{
+    const d=dayDate(mid,i), dow=d.getDay();
+    const isWE=dow===0||dow===6;
+    const rowTotal=dayDrinkCost(md,i);
+    const cells=RU_COLS.map((col,ci)=>{
+      const v=md.ruou[i]?.[ci]||null;
+      colTotals[ci]+=(v||0);
+      return `<td class="editable" contenteditable tabindex="0"
+        data-m="${mid}" data-r="ruou" data-i="${i}" data-c="${ci}"
+        onblur="saveCell(this)" onkeydown="navCell(event,this)">${v||''}</td>`;
+    }).join('');
+    return `<tr style="${isWE?'background:#fffbf5':''}">
+      <td class="left">${dowHTML(mid,i)}<strong>${i+1}</strong></td>
+      ${cells}
+      <td style="font-weight:700;color:var(--info)">${rowTotal?num(rowTotal):'—'}</td>
+    </tr>`;
+  }).join('');
+  const totRow=colTotals.map(v=>`<td style="font-weight:700">${v?num(v):'—'}</td>`).join('');
+  const grandTotal=colTotals.reduce((a,b)=>a+b,0);
+
+  document.getElementById('main').innerHTML=`
+  <div class="page-hdr">
+    <div><div class="page-title">🍺 Chi Đồ Uống — ${cfg.id}/${cfg.year}</div>
+    <div class="page-sub">Nhập chi phí đồ uống từng nhà cung cấp.</div></div>
+  </div>
+  <div class="card">
+    <div class="card-body"><table>
+      <thead><tr>
+        <th style="text-align:left;min-width:80px">Ngày</th>
+        ${RU_COLS.map(c=>`<th>${c}</th>`).join('')}
+        <th style="color:var(--info)">Tổng ngày</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+      <tfoot><tr class="sum-row">
+        <td class="left">TỔNG</td>${totRow}
+        <td style="font-weight:800;color:var(--info)">${num(grandTotal)}</td>
+      </tr></tfoot>
+    </table></div>
+  </div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// BẢNG LƯƠNG
+// ═══════════════════════════════════════════════════════════════
+function renderBangLuong(){
+  const mid=S.curMonth, cfg=monthCfg(mid), md=monthData(mid);
+  const n=cfg.days;
+  const summary=payrollSummary(mid);
+  const totals=totalPayroll(mid);
+
+  // Salary summary cards
+  const cards=summary.map(s=>`
+    <div class="salary-card">
+      <div class="salary-name">${s.short}</div>
+      <div class="salary-type">${s.type==='lcb'?'LCB — '+num(s.base,'/th'):'PT — '+num(s.rate,'/h')}</div>
+      <div class="salary-amount">${s.total?num(s.total):'—'}</div>
+      <div class="salary-days">${s.workDays} ngày • ${s.totalHrs.toFixed(1)}H (đêm: ${s.night.toFixed(1)}H)</div>
+    </div>`).join('');
+
+  // Day-of-week headers
+  const dowHeaders=Array.from({length:n},(_,i)=>{
+    const dow=dayDate(mid,i).getDay();
+    const label=DOW_VN[dow===0?6:dow-1];
+    const isWE=dow===0||dow===6;
+    return `<th style="${isWE?'color:var(--accent)':''}">${i+1}<br><span style="font-size:9px;font-weight:400">${label}</span></th>`;
+  }).join('');
+
+  // Shift rows
+  const shiftRows=summary.map(s=>{
+    const shifts=md.bangLuong.shifts[s.id]||Array(n).fill(null);
+    const cells=Array.from({length:n},(_,i)=>{
+      const val=shifts[i]||'';
+      const isKyuu=val==='休';
+      const dow=dayDate(mid,i).getDay();
+      const isWE=dow===0||dow===6;
+      return `<td style="${isWE?'background:#fff8f8':''}">
+        <input type="text" class="shift-input${isKyuu?' kyuu':''}"
+          value="${val}" placeholder=""
+          data-mid="${mid}" data-sid="${s.id}" data-i="${i}"
+          oninput="shiftChange(this)" onblur="shiftSave(this)"
+          onkeydown="navShift(event,this)">
+      </td>`;
+    }).join('');
+    const p=calcStaff(s,shifts);
+    return `<tr>
+      <td class="left" style="position:sticky;left:0;background:#fff;z-index:1;min-width:90px"><strong>${s.short}</strong><br><span class="day-label">${s.type==='lcb'?'LCB':'PT '+num(s.rate,'/h')}</span></td>
+      ${cells}
+      <td style="font-weight:700;color:var(--accent);white-space:nowrap">${p.total?num(p.total):'—'}</td>
+      <td style="color:var(--muted);white-space:nowrap">${p.workDays}ng</td>
+    </tr>`;
+  }).join('');
+
+  // Salary detail table
+  const detailRows=summary.map(s=>{
+    const p=calcStaff(s,md.bangLuong.shifts[s.id]||Array(n).fill(null));
+    return `<tr>
+      <td class="left">${s.name}</td>
+      <td class="center">${s.type==='lcb'?'LCB':'Giờ'}</td>
+      <td class="center">${p.workDays}</td>
+      <td class="center">${p.mealDays}</td>
+      <td>${p.reg.toFixed(1)}H</td>
+      <td>${p.night.toFixed(1)}H</td>
+      <td style="font-weight:700">${p.salary?num(Math.round(p.salary)):'—'}</td>
+      <td>${p.meal?num(p.meal):'—'}</td>
+      <td style="font-weight:800;color:var(--accent)">${p.total?num(p.total):'—'}</td>
+    </tr>`;
+  }).join('');
+
+  // Shift code ref
+  const refRows=Object.entries(SHIFT_TABLE).map(([k,v])=>
+    `<tr><td class="center"><strong>${k}</strong></td><td class="left">${v.label}</td><td class="center">${v.r}H</td><td class="center">${v.n}H</td></tr>`
+  ).join('');
+
+  document.getElementById('main').innerHTML=`
+  <div class="page-hdr">
+    <div><div class="page-title">👥 Bảng Lương — ${cfg.id}/${cfg.year}</div>
+    <div class="page-sub">Nhập mã ca (2, 5, 6, 休...). Lương tự tính.</div></div>
+  </div>
+
+  <div class="kpi-grid" style="margin-bottom:16px">
+    <div class="kpi"><div class="kpi-icon">💵</div><div class="kpi-label">Tổng Lương</div>
+      <div class="kpi-value big">${mn(totals.salary)}</div></div>
+    <div class="kpi"><div class="kpi-icon">🍚</div><div class="kpi-label">Tiền Ăn</div>
+      <div class="kpi-value big">${mn(totals.meal)}</div></div>
+    <div class="kpi"><div class="kpi-icon">💰</div><div class="kpi-label">Tổng Chi NS</div>
+      <div class="kpi-value big" style="color:var(--accent)">${mn(totals.total)}</div></div>
+  </div>
+
+  <div class="salary-grid">${cards}</div>
+
+  <div class="card" style="margin-top:18px">
+    <div class="card-hdr"><span class="card-title">📅 Bảng Ca Làm Việc</span>
+      <span style="font-size:12px;color:var(--muted)">Nhập mã ca hoặc 休 (nghỉ)</span></div>
+    <div class="card-body"><div style="overflow-x:auto"><table class="shift-table">
+      <thead><tr>
+        <th style="text-align:left;position:sticky;left:0;background:#f8fafc;z-index:3;min-width:90px">Nhân viên</th>
+        ${dowHeaders}
+        <th>Tổng lương</th><th>Ngày</th>
+      </tr></thead>
+      <tbody>${shiftRows}</tbody>
+    </table></div></div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr auto;gap:18px;margin-top:18px;align-items:start">
+    <div class="card">
+      <div class="card-hdr"><span class="card-title">📊 Tổng Hợp Lương</span></div>
+      <table>
+        <thead><tr><th style="text-align:left">Nhân viên</th><th>Loại</th><th>Ngày LV</th><th>Ngày ăn</th><th>Giờ TT</th><th>Giờ đêm</th><th>Lương</th><th>Tiền ăn</th><th>Tổng</th></tr></thead>
+        <tbody>${detailRows}</tbody>
+        <tfoot><tr class="sum-row">
+          <td class="left" colspan="6"><strong>TỔNG CỘNG</strong></td>
+          <td>${num(Math.round(totals.salary))}</td>
+          <td>${num(totals.meal)}</td>
+          <td style="color:var(--accent);font-weight:800">${num(totals.total)}</td>
+        </tr></tfoot>
+      </table>
+    </div>
+    <div class="card" style="min-width:280px">
+      <div class="card-hdr"><span class="card-title">📋 Bảng Quy Đổi Ca</span></div>
+      <table>
+        <thead><tr><th>Mã</th><th style="text-align:left">Khung giờ</th><th>TT</th><th>Đêm</th></tr></thead>
+        <tbody>${refRows}</tbody>
+      </table>
+      <div style="padding:10px 14px;font-size:11px;color:var(--muted)">
+        ⚡ Sau 22H +25% | Sau 208H/tháng +25%<br>🍚 Tiền ăn 25,000đ/ca ≥ 6H
+      </div>
+    </div>
+  </div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CELL EDITING
+// ═══════════════════════════════════════════════════════════════
+function saveCell(el){
+  const {m,r,i,c}=el.dataset;
+  const val=parseNum(el.textContent);
+  const md=monthData(m);
+  if(r==='doanhthu') md.doanhThu[+i].rev=val;
+  else if(r==='thucpham') md.thucPham[+i][+c]=val;
+  else if(r==='ruou') md.ruou[+i][+c]=val;
+  el.textContent=val||'';
+  saveState();
+  // Update row total if visible
+  updateRowTotals(el, r, m, +i);
+}
+
+function updateRowTotals(el, r, m, i){
+  const md=monthData(m);
+  const tr=el.closest('tr');
+  if(!tr) return;
+  if(r==='thucpham'||r==='ruou'){
+    const total=r==='thucpham'?dayFoodCost(md,i):dayDrinkCost(md,i);
+    const lastTd=tr.querySelectorAll('td');
+    if(lastTd.length) lastTd[lastTd.length-1].textContent=total?num(total):'—';
+  }
+  if(r==='doanhthu'){
+    const cost=dayCost(md,i), rev=dayRev(md,i);
+    const tds=tr.querySelectorAll('td');
+    if(tds[1]) tds[1].textContent=cost?num(cost):'—';
+    const ratio=rev?cost/rev:null;
+    if(tds[3]){ tds[3].textContent=pct(ratio); tds[3].className=ratioClass(ratio); }
+    const profit=rev?rev-cost:null;
+    if(tds[4]){ tds[4].textContent=profit!=null?num(Math.abs(profit))+(profit<0?' ↓':' ↑'):'—'; tds[4].style.color=profit!=null?(profit>=0?'var(--good)':'var(--bad)'):'var(--muted)'; }
+  }
+}
+
+function navCell(e,el){
+  if(e.key==='Enter'){e.preventDefault();el.blur();}
+  if(e.key==='Tab'){e.preventDefault();
+    const all=[...document.querySelectorAll('[contenteditable]')];
+    const idx=all.indexOf(el);
+    if(idx<all.length-1) all[idx+1].focus();
+  }
+}
+
+function shiftChange(inp){
+  inp.classList.toggle('kyuu',inp.value.trim()==='休');
+}
+function shiftSave(inp){
+  const {mid,sid,i}=inp.dataset;
+  const val=inp.value.trim()||null;
+  const md=monthData(mid);
+  if(!md.bangLuong.shifts[sid]) md.bangLuong.shifts[sid]=Array(monthCfg(mid).days).fill(null);
+  md.bangLuong.shifts[sid][+i]=val;
+  saveState();
+  // Refresh summary row if possible
+}
+function navShift(e,inp){
+  if(e.key==='Enter'||e.key==='Tab'){
+    e.preventDefault();
+    const all=[...document.querySelectorAll('.shift-input')];
+    const idx=all.indexOf(inp);
+    // Tab → next cell in same row; Enter → next row same col
+    let next;
+    if(e.key==='Tab'){
+      // Find next cell in row or next row
+      const colCount=monthCfg(inp.dataset.mid).days;
+      const curI=+inp.dataset.i, nI=curI+1;
+      if(nI<colCount){
+        next=all.find(x=>x.dataset.sid===inp.dataset.sid&&+x.dataset.i===nI);
+      } else {
+        const staffIdx=STAFF.findIndex(s=>s.id===inp.dataset.sid);
+        if(staffIdx<STAFF.length-1){
+          next=all.find(x=>x.dataset.sid===STAFF[staffIdx+1].id&&+x.dataset.i===0);
+        }
+      }
+    } else {
+      const staffIdx=STAFF.findIndex(s=>s.id===inp.dataset.sid);
+      if(staffIdx<STAFF.length-1){
+        next=all.find(x=>x.dataset.sid===STAFF[staffIdx+1].id&&x.dataset.i===inp.dataset.i);
+      }
+    }
+    if(next) next.focus();
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ADD MONTH MODAL
+// ═══════════════════════════════════════════════════════════════
+function openAddMonth(){
+  const html=`<div class="overlay" id="modalOverlay" onclick="if(event.target===this)closeModal()">
+    <div class="modal">
+      <h2>＋ Thêm tháng mới</h2>
+      <div class="field"><label>Số tháng</label>
+        <input type="number" id="mNum" min="1" max="12" value="${(S.months[S.months.length-1]?.num||6)+1}" style="width:80px"></div>
+      <div class="field"><label>Năm</label>
+        <input type="number" id="mYear" value="2026" style="width:100px"></div>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" onclick="closeModal()">Huỷ</button>
+        <button class="btn btn-primary" onclick="confirmAddMonth()">Thêm</button>
+      </div>
+    </div></div>`;
+  document.body.insertAdjacentHTML('beforeend',html);
+}
+function closeModal(){ document.getElementById('modalOverlay')?.remove(); }
+function confirmAddMonth(){
+  const num=parseInt(document.getElementById('mNum').value);
+  const year=parseInt(document.getElementById('mYear').value);
+  if(!num||num<1||num>12||!year) return alert('Vui lòng nhập đúng tháng và năm');
+  const days=new Date(year,num,0).getDate();
+  const id=`T${num}`;
+  if(!S.months.find(m=>m.id===id&&m.year===year)){
+    // If same month number exists but different year, keep both
+    const uid=S.months.find(m=>m.id===id)?`T${num}_${year}`:id;
+    S.months.push({id:uid,num,year,days});
+    S.data[uid]=initMonthData(days);
+    S.curMonth=uid;
+    saveState();
+  }
+  closeModal();
+  renderShell();
+  renderContent();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// EXPORT / IMPORT
+// ═══════════════════════════════════════════════════════════════
+function exportJSON(){
+  const blob=new Blob([JSON.stringify(S,null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`torishin_revenue_${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+}
+function importJSON(){
+  const inp=document.createElement('input');
+  inp.type='file'; inp.accept='.json';
+  inp.onchange=e=>{
+    const f=e.target.files[0]; if(!f) return;
+    const r=new FileReader();
+    r.onload=ev=>{
+      try{
+        const d=JSON.parse(ev.target.result);
+        Object.assign(S,d);
+        saveState(); renderShell(); renderContent();
+        alert('Nhập dữ liệu thành công!');
+      }catch(e){ alert('Lỗi: file không hợp lệ'); }
+    };
+    r.readAsText(f);
+  };
+  inp.click();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════
+loadState();
+renderShell();
+renderContent();
+
+// Re-render dashboard when switching back to it (live data)
+document.addEventListener('visibilitychange',()=>{
+  if(!document.hidden&&S.curTab==='dashboard') renderDashboard();
+});
+</script>
+</body>
+</html>
