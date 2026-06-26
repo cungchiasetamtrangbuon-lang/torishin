@@ -94,6 +94,10 @@
               <div class="report-date" id="reportDate">6月25日</div>
               <div class="report-title">Torishin 売上内訳</div>
             </div>
+            <div class="report-total">
+              <div class="label">売上合計 / Tổng doanh thu</div>
+              <div class="value" id="totalValue">0đ</div>
+            </div>
           </div>
 
           <div class="report-meta">
@@ -119,22 +123,22 @@
                 <td class="amount" id="cashAmount">0đ</td>
               </tr>
               <tr>
-                <td class="label">カード売り上げ</td>
+                <td class="label">カード売り上げ / Thẻ ngân hàng</td>
                 <td><input id="card" type="number" inputmode="numeric" step="1000" placeholder="0" /></td>
                 <td class="amount" id="cardAmount">0đ</td>
               </tr>
               <tr>
-                <td class="label">振り込み売り上げ</td>
+                <td class="label">振り込み売り上げ / Chuyển khoản</td>
                 <td><input id="transfer" type="number" inputmode="numeric" step="1000" placeholder="0" /></td>
                 <td class="amount" id="transferAmount">0đ</td>
               </tr>
               <tr>
-                <td class="label">カピチ売り上げ</td>
+                <td class="label">カピチ売り上げ / Capichi</td>
                 <td><input id="capichi" type="number" inputmode="numeric" step="1000" placeholder="0" /></td>
                 <td class="amount" id="capichiAmount">0đ</td>
               </tr>
               <tr>
-                <td class="label">グラブ売り上げ</td>
+                <td class="label">グラブ売り上げ / Grab</td>
                 <td><input id="grab" type="number" inputmode="numeric" step="1000" placeholder="0" /></td>
                 <td class="amount" id="grabAmount">0đ</td>
               </tr>
@@ -171,8 +175,12 @@
           </table>
 
           <div class="report-summary">
+            <div class="summary-item"><div class="label">売上合計 / Tổng doanh thu</div><div class="value" id="totalValue">0đ</div></div>
             <div class="summary-item"><div class="label">残高 / Tiền kết</div><div class="value" id="closeValue">0đ</div></div>
           </div>
+
+          <textarea class="line-report" id="lineReport" readonly placeholder="Sau khi lưu, báo cáo sẽ xuất hiện ở đây..."></textarea>
+          <p class="hint-note">Sau khi bấm Lưu, dữ liệu sẽ cập nhật vào doanh thu ngày và tạo báo cáo sẵn để dán vào Line.</p>
 
           <div class="controls">
             <button class="btn btn-primary" id="saveBtn">Lưu & tạo báo cáo</button>
@@ -181,16 +189,13 @@
             <button class="btn btn-secondary" id="copyBtn">📋 Copy</button>
             <button class="btn btn-secondary" id="downloadBtn">⬇ Tải .txt</button>
           </div>
-
-          <textarea class="line-report" id="lineReport" readonly placeholder="Sau khi lưu, báo cáo sẽ xuất hiện ở đây..."></textarea>
-          <p class="hint-note">Sau khi bấm Lưu, dữ liệu sẽ cập nhật vào doanh thu ngày và tạo báo cáo sẵn để dán vào Line.</p>
         </div>
       </div>
     </div>
   </div>
 
   <script>
-    const fields = ['cash','card','transfer','capichi','grab','expense'];
+    const fields = ['cash','card','transfer','capichi','grab'];
     const BILLS = [500000,200000,100000,50000,20000,10000,5000,2000,1000];
     const STORAGE_KEY = 'torishin_rev_v3';
     let S = {
@@ -234,15 +239,16 @@
       const transfer = parseNum($('transfer')?.value);
       const capichi = parseNum($('capichi')?.value);
       const grab = parseNum($('grab')?.value);
-      const closing = cash + card + transfer + capichi + grab;
-      if($('closeValue')) $('closeValue').textContent = fmt(closing);
+      const totalPayment = cash + card + transfer + capichi + grab;
+      if($('totalValue')) $('totalValue').textContent = fmt(totalPayment);
       if($('cashAmount')) $('cashAmount').textContent = fmt(cash);
       if($('cardAmount')) $('cardAmount').textContent = fmt(card);
       if($('transferAmount')) $('transferAmount').textContent = fmt(transfer);
       if($('capichiAmount')) $('capichiAmount').textContent = fmt(capichi);
       if($('grabAmount')) $('grabAmount').textContent = fmt(grab);
       updateDateLabel();
-      updateBillSummary();
+      const billTotal = updateBillSummary();
+      if($('closeValue')) $('closeValue').textContent = fmt(billTotal);
     }
 
     function updateBillSummary(){
@@ -259,6 +265,7 @@
       });
       if($('bill-qty-total')) $('bill-qty-total').textContent = qtyTotal;
       if($('bill-total')) $('bill-total').textContent = fmt(valueTotal);
+      return valueTotal;
     }
     function updateDateLabel(){
       const date = new Date(($('date')?.value) || new Date().toISOString().slice(0,10));
@@ -287,12 +294,13 @@
       }).filter(Boolean);
       const billTotal = BILLS.reduce((sum, amount) => sum + parseNum($('bill_' + amount)?.value) * amount, 0);
       const total = cash + card + transfer + capichi + grab;
-      const closing = total;
       return [
         '売上報告',
         `日付: ${jpDate}`,
         `担当者: ${staff}`,
         `備考: ${note}`,
+        '',
+        `総売上: ${fmt(total)}`,
         '',
         '売上内訳',
         `現金売り上げ: ${fmt(cash)}`,
@@ -305,8 +313,7 @@
         ...billDetails,
         `合計: ${fmt(billTotal)}`,
         '',
-        `総売上: ${fmt(total)}`,
-        `残高: ${fmt(closing)}`,
+        `残高: ${fmt(billTotal)}`,
       ].join('\n');
     }
     function fillFormFromDate(dateValue){
@@ -324,7 +331,6 @@
       } else {
         BILLS.forEach(amount => { const el = $('bill_' + amount); if(el) el.value = ''; });
       }
-      if($('expense')) $('expense').value = dt.expense ?? '';
       if($('staff')) $('staff').value = dt.staff || '';
       if($('note')) $('note').value = dt.note || '';
       $('lineReport').value = dt.report || '';
@@ -342,9 +348,9 @@
       const grab = parseNum($('grab')?.value);
       const bills = {};
       BILLS.forEach(amount => { bills[amount] = parseNum($('bill_' + amount)?.value); });
-      const totalRevenue = cash + card + transfer + capichi + grab;
+      const totalPayment = cash + card + transfer + capichi + grab;
       const dt = md.doanhThu[idx] || {};
-      dt.rev = totalRevenue;
+      dt.rev = totalPayment;
       dt.cash = cash; dt.card = card; dt.transfer = transfer; dt.capichi = capichi; dt.grab = grab;
       dt.bills = bills;
       dt.staff = ($('staff')?.value || '').trim(); dt.note = ($('note')?.value || '').trim();
@@ -396,7 +402,7 @@
       loadSharedState();
       const today = new Date().toISOString().slice(0,10);
       if($('date')) $('date').value = today;
-      ['cash','card','transfer','capichi','grab','expense'].forEach(id=>{
+      ['cash','card','transfer','capichi','grab'].forEach(id=>{
         const el = $(id);
         if(el) el.addEventListener('input', updateTotals);
       });
