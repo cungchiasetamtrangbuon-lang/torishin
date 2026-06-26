@@ -215,19 +215,19 @@
       return d.getDate()-1;
     }
     function updateTotals(){
-      const cash = parseNum($('cash').value);
-      const card = parseNum($('card').value);
-      const transfer = parseNum($('transfer').value);
-      const capichi = parseNum($('capichi').value);
-      const grab = parseNum($('grab').value);
-      const expense = parseNum($('expense').value);
+      const cash = parseNum($('cash')?.value);
+      const card = parseNum($('card')?.value);
+      const transfer = parseNum($('transfer')?.value);
+      const capichi = parseNum($('capichi')?.value);
+      const grab = parseNum($('grab')?.value);
+      const expense = parseNum($('expense')?.value);
       const totalRevenue = cash + card + transfer + capichi + grab;
       const closing = totalRevenue - expense;
-      $('totalRevenue').textContent = fmt(totalRevenue);
+      if($('totalRevenue')) $('totalRevenue').textContent = fmt(totalRevenue);
       if($('sumRevenue')) $('sumRevenue').textContent = fmt(totalRevenue);
       if($('sumCash')) $('sumCash').textContent = fmt(cash);
-      $('expenseValue').textContent = fmt(expense);
-      $('closeValue').textContent = fmt(closing);
+      if($('expenseValue')) $('expenseValue').textContent = fmt(expense);
+      if($('closeValue')) $('closeValue').textContent = fmt(closing);
       if($('cashAmount')) $('cashAmount').textContent = fmt(cash);
       if($('cardAmount')) $('cardAmount').textContent = fmt(card);
       if($('transferAmount')) $('transferAmount').textContent = fmt(transfer);
@@ -253,7 +253,7 @@
       if($('bill-total')) $('bill-total').textContent = fmt(valueTotal);
     }
     function updateDateLabel(){
-      const date = new Date($('date').value || new Date().toISOString().slice(0,10));
+      const date = new Date(($('date')?.value) || new Date().toISOString().slice(0,10));
       const dayNames = ['Chủ Nhật','Thứ Hai','Thứ Ba','Thứ Tư','Thứ Năm','Thứ Sáu','Thứ Bảy'];
       const label = `${dayNames[date.getDay()]}, ${date.toLocaleDateString('vi-VN')}`;
       $('dateLabel').textContent = label;
@@ -262,15 +262,15 @@
       if(reportTitle) reportTitle.textContent = jpDate;
     }
     function buildLineReport(){
-      const date = $('date').value || '';
-      const staff = $('staff').value.trim() || 'Không rõ';
-      const expense = parseNum($('expense').value);
-      const note = $('note').value.trim() || 'Không có';
-      const cash = parseNum($('cash').value);
-      const card = parseNum($('card').value);
-      const transfer = parseNum($('transfer').value);
-      const capichi = parseNum($('capichi').value);
-      const grab = parseNum($('grab').value);
+      const date = $('date')?.value || '';
+      const staff = ($('staff')?.value || '').trim() || 'Không rõ';
+      const expense = parseNum($('expense')?.value);
+      const note = ($('note')?.value || '').trim() || 'Không có';
+      const cash = parseNum($('cash')?.value);
+      const card = parseNum($('card')?.value);
+      const transfer = parseNum($('transfer')?.value);
+      const capichi = parseNum($('capichi')?.value);
+      const grab = parseNum($('grab')?.value);
       let billDetails = BILLS.map(amount => {
         const count = parseNum($('bill_' + amount)?.value);
         const sub = count * amount;
@@ -307,41 +307,42 @@
       const md = monthData(mid);
       const idx = getDayIndex(dateValue);
       const dt = md.doanhThu[idx]||{};
-      $('cash').value = dt.cash ?? '';
-      $('card').value = dt.card ?? '';
-      $('transfer').value = dt.transfer ?? '';
-      $('capichi').value = dt.capichi ?? '';
-      $('grab').value = dt.grab ?? '';
+      if($('cash')) $('cash').value = dt.cash ?? '';
+      if($('card')) $('card').value = dt.card ?? '';
+      if($('transfer')) $('transfer').value = dt.transfer ?? '';
+      if($('capichi')) $('capichi').value = dt.capichi ?? '';
+      if($('grab')) $('grab').value = dt.grab ?? '';
       if(dt.bills){
         BILLS.forEach(amount => { const el = $('bill_' + amount); if(el) el.value = dt.bills[amount] ?? ''; });
       } else {
         BILLS.forEach(amount => { const el = $('bill_' + amount); if(el) el.value = ''; });
       }
-      $('expense').value = dt.expense ?? '';
-      $('staff').value = dt.staff || '';
-      $('note').value = dt.note || '';
+      if($('expense')) $('expense').value = dt.expense ?? '';
+      if($('staff')) $('staff').value = dt.staff || '';
+      if($('note')) $('note').value = dt.note || '';
       $('lineReport').value = dt.report || '';
       updateTotals();
     }
     function saveDailyReport(){
-      const date = $('date').value || new Date().toISOString().slice(0,10);
+      const date = ($('date')?.value) || new Date().toISOString().slice(0,10);
       const mid = getMonthIdForDate(date);
       const idx = getDayIndex(date);
       const md = monthData(mid);
-      const cash = parseNum($('cash').value);
-      const card = parseNum($('card').value);
-      const transfer = parseNum($('transfer').value);
-      const capichi = parseNum($('capichi').value);
-      const grab = parseNum($('grab').value);
+      const cash = parseNum($('cash')?.value);
+      const card = parseNum($('card')?.value);
+      const transfer = parseNum($('transfer')?.value);
+      const capichi = parseNum($('capichi')?.value);
+      const grab = parseNum($('grab')?.value);
       const bills = {};
       BILLS.forEach(amount => { bills[amount] = parseNum($('bill_' + amount)?.value); });
-      const expense = parseNum($('expense').value);
+      const expense = parseNum($('expense')?.value);
       const totalRevenue = cash + card + transfer + capichi + grab;
       const dt = md.doanhThu[idx] || {};
       dt.rev = totalRevenue;
       dt.cash = cash; dt.card = card; dt.transfer = transfer; dt.capichi = capichi; dt.grab = grab;
       dt.bills = bills;
-      dt.expense = expense; dt.staff = $('staff').value.trim(); dt.note = $('note').value.trim();
+      dt.expense = expense;
+      dt.staff = ($('staff')?.value || '').trim(); dt.note = ($('note')?.value || '').trim();
       dt.report = buildLineReport();
       md.doanhThu[idx] = dt;
       S.curMonth = mid;
@@ -355,21 +356,21 @@
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `bang-ke-ngay-${$('date').value || 'daily'}.txt`;
+      a.download = `bang-ke-ngay-${($('date')?.value) || 'daily'}.txt`;
       a.click();
       URL.revokeObjectURL(url);
     }
     function exportJson(){
       const data = {
-        date: $('date').value || '',
-        staff: $('staff').value.trim() || '',
-        cash: parseNum($('cash').value),
-        card: parseNum($('card').value),
-        transfer: parseNum($('transfer').value),
-        capichi: parseNum($('capichi').value),
-        grab: parseNum($('grab').value),
-        expense: parseNum($('expense').value),
-        note: $('note').value.trim() || ''
+        date: ($('date')?.value) || '',
+        staff: ($('staff')?.value || '').trim() || '',
+        cash: parseNum($('cash')?.value),
+        card: parseNum($('card')?.value),
+        transfer: parseNum($('transfer')?.value),
+        capichi: parseNum($('capichi')?.value),
+        grab: parseNum($('grab')?.value),
+        expense: parseNum($('expense')?.value),
+        note: ($('note')?.value || '').trim() || ''
       };
       const blob = new Blob([JSON.stringify(data,null,2)], {type:'application/json;charset=utf-8'});
       const url = URL.createObjectURL(blob);
@@ -390,23 +391,25 @@
     function init(){
       loadSharedState();
       const today = new Date().toISOString().slice(0,10);
-      $('date').value = today;
+      if($('date')) $('date').value = today;
       ['cash','card','transfer','capichi','grab','expense'].forEach(id=>{
-        $(id).addEventListener('input', updateTotals);
+        const el = $(id);
+        if(el) el.addEventListener('input', updateTotals);
       });
       BILLS.forEach(amount => {
         const el = $('bill_' + amount);
         if(el) el.addEventListener('input', updateBillSummary);
       });
       ['staff','note'].forEach(id=>{
-        $(id).addEventListener('input', updateTotals);
+        const el = $(id);
+        if(el) el.addEventListener('input', updateTotals);
       });
-      $('date').addEventListener('change', ()=>fillFormFromDate($('date').value));
-      $('saveBtn').addEventListener('click', saveDailyReport);
-      $('exportBtn').addEventListener('click', exportText);
-      $('exportJsonBtn').addEventListener('click', exportJson);
-      $('copyBtn').addEventListener('click', copyReport);
-      $('downloadBtn').addEventListener('click', downloadReport);
+      if($('date')){ $('date').addEventListener('change', ()=>fillFormFromDate($('date')?.value)); }
+      if($('saveBtn')) $('saveBtn').addEventListener('click', saveDailyReport);
+      if($('exportBtn')) $('exportBtn').addEventListener('click', exportText);
+      if($('exportJsonBtn')) $('exportJsonBtn').addEventListener('click', exportJson);
+      if($('copyBtn')) $('copyBtn').addEventListener('click', copyReport);
+      if($('downloadBtn')) $('downloadBtn').addEventListener('click', downloadReport);
       fillFormFromDate(today);
     }
     init();
