@@ -35,41 +35,36 @@
     .title-group h1{margin:0;font-size:28px;letter-spacing:.01em}
     .title-group p{margin:8px 0 0;color:var(--muted);font-size:14px;line-height:1.6}
     .date-pill{display:inline-flex;align-items:center;gap:8px;padding:10px 16px;border-radius:999px;background:#eff6ff;color:var(--accent);font-weight:700;font-size:13px}
-    .grid{display:grid;grid-template-columns:1.6fr 1fr;gap:20px}
-    .card{background:var(--panel);border-radius:var(--radius);border:1px solid var(--border);box-shadow:var(--shadow);overflow:hidden}
-    .card-header{padding:22px 26px 18px}
-    .card-body{padding:0 26px 24px}
-    .section{padding:22px 26px}
-    .section+.section{border-top:1px solid #f3f4f6}
-    .section h2{margin:0 0 6px;font-size:16px;font-weight:800}
-    .section p{margin:0;color:var(--muted);font-size:13px;line-height:1.7}
-    .large-card{background: linear-gradient(135deg,#0f172a,#1e293b);color:#fff;padding:32px 28px;display:flex;flex-direction:column;justify-content:center;min-height:180px}
-    .large-card .label{font-size:12px;text-transform:uppercase;letter-spacing:.18em;opacity:.75;margin-bottom:10px}
-    .large-card .value{font-size:42px;font-weight:900;line-height:1.05;letter-spacing:-.04em;margin-bottom:10px}
-    .large-card .hint{font-size:13px;color:rgba(255,255,255,.72)}
-    .field-list{display:grid;gap:12px}
-    .field-row{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;padding:14px 0;border-bottom:1px solid #f3f4f6}
-    .field-row:last-child{border-bottom:none}
-    .field-label{display:grid;gap:4px}
-    .field-label span{font-size:14px;font-weight:700}
-    .field-label small{font-size:12px;color:var(--muted)}
-    .field-input{display:flex;align-items:center;gap:10px}
-    .field-input input{width:100%;border:1px solid var(--border);border-radius:14px;padding:12px 14px;font-size:15px;font-family:var(--font);color:var(--text);background:#f8fafc}
-    .field-input input:focus{outline:none;border-color:var(--accent)}
-    .field-input .unit{color:var(--muted);font-size:13px}
-    .summary-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:16px}
-    .summary-card{background:#f8fafc;border-radius:18px;padding:18px;display:flex;flex-direction:column;gap:10px}
-    .summary-card .label{font-size:12px;text-transform:uppercase;letter-spacing:.14em;color:var(--muted);font-weight:700}
-    .summary-card .value{font-size:24px;font-weight:800;line-height:1.1}
-    .summary-card.status{background:#eef2ff;color:var(--accent)}
-    .controls{display:flex;gap:12px;flex-wrap:wrap;justify-content:flex-end;margin-top:20px}
+    .grid{display:grid;grid-template-columns:1fr;gap:20px}
+    .report-card{background:var(--panel);border-radius:24px;border:1px solid var(--border);box-shadow:var(--shadow);overflow:hidden}
+    .report-sheet{padding:24px}
+    .report-head{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;flex-wrap:wrap}
+    .report-date{font-size:18px;font-weight:800}
+    .report-title{font-size:22px;font-weight:900;margin-top:6px}
+    .report-total{padding:18px;border:1px solid var(--border);border-radius:18px;background:#f8fafc;text-align:right;min-width:180px}
+    .report-total .label{font-size:12px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted)}
+    .report-total .value{font-size:34px;font-weight:900;margin-top:8px}
+    .report-table{width:100%;border-collapse:collapse;margin-top:24px}
+    .report-table th,.report-table td{border:1px solid #cbd5e1;padding:14px 12px}
+    .report-table th{background:#f8fafc;color:var(--muted);font-weight:700;font-size:13px}
+    .report-table td{font-size:15px}
+    .report-table td.label{text-align:left;font-weight:700}
+    .report-table input{width:100%;border:none;background:transparent;text-align:right;font-size:15px;font-weight:700;outline:none}
+    .report-table input::-webkit-inner-spin-button, .report-table input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+    .report-table td.amount{text-align:right;font-weight:800;color:var(--ink)}
+    .report-section-title{margin-top:28px;font-size:16px;font-weight:800}
+    .report-summary{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:20px}
+    .report-summary .summary-item{background:#f8fafc;border-radius:16px;padding:16px;display:flex;justify-content:space-between;align-items:center}
+    .report-summary .summary-item .label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.12em}
+    .report-summary .summary-item .value{font-size:20px;font-weight:900}
+    .controls{display:flex;gap:12px;flex-wrap:wrap;justify-content:flex-start;margin-top:20px}
     .btn{border:none;border-radius:14px;padding:14px 18px;font-weight:700;cursor:pointer;font-size:14px}
     .btn-primary{background:var(--accent);color:#fff;box-shadow:0 14px 30px rgba(37,99,235,.18)}
     .btn-secondary{background:#f8fafc;color:var(--panel-strong);border:1px solid var(--border)}
     .btn-secondary:hover{background:#eef2ff}
-    .line-report{width:100%;min-height:140px;border:1px solid var(--border);border-radius:14px;padding:12px 14px;font-size:13px;line-height:1.6;color:var(--text);background:#f8fafc;resize:vertical;font-family:var(--font)}
+    .line-report{width:100%;min-height:140px;border:1px solid var(--border);border-radius:14px;padding:12px 14px;font-size:13px;line-height:1.6;color:var(--text);background:#f8fafc;resize:vertical;font-family:var(--font);margin-top:18px}
     .hint-note{margin-top:14px;font-size:13px;color:var(--muted)}
-    @media (max-width:960px){.grid{grid-template-columns:1fr}}    
+    @media (max-width:720px){.report-head{flex-direction:column}.report-total{width:100%;text-align:left}.report-summary{grid-template-columns:1fr}}
   </style>
 </head>
 <body>
@@ -88,83 +83,92 @@
     </div>
 
     <div class="grid">
-      <div class="card">
-        <div class="large-card">
-          <div class="label">総売上 / TỔNG DOANH THU NGÀY</div>
-          <div class="value" id="totalRevenue">0đ</div>
-          <div class="hint">Nhập từng loại bên dưới để cập nhật tổng doanh thu.</div>
-        </div>
-        <div class="section">
-          <h2>PHÂN LOẠI DOANH THU / 売上内訳</h2>
-          <p>Điền các khoản doanh thu theo từng phương thức, sau đó xuất file gửi qua Line.</p>
-          <div class="field-list">
-            <div class="field-row">
-              <div class="field-label"><span>Tiền mặt</span><small>現金売り上げ</small></div>
-              <div class="field-input"><input id="cash" type="number" inputmode="numeric" step="1000" placeholder="0" /><span class="unit">đ</span></div>
+      <div class="report-card">
+        <div class="report-sheet">
+          <div class="report-head">
+            <div>
+              <div class="report-date" id="reportDate">6月25日</div>
+              <div class="report-title">Torishin 売り上げ内訳</div>
             </div>
-            <div class="field-row">
-              <div class="field-label"><span>Thẻ ngân hàng</span><small>カード売り上げ</small></div>
-              <div class="field-input"><input id="card" type="number" inputmode="numeric" step="1000" placeholder="0" /><span class="unit">đ</span></div>
-            </div>
-            <div class="field-row">
-              <div class="field-label"><span>Chuyển khoản</span><small>振り込み売り上げ</small></div>
-              <div class="field-input"><input id="transfer" type="number" inputmode="numeric" step="1000" placeholder="0" /><span class="unit">đ</span></div>
-            </div>
-            <div class="field-row">
-              <div class="field-label"><span>Capichi</span><small>カピチ</small></div>
-              <div class="field-input"><input id="capichi" type="number" inputmode="numeric" step="1000" placeholder="0" /><span class="unit">đ</span></div>
-            </div>
-            <div class="field-row">
-              <div class="field-label"><span>Grab</span><small>グラブ</small></div>
-              <div class="field-input"><input id="grab" type="number" inputmode="numeric" step="1000" placeholder="0" /><span class="unit">đ</span></div>
+            <div class="report-total">
+              <div class="label">総売上</div>
+              <div class="value" id="totalRevenue">0đ</div>
             </div>
           </div>
-        </div>
-      </div>
 
-      <div class="card">
-        <div class="section">
-          <h2>CHI TIẾT NHẬP / DETAIL</h2>
-          <div class="field-list">
-            <div class="field-row">
-              <div class="field-label"><span>Ngày</span><small>日付</small></div>
-              <div class="field-input"><input id="date" type="date" /></div>
-            </div>
-            <div class="field-row">
-              <div class="field-label"><span>Nhân viên</span><small>担当者</small></div>
-              <div class="field-input"><input id="staff" type="text" placeholder="Tên nhân viên" /></div>
-            </div>
-            <div class="field-row">
-              <div class="field-label"><span>Chi phí phát sinh</span><small>経費</small></div>
-              <div class="field-input"><input id="expense" type="number" inputmode="numeric" step="1000" placeholder="0" /><span class="unit">đ</span></div>
-            </div>
-            <div class="field-row">
-              <div class="field-label"><span>Ghi chú</span><small>備考</small></div>
-              <div class="field-input"><input id="note" type="text" placeholder="Ghi chú thêm" /></div>
-            </div>
-          </div>
-        </div>
+          <table class="report-table">
+            <tbody>
+              <tr>
+                <td class="label">現金売り上げ</td>
+                <td><input id="cash" type="number" inputmode="numeric" step="1000" placeholder="0" /></td>
+                <td class="amount" id="cashAmount">0đ</td>
+              </tr>
+              <tr>
+                <td class="label">カード売り上げ</td>
+                <td><input id="card" type="number" inputmode="numeric" step="1000" placeholder="0" /></td>
+                <td class="amount" id="cardAmount">0đ</td>
+              </tr>
+              <tr>
+                <td class="label">振り込み売り上げ</td>
+                <td><input id="transfer" type="number" inputmode="numeric" step="1000" placeholder="0" /></td>
+                <td class="amount" id="transferAmount">0đ</td>
+              </tr>
+              <tr>
+                <td class="label">カピチ売り上げ</td>
+                <td><input id="capichi" type="number" inputmode="numeric" step="1000" placeholder="0" /></td>
+                <td class="amount" id="capichiAmount">0đ</td>
+              </tr>
+              <tr>
+                <td class="label">グラブ売り上げ</td>
+                <td><input id="grab" type="number" inputmode="numeric" step="1000" placeholder="0" /></td>
+                <td class="amount" id="grabAmount">0đ</td>
+              </tr>
+            </tbody>
+          </table>
 
-        <div class="section">
-          <h2>TỔNG KẾT</h2>
-          <div class="summary-grid">
-            <div class="summary-card"><div class="label">Tổng doanh thu</div><div class="value" id="sumRevenue">0đ</div></div>
-            <div class="summary-card"><div class="label">Tổng tiền mặt</div><div class="value" id="sumCash">0đ</div></div>
-            <div class="summary-card status"><div class="label">Chênh lệch</div><div class="value" id="diffValue">0đ</div></div>
+          <div class="report-section-title">レジ金内訳</div>
+          <table class="report-table">
+            <thead>
+              <tr>
+                <th>金額</th>
+                <th>枚数</th>
+                <th>金額</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td class="label">500.000 đ</td><td><input class="bill-count" type="number" min="0" max="999" id="bill_500000" inputmode="numeric" /></td><td class="amount" id="bill_sub_500000">0đ</td></tr>
+              <tr><td class="label">200.000 đ</td><td><input class="bill-count" type="number" min="0" max="999" id="bill_200000" inputmode="numeric" /></td><td class="amount" id="bill_sub_200000">0đ</td></tr>
+              <tr><td class="label">100.000 đ</td><td><input class="bill-count" type="number" min="0" max="999" id="bill_100000" inputmode="numeric" /></td><td class="amount" id="bill_sub_100000">0đ</td></tr>
+              <tr><td class="label">50.000 đ</td><td><input class="bill-count" type="number" min="0" max="999" id="bill_50000" inputmode="numeric" /></td><td class="amount" id="bill_sub_50000">0đ</td></tr>
+              <tr><td class="label">20.000 đ</td><td><input class="bill-count" type="number" min="0" max="999" id="bill_20000" inputmode="numeric" /></td><td class="amount" id="bill_sub_20000">0đ</td></tr>
+              <tr><td class="label">10.000 đ</td><td><input class="bill-count" type="number" min="0" max="999" id="bill_10000" inputmode="numeric" /></td><td class="amount" id="bill_sub_10000">0đ</td></tr>
+              <tr><td class="label">5.000 đ</td><td><input class="bill-count" type="number" min="0" max="999" id="bill_5000" inputmode="numeric" /></td><td class="amount" id="bill_sub_5000">0đ</td></tr>
+              <tr><td class="label">2.000 đ</td><td><input class="bill-count" type="number" min="0" max="999" id="bill_2000" inputmode="numeric" /></td><td class="amount" id="bill_sub_2000">0đ</td></tr>
+              <tr><td class="label">1.000 đ</td><td><input class="bill-count" type="number" min="0" max="999" id="bill_1000" inputmode="numeric" /></td><td class="amount" id="bill_sub_1000">0đ</td></tr>
+            </tbody>
+            <tfoot>
+              <tr>
+                <td class="label">合計</td>
+                <td class="amount" id="bill-qty-total">0</td>
+                <td class="amount" id="bill-total">0đ</td>
+              </tr>
+            </tfoot>
+          </table>
+
+          <div class="report-summary">
+            <div class="summary-item"><div class="label">Chi phí</div><div class="value" id="expenseValue">0đ</div></div>
+            <div class="summary-item"><div class="label">Tiền kết</div><div class="value" id="closeValue">0đ</div></div>
           </div>
+
           <div class="controls">
             <button class="btn btn-primary" id="saveBtn">Lưu & tạo báo cáo</button>
             <button class="btn btn-secondary" id="exportBtn">Xuất file .txt</button>
             <button class="btn btn-secondary" id="exportJsonBtn">Xuất file .json</button>
+            <button class="btn btn-secondary" id="copyBtn">📋 Copy</button>
+            <button class="btn btn-secondary" id="downloadBtn">⬇ Tải .txt</button>
           </div>
-          <div class="section" style="padding:0;margin-top:16px;border-top:1px solid #f3f4f6">
-            <h2>BÁO CÁO GỬI LINE / LINE REPORT</h2>
-            <textarea class="line-report" id="lineReport" readonly placeholder="Sau khi lưu, báo cáo sẽ xuất hiện ở đây..."></textarea>
-            <div class="controls" style="justify-content:flex-start; margin-top:12px">
-              <button class="btn btn-secondary" id="copyBtn">📋 Copy</button>
-              <button class="btn btn-secondary" id="downloadBtn">⬇ Tải .txt</button>
-            </div>
-          </div>
+
+          <textarea class="line-report" id="lineReport" readonly placeholder="Sau khi lưu, báo cáo sẽ xuất hiện ở đây..."></textarea>
           <p class="hint-note">Sau khi bấm Lưu, dữ liệu sẽ cập nhật vào doanh thu ngày và tạo báo cáo sẵn để dán vào Line.</p>
         </div>
       </div>
@@ -173,6 +177,7 @@
 
   <script>
     const fields = ['cash','card','transfer','capichi','grab','expense'];
+    const BILLS = [500000,200000,100000,50000,20000,10000,5000,2000,1000];
     const STORAGE_KEY = 'torishin_rev_v3';
     let S = {
       curMonth: 'T7',
@@ -217,18 +222,44 @@
       const grab = parseNum($('grab').value);
       const expense = parseNum($('expense').value);
       const totalRevenue = cash + card + transfer + capichi + grab;
-      const diff = totalRevenue - expense;
+      const closing = totalRevenue - expense;
       $('totalRevenue').textContent = fmt(totalRevenue);
-      $('sumRevenue').textContent = fmt(totalRevenue);
-      $('sumCash').textContent = fmt(cash);
-      $('diffValue').textContent = fmt(diff);
+      if($('sumRevenue')) $('sumRevenue').textContent = fmt(totalRevenue);
+      if($('sumCash')) $('sumCash').textContent = fmt(cash);
+      $('expenseValue').textContent = fmt(expense);
+      $('closeValue').textContent = fmt(closing);
+      if($('cashAmount')) $('cashAmount').textContent = fmt(cash);
+      if($('cardAmount')) $('cardAmount').textContent = fmt(card);
+      if($('transferAmount')) $('transferAmount').textContent = fmt(transfer);
+      if($('capichiAmount')) $('capichiAmount').textContent = fmt(capichi);
+      if($('grabAmount')) $('grabAmount').textContent = fmt(grab);
       updateDateLabel();
+      updateBillSummary();
+    }
+
+    function updateBillSummary(){
+      let qtyTotal = 0;
+      let valueTotal = 0;
+      BILLS.forEach(amount => {
+        const id = 'bill_' + amount;
+        const count = parseNum($(id)?.value);
+        const sub = count * amount;
+        qtyTotal += count;
+        valueTotal += sub;
+        const subEl = $('bill_sub_' + amount);
+        if(subEl) subEl.textContent = fmt(sub);
+      });
+      if($('bill-qty-total')) $('bill-qty-total').textContent = qtyTotal;
+      if($('bill-total')) $('bill-total').textContent = fmt(valueTotal);
     }
     function updateDateLabel(){
       const date = new Date($('date').value || new Date().toISOString().slice(0,10));
       const dayNames = ['Chủ Nhật','Thứ Hai','Thứ Ba','Thứ Tư','Thứ Năm','Thứ Sáu','Thứ Bảy'];
       const label = `${dayNames[date.getDay()]}, ${date.toLocaleDateString('vi-VN')}`;
       $('dateLabel').textContent = label;
+      const jpDate = `${date.getMonth()+1}月${date.getDate()}日`;
+      const reportTitle = document.getElementById('reportDate');
+      if(reportTitle) reportTitle.textContent = jpDate;
     }
     function buildLineReport(){
       const date = $('date').value || '';
@@ -240,6 +271,12 @@
       const transfer = parseNum($('transfer').value);
       const capichi = parseNum($('capichi').value);
       const grab = parseNum($('grab').value);
+      let billDetails = BILLS.map(amount => {
+        const count = parseNum($('bill_' + amount)?.value);
+        const sub = count * amount;
+        return count ? `${amount.toLocaleString('vi-VN')} đ x ${count} = ${fmt(sub)}` : null;
+      }).filter(Boolean);
+      const billTotal = BILLS.reduce((sum, amount) => sum + parseNum($('bill_' + amount)?.value) * amount, 0);
       const total = cash + card + transfer + capichi + grab;
       const diff = total - expense;
       return [
@@ -254,9 +291,13 @@
         `Capichi: ${fmt(capichi)}`,
         `Grab: ${fmt(grab)}`,
         '',
+        'PHÂN LOẠI TIỀN MẶT',
+        ...billDetails,
+        `Tổng tiền mặt: ${fmt(billTotal)}`,
+        '',
         `Tổng doanh thu: ${fmt(total)}`,
         `Chi phí: ${fmt(expense)}`,
-        `Chênh lệch: ${fmt(diff)}`,
+        `Tiền kết: ${fmt(diff)}`,
         '',
         `Ghi chú: ${note}`
       ].join('\n');
@@ -271,6 +312,11 @@
       $('transfer').value = dt.transfer ?? '';
       $('capichi').value = dt.capichi ?? '';
       $('grab').value = dt.grab ?? '';
+      if(dt.bills){
+        BILLS.forEach(amount => { const el = $('bill_' + amount); if(el) el.value = dt.bills[amount] ?? ''; });
+      } else {
+        BILLS.forEach(amount => { const el = $('bill_' + amount); if(el) el.value = ''; });
+      }
       $('expense').value = dt.expense ?? '';
       $('staff').value = dt.staff || '';
       $('note').value = dt.note || '';
@@ -287,11 +333,14 @@
       const transfer = parseNum($('transfer').value);
       const capichi = parseNum($('capichi').value);
       const grab = parseNum($('grab').value);
+      const bills = {};
+      BILLS.forEach(amount => { bills[amount] = parseNum($('bill_' + amount)?.value); });
       const expense = parseNum($('expense').value);
       const totalRevenue = cash + card + transfer + capichi + grab;
       const dt = md.doanhThu[idx] || {};
       dt.rev = totalRevenue;
       dt.cash = cash; dt.card = card; dt.transfer = transfer; dt.capichi = capichi; dt.grab = grab;
+      dt.bills = bills;
       dt.expense = expense; dt.staff = $('staff').value.trim(); dt.note = $('note').value.trim();
       dt.report = buildLineReport();
       md.doanhThu[idx] = dt;
@@ -344,6 +393,10 @@
       $('date').value = today;
       ['cash','card','transfer','capichi','grab','expense'].forEach(id=>{
         $(id).addEventListener('input', updateTotals);
+      });
+      BILLS.forEach(amount => {
+        const el = $('bill_' + amount);
+        if(el) el.addEventListener('input', updateBillSummary);
       });
       ['staff','note'].forEach(id=>{
         $(id).addEventListener('input', updateTotals);
