@@ -92,11 +92,7 @@
           <div class="report-head">
             <div>
               <div class="report-date" id="reportDate">6月25日</div>
-              <div class="report-title">Torishin 売り上げ内訳 / Báo cáo doanh thu</div>
-            </div>
-            <div class="report-total">
-              <div class="label">総売上 / Tổng doanh thu</div>
-              <div class="value" id="totalRevenue">0đ</div>
+              <div class="report-title">Torishin 売上内訳</div>
             </div>
           </div>
 
@@ -118,7 +114,7 @@
           <table class="report-table">
             <tbody>
               <tr>
-                <td class="label">現金売り上げ</td>
+                <td class="label">現金売り上げ / Tiền mặt</td>
                 <td><input id="cash" type="number" inputmode="numeric" step="1000" placeholder="0" /></td>
                 <td class="amount" id="cashAmount">0đ</td>
               </tr>
@@ -175,8 +171,7 @@
           </table>
 
           <div class="report-summary">
-            <div class="summary-item"><div class="label">Tổng doanh thu / 総売上</div><div class="value" id="sumRevenue">0đ</div></div>
-            <div class="summary-item"><div class="label">Tiền kết / 残高</div><div class="value" id="closeValue">0đ</div></div>
+            <div class="summary-item"><div class="label">残高 / Tiền kết</div><div class="value" id="closeValue">0đ</div></div>
           </div>
 
           <div class="controls">
@@ -239,10 +234,7 @@
       const transfer = parseNum($('transfer')?.value);
       const capichi = parseNum($('capichi')?.value);
       const grab = parseNum($('grab')?.value);
-      const totalRevenue = cash + card + transfer + capichi + grab;
-      const closing = totalRevenue;
-      if($('totalRevenue')) $('totalRevenue').textContent = fmt(totalRevenue);
-      if($('sumRevenue')) $('sumRevenue').textContent = fmt(totalRevenue);
+      const closing = cash + card + transfer + capichi + grab;
       if($('closeValue')) $('closeValue').textContent = fmt(closing);
       if($('cashAmount')) $('cashAmount').textContent = fmt(cash);
       if($('cardAmount')) $('cardAmount').textContent = fmt(card);
@@ -281,8 +273,8 @@
       const dateValue = $('date')?.value || '';
       const date = new Date(dateValue || new Date().toISOString().slice(0,10));
       const jpDate = `${date.getMonth()+1}月${date.getDate()}日`;
-      const staff = ($('staff')?.value || '').trim() || 'Không rõ';
-      const note = ($('note')?.value || '').trim() || 'Không có';
+      const staff = ($('staff')?.value || '').trim() || '担当者不明';
+      const note = ($('note')?.value || '').trim() || 'なし';
       const cash = parseNum($('cash')?.value);
       const card = parseNum($('card')?.value);
       const transfer = parseNum($('transfer')?.value);
@@ -297,24 +289,24 @@
       const total = cash + card + transfer + capichi + grab;
       const closing = total;
       return [
-        '売上報告 / Báo cáo doanh thu',
-        `日付 / Ngày: ${jpDate} (${dateValue || 'N/A'})`,
-        `担当者 / Nhân viên: ${staff}`,
-        `備考 / Ghi chú: ${note}`,
+        '売上報告',
+        `日付: ${jpDate}`,
+        `担当者: ${staff}`,
+        `備考: ${note}`,
         '',
-        '売上内訳 / Phân loại doanh thu',
-        `現金 / Tiền mặt: ${fmt(cash)}`,
-        `カード / Thẻ ngân hàng: ${fmt(card)}`,
-        `振込 / Chuyển khoản: ${fmt(transfer)}`,
-        `カピチ / Capichi: ${fmt(capichi)}`,
-        `グラブ / Grab: ${fmt(grab)}`,
+        '売上内訳',
+        `現金売り上げ: ${fmt(cash)}`,
+        `カード売り上げ: ${fmt(card)}`,
+        `振り込み売り上げ: ${fmt(transfer)}`,
+        `カピチ売り上げ: ${fmt(capichi)}`,
+        `グラブ売り上げ: ${fmt(grab)}`,
         '',
-        'レジ金内訳 / Phân loại tiền kết',
+        'レジ金内訳',
         ...billDetails,
-        `合計 / Tổng tiền kết: ${fmt(billTotal)}`,
+        `合計: ${fmt(billTotal)}`,
         '',
-        `総売上 / Tổng doanh thu: ${fmt(total)}`,
-        `残高 / Tiền kết: ${fmt(closing)}`,
+        `総売上: ${fmt(total)}`,
+        `残高: ${fmt(closing)}`,
       ].join('\n');
     }
     function fillFormFromDate(dateValue){
