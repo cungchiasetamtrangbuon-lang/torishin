@@ -223,6 +223,14 @@ tr.sum-row:hover td{background:#f1f5f9}
   .bk-diff{flex-direction:column;align-items:flex-start}
 }
 
+/* Line report */
+.bk-line-card{background:#f8fafc;border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-top:12px}
+.bk-line-hdr{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:8px}
+.bk-line-report{width:100%;min-height:120px;border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-size:12.5px;line-height:1.5;font-family:var(--font);background:#fff;color:var(--ink);resize:vertical}
+.bk-line-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.bk-line-btn{padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:#fff;cursor:pointer;font-size:12px;font-weight:700;color:var(--ink)}
+.bk-line-btn:hover{background:var(--bg)}
+
 /* Print */
 @media print{
   .hdr,.sidebar,.page-actions,.hdr-actions{display:none!important}
@@ -550,6 +558,35 @@ function bkUpdateBills(){
   }
 }
 
+function bkShowLineReport(reportText){
+  const box=document.getElementById('bk-line-box');
+  const ta=document.getElementById('bk-line-report');
+  if(ta) ta.value=reportText||'';
+  if(box) box.style.display=reportText? 'block':'none';
+}
+
+function bkCopyReport(){
+  const ta=document.getElementById('bk-line-report');
+  const text=ta?.value||'';
+  if(!text) return;
+  if(navigator.clipboard?.writeText){
+    navigator.clipboard.writeText(text).then(()=>alert('Đã copy báo cáo vào clipboard.'));
+  } else {
+    ta.select(); document.execCommand('copy'); alert('Đã copy báo cáo.');
+  }
+}
+
+function bkDownloadReport(){
+  const ta=document.getElementById('bk-line-report');
+  const text=ta?.value||'';
+  if(!text) return;
+  const blob=new Blob([text],{type:'text/plain;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url; a.download='bang-ke-ngay-line.txt'; a.click();
+  URL.revokeObjectURL(url);
+}
+
 function bkSave(){
   const d=bkGetDate(), idx=bkDayIndex(d);
   if(idx<0){ alert('Ngày này không thuộc tháng '+S.curMonth); return; }
@@ -563,15 +600,36 @@ function bkSave(){
   const total=(cash||0)+(card||0)+(tf||0)+(cap||0)+(grb||0);
   const bills={};
   BILLS.forEach(b=>{const cnt=parseInt(document.getElementById('bill_'+b)?.value)||0;if(cnt)bills[b]=cnt;});
+  const billSum=BILLS.reduce((s,b)=>s+(bills[b]||0)*b,0);
+  const diff=billSum-(cash||0);
   const dt=md.doanhThu[idx]||{};
   if(hasBreakdown) dt.rev=total;
   if(cash!==null) dt.cash=cash; if(card!==null) dt.card=card;
   if(tf!==null) dt.transfer=tf; if(cap!==null) dt.capichi=cap; if(grb!==null) dt.grab=grb;
   if(Object.keys(bills).length) dt.bills=bills;
+  const fmt=(v)=>v!=null&&v!==0?Math.round(v).toLocaleString('vi-VN')+'đ':'0đ';
+  const report=[
+    'BẢNG KÊ NGÀY - NHÂN VIÊN',
+    `Ngày: ${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`,
+    `Thứ: ${DOW_FULL_VN[d.getDay()]}`,
+    '',
+    'PHÂN LOẠI DOANH THU',
+    `Tiền mặt: ${fmt(cash||0)}`,
+    `Thẻ ngân hàng: ${fmt(card||0)}`,
+    `Chuyển khoản: ${fmt(tf||0)}`,
+    `Capichi: ${fmt(cap||0)}`,
+    `Grab: ${fmt(grb||0)}`,
+    '',
+    `Tổng doanh thu: ${fmt(total)}`,
+    `Tổng tiền mặt đếm được: ${fmt(billSum)}`,
+    `Chênh lệch: ${fmt(diff)}`,
+  ].join('\n');
+  dt.report=report;
   md.doanhThu[idx]=dt;
   saveState();
+  bkShowLineReport(report);
   const btn=document.querySelector('.bk-save-btn');
-  if(btn){btn.textContent='✓ Đã lưu thành công!';btn.style.background='var(--good)';
+  if(btn){btn.textContent='✓ Đã lưu và tạo báo cáo';btn.style.background='var(--good)';
     setTimeout(()=>{btn.textContent='💾 Lưu Bảng Kê / 保存';btn.style.background='';},2000);}
 }
 
@@ -616,6 +674,7 @@ function renderBaoKe(){
     </div>`).join('');
 
   const billSum=BILLS.reduce((s,b)=>s+(bills[b]||0)*b,0);
+  const savedReport=dt?.report||'';
 
   document.getElementById('main').innerHTML=`
   <div class="page-hdr">
@@ -673,6 +732,14 @@ function renderBaoKe(){
   </div>
 
   <button class="bk-save-btn" onclick="bkSave()">💾 Lưu Bảng Kê / 保存</button>
+  <div class="bk-line-card" id="bk-line-box" style="display:${savedReport?'block':'none'}">
+    <div class="bk-line-hdr">📱 Báo cáo để gửi Line / LINE送信用</div>
+    <textarea class="bk-line-report" id="bk-line-report" readonly>${savedReport}</textarea>
+    <div class="bk-line-actions">
+      <button class="bk-line-btn" type="button" onclick="bkCopyReport()">📋 Copy</button>
+      <button class="bk-line-btn" type="button" onclick="bkDownloadReport()">⬇ Tải .txt</button>
+    </div>
+  </div>
   <div style="height:20px"></div>
   `}`;
 }

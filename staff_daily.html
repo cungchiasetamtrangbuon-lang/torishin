@@ -67,6 +67,7 @@
     .btn-primary{background:var(--accent);color:#fff;box-shadow:0 14px 30px rgba(37,99,235,.18)}
     .btn-secondary{background:#f8fafc;color:var(--panel-strong);border:1px solid var(--border)}
     .btn-secondary:hover{background:#eef2ff}
+    .line-report{width:100%;min-height:140px;border:1px solid var(--border);border-radius:14px;padding:12px 14px;font-size:13px;line-height:1.6;color:var(--text);background:#f8fafc;resize:vertical;font-family:var(--font)}
     .hint-note{margin-top:14px;font-size:13px;color:var(--muted)}
     @media (max-width:960px){.grid{grid-template-columns:1fr}}    
   </style>
@@ -152,10 +153,19 @@
             <div class="summary-card status"><div class="label">Chênh lệch</div><div class="value" id="diffValue">0đ</div></div>
           </div>
           <div class="controls">
-            <button class="btn btn-primary" id="exportBtn">Xuất file .txt</button>
+            <button class="btn btn-primary" id="saveBtn">Lưu & tạo báo cáo</button>
+            <button class="btn btn-secondary" id="exportBtn">Xuất file .txt</button>
             <button class="btn btn-secondary" id="exportJsonBtn">Xuất file .json</button>
           </div>
-          <p class="hint-note">Dữ liệu lưu tạm trong trình duyệt; xuất file để gửi qua Line hoặc gửi cho quản lý.</p>
+          <div class="section" style="padding:0;margin-top:16px;border-top:1px solid #f3f4f6">
+            <h2>BÁO CÁO GỬI LINE / LINE REPORT</h2>
+            <textarea class="line-report" id="lineReport" readonly placeholder="Sau khi lưu, báo cáo sẽ xuất hiện ở đây..."></textarea>
+            <div class="controls" style="justify-content:flex-start; margin-top:12px">
+              <button class="btn btn-secondary" id="copyBtn">📋 Copy</button>
+              <button class="btn btn-secondary" id="downloadBtn">⬇ Tải .txt</button>
+            </div>
+          </div>
+          <p class="hint-note">Sau khi bấm Lưu, dữ liệu sẽ cập nhật vào doanh thu ngày và tạo báo cáo sẵn để dán vào Line.</p>
         </div>
       </div>
     </div>
@@ -163,9 +173,42 @@
 
   <script>
     const fields = ['cash','card','transfer','capichi','grab','expense'];
+    const STORAGE_KEY = 'torishin_rev_v3';
+    let S = {
+      curMonth: 'T7',
+      months: [
+        {id:'T4',num:4,year:2026,days:30},
+        {id:'T5',num:5,year:2026,days:31},
+        {id:'T6',num:6,year:2026,days:30},
+        {id:'T7',num:7,year:2026,days:31},
+      ],
+      data: {}
+    };
     function $(id){return document.getElementById(id)}
     function parseNum(value){return Number(value||0)}
     function fmt(v){return Number(v).toLocaleString('vi-VN') + 'đ'}
+    function monthCfg(mid){ return S.months.find(m=>m.id===mid)||S.months[0]; }
+    function initMonthData(days){ return { doanhThu:Array.from({length:days},()=>({rev:null})), thucPham:[], ruou:[], bangLuong:{shifts:{}} }; }
+    function monthData(mid){ return S.data[mid]||(S.data[mid]=initMonthData(monthCfg(mid).days)); }
+    function loadSharedState(){
+      try{
+        const saved = JSON.parse(localStorage.getItem(STORAGE_KEY)||'null');
+        if(saved){ Object.assign(S, saved); }
+      }catch(e){}
+      S.months.forEach(m=>{ if(!S.data[m.id]) S.data[m.id]=initMonthData(m.days); });
+    }
+    function saveState(){
+      try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(S)); }catch(e){}
+    }
+    function getMonthIdForDate(dateValue){
+      const d = new Date(dateValue || new Date().toISOString().slice(0,10));
+      const monthId = `T${d.getMonth()+1}`;
+      return S.months.some(m=>m.id===monthId) ? monthId : (S.curMonth || 'T7');
+    }
+    function getDayIndex(dateValue){
+      const d = new Date(dateValue || new Date().toISOString().slice(0,10));
+      return d.getDate()-1;
+    }
     function updateTotals(){
       const cash = parseNum($('cash').value);
       const card = parseNum($('card').value);
@@ -174,7 +217,7 @@
       const grab = parseNum($('grab').value);
       const expense = parseNum($('expense').value);
       const totalRevenue = cash + card + transfer + capichi + grab;
-      const diff = cash + card + transfer + capichi + grab - expense;
+      const diff = totalRevenue - expense;
       $('totalRevenue').textContent = fmt(totalRevenue);
       $('sumRevenue').textContent = fmt(totalRevenue);
       $('sumCash').textContent = fmt(cash);
@@ -187,7 +230,7 @@
       const label = `${dayNames[date.getDay()]}, ${date.toLocaleDateString('vi-VN')}`;
       $('dateLabel').textContent = label;
     }
-    function exportText(){
+    function buildLineReport(){
       const date = $('date').value || '';
       const staff = $('staff').value.trim() || 'Không rõ';
       const expense = parseNum($('expense').value);
@@ -199,7 +242,7 @@
       const grab = parseNum($('grab').value);
       const total = cash + card + transfer + capichi + grab;
       const diff = total - expense;
-      const lines = [
+      return [
         'BẢNG KÊ NGÀY - NHÂN VIÊN',
         `Ngày: ${date}`,
         `Nhân viên: ${staff}`,
@@ -216,12 +259,54 @@
         `Chênh lệch: ${fmt(diff)}`,
         '',
         `Ghi chú: ${note}`
-      ];
-      const blob = new Blob([lines.join('\n')], {type:'text/plain;charset=utf-8'});
+      ].join('\n');
+    }
+    function fillFormFromDate(dateValue){
+      const mid = getMonthIdForDate(dateValue);
+      const md = monthData(mid);
+      const idx = getDayIndex(dateValue);
+      const dt = md.doanhThu[idx]||{};
+      $('cash').value = dt.cash ?? '';
+      $('card').value = dt.card ?? '';
+      $('transfer').value = dt.transfer ?? '';
+      $('capichi').value = dt.capichi ?? '';
+      $('grab').value = dt.grab ?? '';
+      $('expense').value = dt.expense ?? '';
+      $('staff').value = dt.staff || '';
+      $('note').value = dt.note || '';
+      $('lineReport').value = dt.report || '';
+      updateTotals();
+    }
+    function saveDailyReport(){
+      const date = $('date').value || new Date().toISOString().slice(0,10);
+      const mid = getMonthIdForDate(date);
+      const idx = getDayIndex(date);
+      const md = monthData(mid);
+      const cash = parseNum($('cash').value);
+      const card = parseNum($('card').value);
+      const transfer = parseNum($('transfer').value);
+      const capichi = parseNum($('capichi').value);
+      const grab = parseNum($('grab').value);
+      const expense = parseNum($('expense').value);
+      const totalRevenue = cash + card + transfer + capichi + grab;
+      const dt = md.doanhThu[idx] || {};
+      dt.rev = totalRevenue;
+      dt.cash = cash; dt.card = card; dt.transfer = transfer; dt.capichi = capichi; dt.grab = grab;
+      dt.expense = expense; dt.staff = $('staff').value.trim(); dt.note = $('note').value.trim();
+      dt.report = buildLineReport();
+      md.doanhThu[idx] = dt;
+      S.curMonth = mid;
+      saveState();
+      $('lineReport').value = dt.report;
+      const btn = $('saveBtn');
+      if(btn){ btn.textContent='✓ Đã lưu và tạo báo cáo'; btn.style.background='var(--success)'; setTimeout(()=>{ btn.textContent='Lưu & tạo báo cáo'; btn.style.background=''; },1800);} 
+    }
+    function exportText(){
+      const blob = new Blob([$('lineReport').value || buildLineReport()], {type:'text/plain;charset=utf-8'});
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `bang-ke-ngay-${date || 'daily'}.txt`;
+      a.download = `bang-ke-ngay-${$('date').value || 'daily'}.txt`;
       a.click();
       URL.revokeObjectURL(url);
     }
@@ -245,16 +330,31 @@
       a.click();
       URL.revokeObjectURL(url);
     }
+    function copyReport(){
+      const text = $('lineReport').value || buildLineReport();
+      if(navigator.clipboard?.writeText){ navigator.clipboard.writeText(text).then(()=>alert('Đã copy báo cáo vào clipboard.')); }
+      else { $('lineReport').select(); document.execCommand('copy'); alert('Đã copy báo cáo.'); }
+    }
+    function downloadReport(){
+      exportText();
+    }
     function init(){
+      loadSharedState();
       const today = new Date().toISOString().slice(0,10);
       $('date').value = today;
       ['cash','card','transfer','capichi','grab','expense'].forEach(id=>{
         $(id).addEventListener('input', updateTotals);
       });
-      $('date').addEventListener('change', updateDateLabel);
+      ['staff','note'].forEach(id=>{
+        $(id).addEventListener('input', updateTotals);
+      });
+      $('date').addEventListener('change', ()=>fillFormFromDate($('date').value));
+      $('saveBtn').addEventListener('click', saveDailyReport);
       $('exportBtn').addEventListener('click', exportText);
       $('exportJsonBtn').addEventListener('click', exportJson);
-      updateTotals();
+      $('copyBtn').addEventListener('click', copyReport);
+      $('downloadBtn').addEventListener('click', downloadReport);
+      fillFormFromDate(today);
     }
     init();
   </script>
