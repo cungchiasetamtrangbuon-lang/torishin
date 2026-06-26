@@ -53,6 +53,10 @@
     .report-table input::-webkit-inner-spin-button, .report-table input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
     .report-table td.amount{text-align:right;font-weight:800;color:var(--ink)}
     .report-section-title{margin-top:28px;font-size:16px;font-weight:800}
+    .report-meta{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:20px}
+    .meta-field{display:flex;flex-direction:column;gap:6px;background:#f8fafc;border:1px solid var(--border);border-radius:14px;padding:10px 12px}
+    .meta-field span{font-size:12px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.08em}
+    .meta-field input{border:none;background:transparent;font-size:14px;font-weight:700;outline:none;padding:0}
     .report-summary{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:20px}
     .report-summary .summary-item{background:#f8fafc;border-radius:16px;padding:16px;display:flex;justify-content:space-between;align-items:center}
     .report-summary .summary-item .label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.12em}
@@ -88,12 +92,27 @@
           <div class="report-head">
             <div>
               <div class="report-date" id="reportDate">6月25日</div>
-              <div class="report-title">Torishin 売り上げ内訳</div>
+              <div class="report-title">Torishin 売り上げ内訳 / Báo cáo doanh thu</div>
             </div>
             <div class="report-total">
-              <div class="label">総売上</div>
+              <div class="label">総売上 / Tổng doanh thu</div>
               <div class="value" id="totalRevenue">0đ</div>
             </div>
+          </div>
+
+          <div class="report-meta">
+            <label class="meta-field">
+              <span>Ngày / 日付</span>
+              <input id="date" type="date" />
+            </label>
+            <label class="meta-field">
+              <span>Nhân viên / 担当者</span>
+              <input id="staff" type="text" placeholder="Tên nhân viên / 担当者名" />
+            </label>
+            <label class="meta-field">
+              <span>Ghi chú / 備考</span>
+              <input id="note" type="text" placeholder="Ghi chú / 備考" />
+            </label>
           </div>
 
           <table class="report-table">
@@ -126,7 +145,7 @@
             </tbody>
           </table>
 
-          <div class="report-section-title">レジ金内訳</div>
+          <div class="report-section-title">レジ金内訳 / Phân loại tiền kết</div>
           <table class="report-table">
             <thead>
               <tr>
@@ -156,8 +175,8 @@
           </table>
 
           <div class="report-summary">
-            <div class="summary-item"><div class="label">Chi phí</div><div class="value" id="expenseValue">0đ</div></div>
-            <div class="summary-item"><div class="label">Tiền kết</div><div class="value" id="closeValue">0đ</div></div>
+            <div class="summary-item"><div class="label">Tổng doanh thu / 総売上</div><div class="value" id="sumRevenue">0đ</div></div>
+            <div class="summary-item"><div class="label">Tiền kết / 残高</div><div class="value" id="closeValue">0đ</div></div>
           </div>
 
           <div class="controls">
@@ -220,13 +239,10 @@
       const transfer = parseNum($('transfer')?.value);
       const capichi = parseNum($('capichi')?.value);
       const grab = parseNum($('grab')?.value);
-      const expense = parseNum($('expense')?.value);
       const totalRevenue = cash + card + transfer + capichi + grab;
-      const closing = totalRevenue - expense;
+      const closing = totalRevenue;
       if($('totalRevenue')) $('totalRevenue').textContent = fmt(totalRevenue);
       if($('sumRevenue')) $('sumRevenue').textContent = fmt(totalRevenue);
-      if($('sumCash')) $('sumCash').textContent = fmt(cash);
-      if($('expenseValue')) $('expenseValue').textContent = fmt(expense);
       if($('closeValue')) $('closeValue').textContent = fmt(closing);
       if($('cashAmount')) $('cashAmount').textContent = fmt(cash);
       if($('cardAmount')) $('cardAmount').textContent = fmt(card);
@@ -262,9 +278,10 @@
       if(reportTitle) reportTitle.textContent = jpDate;
     }
     function buildLineReport(){
-      const date = $('date')?.value || '';
+      const dateValue = $('date')?.value || '';
+      const date = new Date(dateValue || new Date().toISOString().slice(0,10));
+      const jpDate = `${date.getMonth()+1}月${date.getDate()}日`;
       const staff = ($('staff')?.value || '').trim() || 'Không rõ';
-      const expense = parseNum($('expense')?.value);
       const note = ($('note')?.value || '').trim() || 'Không có';
       const cash = parseNum($('cash')?.value);
       const card = parseNum($('card')?.value);
@@ -278,28 +295,26 @@
       }).filter(Boolean);
       const billTotal = BILLS.reduce((sum, amount) => sum + parseNum($('bill_' + amount)?.value) * amount, 0);
       const total = cash + card + transfer + capichi + grab;
-      const diff = total - expense;
+      const closing = total;
       return [
-        'BẢNG KÊ NGÀY - NHÂN VIÊN',
-        `Ngày: ${date}`,
-        `Nhân viên: ${staff}`,
+        '売上報告 / Báo cáo doanh thu',
+        `日付 / Ngày: ${jpDate} (${dateValue || 'N/A'})`,
+        `担当者 / Nhân viên: ${staff}`,
+        `備考 / Ghi chú: ${note}`,
         '',
-        'PHÂN LOẠI DOANH THU',
-        `Tiền mặt: ${fmt(cash)}`,
-        `Thẻ ngân hàng: ${fmt(card)}`,
-        `Chuyển khoản: ${fmt(transfer)}`,
-        `Capichi: ${fmt(capichi)}`,
-        `Grab: ${fmt(grab)}`,
+        '売上内訳 / Phân loại doanh thu',
+        `現金 / Tiền mặt: ${fmt(cash)}`,
+        `カード / Thẻ ngân hàng: ${fmt(card)}`,
+        `振込 / Chuyển khoản: ${fmt(transfer)}`,
+        `カピチ / Capichi: ${fmt(capichi)}`,
+        `グラブ / Grab: ${fmt(grab)}`,
         '',
-        'PHÂN LOẠI TIỀN MẶT',
+        'レジ金内訳 / Phân loại tiền kết',
         ...billDetails,
-        `Tổng tiền mặt: ${fmt(billTotal)}`,
+        `合計 / Tổng tiền kết: ${fmt(billTotal)}`,
         '',
-        `Tổng doanh thu: ${fmt(total)}`,
-        `Chi phí: ${fmt(expense)}`,
-        `Tiền kết: ${fmt(diff)}`,
-        '',
-        `Ghi chú: ${note}`
+        `総売上 / Tổng doanh thu: ${fmt(total)}`,
+        `残高 / Tiền kết: ${fmt(closing)}`,
       ].join('\n');
     }
     function fillFormFromDate(dateValue){
@@ -335,13 +350,11 @@
       const grab = parseNum($('grab')?.value);
       const bills = {};
       BILLS.forEach(amount => { bills[amount] = parseNum($('bill_' + amount)?.value); });
-      const expense = parseNum($('expense')?.value);
       const totalRevenue = cash + card + transfer + capichi + grab;
       const dt = md.doanhThu[idx] || {};
       dt.rev = totalRevenue;
       dt.cash = cash; dt.card = card; dt.transfer = transfer; dt.capichi = capichi; dt.grab = grab;
       dt.bills = bills;
-      dt.expense = expense;
       dt.staff = ($('staff')?.value || '').trim(); dt.note = ($('note')?.value || '').trim();
       dt.report = buildLineReport();
       md.doanhThu[idx] = dt;
@@ -369,7 +382,6 @@
         transfer: parseNum($('transfer')?.value),
         capichi: parseNum($('capichi')?.value),
         grab: parseNum($('grab')?.value),
-        expense: parseNum($('expense')?.value),
         note: ($('note')?.value || '').trim() || ''
       };
       const blob = new Blob([JSON.stringify(data,null,2)], {type:'application/json;charset=utf-8'});
