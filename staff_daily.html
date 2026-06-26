@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>Bảng kê ngày - Nhân viên</title>
+  <style>
+    :root {
+      --bg:#f5f7fb;
+      --card:#ffffff;
+      --text:#0f172a;
+      --muted:#64748b;
+      --accent:#dc2626;
+      --accent2:#b91c1c;
+      --border:#e2e8f0;
+      --good:#059669;
+      --warn:#d97706;
+      --info:#2563eb;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Segoe UI,Arial,sans-serif;background:var(--bg);color:var(--text)}
+    .wrap{max-width:900px;margin:0 auto;padding:20px}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:0 8px 24px rgba(15,23,42,.06);padding:20px;margin-bottom:18px}
+    h1{margin:0 0 8px;font-size:24px}
+    .sub{color:var(--muted);margin:0 0 16px;line-height:1.5}
+    .topbar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+    .pill{display:inline-block;background:#fef2f2;color:#991b1b;padding:6px 10px;border-radius:999px;font-size:12px;font-weight:700}
+    .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+    .field{display:flex;flex-direction:column;gap:6px}
+    .field label{font-size:13px;font-weight:700;color:var(--text)}
+    .field input,.field textarea,.field select{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:10px;font-size:14px;font-family:inherit}
+    .field input:focus,.field textarea:focus,.field select:focus{outline:none;border-color:var(--accent)}
+    .field textarea{min-height:90px;resize:vertical}
+    .full{grid-column:1/-1}
+    .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+    button{border:none;border-radius:10px;padding:10px 14px;font-weight:700;cursor:pointer;font-size:14px}
+    .btn-primary{background:var(--accent);color:#fff}
+    .btn-primary:hover{background:var(--accent2)}
+    .btn-ghost{background:#f8fafc;border:1px solid var(--border);color:var(--text)}
+    .btn-ghost:hover{background:#f1f5f9}
+    .note{font-size:13px;color:var(--muted);margin-top:8px}
+    .summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+    .sum-box{background:#f8fafc;border:1px solid var(--border);border-radius:12px;padding:12px}
+    .sum-box .label{font-size:11px;letter-spacing:.7px;text-transform:uppercase;color:var(--muted);margin-bottom:6px;font-weight:700}
+    .sum-box .value{font-size:18px;font-weight:800}
+    .bill-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+    .bill-item{background:#f8fafc;border:1px solid var(--border);border-radius:10px;padding:10px}
+    .bill-item label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px;font-weight:700}
+    .bill-item input{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px}
+    .link-row{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+    .link-row a{color:var(--info);font-weight:700;text-decoration:none}
+    .link-row a:hover{text-decoration:underline}
+    @media (max-width:700px){.grid,.summary,.bill-grid{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="link-row">
+      <a href="index.html">← Quay về trang quản lý</a>
+      <a href="https://line.me/R/ti/p/~" target="_blank" rel="noreferrer">Mở Line</a>
+    </div>
+
+    <div class="card">
+      <div class="topbar">
+        <div>
+          <h1>Bảng kê ngày cho nhân viên</h1>
+          <p class="sub">Nhập dữ liệu nhanh, rồi xuất file .txt/.json để gửi qua Line. Các mục còn lại chỉ dùng cho quản lý.</p>
+        </div>
+        <span class="pill">Dành cho nhân viên nhập dữ liệu</span>
+      </div>
+
+      <div class="grid">
+        <div class="field">
+          <label for="date">Ngày</label>
+          <input id="date" type="date" />
+        </div>
+        <div class="field">
+          <label for="staff">Nhân viên</label>
+          <input id="staff" type="text" placeholder="Tên nhân viên" />
+        </div>
+        <div class="field">
+          <label for="revenue">Doanh thu ngày</label>
+          <input id="revenue" type="number" inputmode="numeric" step="1000" placeholder="0" />
+        </div>
+        <div class="field">
+          <label for="cash">Tiền mặt thu về</label>
+          <input id="cash" type="number" inputmode="numeric" step="1000" placeholder="0" />
+        </div>
+        <div class="field">
+          <label for="bank">Tiền gửi ngân hàng</label>
+          <input id="bank" type="number" inputmode="numeric" step="1000" placeholder="0" />
+        </div>
+        <div class="field">
+          <label for="expense">Chi phí phát sinh</label>
+          <input id="expense" type="number" inputmode="numeric" step="1000" placeholder="0" />
+        </div>
+        <div class="field full">
+          <label for="note">Ghi chú</label>
+          <textarea id="note" placeholder="Ghi chú ngắn cho ca làm việc"></textarea>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px;padding:16px">
+        <h3 style="margin:0 0 10px">Số lượng tiền giấy</h3>
+        <div class="bill-grid" id="billGrid"></div>
+      </div>
+
+      <div class="summary" style="margin-top:16px">
+        <div class="sum-box">
+          <div class="label">Chênh lệch</div>
+          <div class="value" id="diffValue">0</div>
+        </div>
+        <div class="sum-box">
+          <div class="label">Tổng tiền giấy</div>
+          <div class="value" id="billTotalValue">0</div>
+        </div>
+        <div class="sum-box">
+          <div class="label">Trạng thái</div>
+          <div class="value" id="statusValue">Đã sẵn sàng</div>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="btn-primary" id="saveBtn">Lưu tạm</button>
+        <button class="btn-ghost" id="exportBtn">Xuất file .txt</button>
+        <button class="btn-ghost" id="exportJsonBtn">Xuất file .json</button>
+      </div>
+      <p class="note">Dữ liệu sẽ được lưu trong trình duyệt của bạn. Sau đó hãy chọn Xuất file rồi gửi qua Line.</p>
+    </div>
+  </div>
+
+  <script>
+    const denominations = [500000, 200000, 100000, 50000, 20000, 10000, 5000, 2000, 1000];
+    const billGrid = document.getElementById('billGrid');
+    const form = {
+      date: document.getElementById('date'),
+      staff: document.getElementById('staff'),
+      revenue: document.getElementById('revenue'),
+      cash: document.getElementById('cash'),
+      bank: document.getElementById('bank'),
+      expense: document.getElementById('expense'),
+      note: document.getElementById('note')
+    };
+    const diffValue = document.getElementById('diffValue');
+    const billTotalValue = document.getElementById('billTotalValue');
+    const statusValue = document.getElementById('statusValue');
+
+    function createBillFields() {
+      const fragment = document.createDocumentFragment();
+      denominations.forEach((value) => {
+        const item = document.createElement('div');
+        item.className = 'bill-item';
+        item.innerHTML = `
+          <label for="bill-${value}">${value.toLocaleString('vi-VN')} VNĐ</label>
+          <input id="bill-${value}" type="number" inputmode="numeric" min="0" step="1" placeholder="0" />
+        `;
+        fragment.appendChild(item);
+      });
+      billGrid.appendChild(fragment);
+    }
+
+    function getBillCounts() {
+      const counts = {};
+      denominations.forEach((value) => {
+        const input = document.getElementById(`bill-${value}`);
+        counts[value] = Number(input.value || 0);
+      });
+      return counts;
+    }
+
+    function getFormData() {
+      return {
+        date: form.date.value,
+        staff: form.staff.value.trim(),
+        revenue: Number(form.revenue.value || 0),
+        cash: Number(form.cash.value || 0),
+        bank: Number(form.bank.value || 0),
+        expense: Number(form.expense.value || 0),
+        note: form.note.value.trim(),
+        bills: getBillCounts()
+      };
+    }
+
+    function formatCurrency(value) {
+      return Number(value || 0).toLocaleString('vi-VN') + ' VNĐ';
+    }
+
+    function updateSummary() {
+      const data = getFormData();
+      const billTotal = Object.entries(data.bills).reduce((sum, [k, v]) => sum + Number(k) * Number(v), 0);
+      const diff = Number(data.cash || 0) + Number(data.bank || 0) - Number(data.revenue || 0) + Number(data.expense || 0);
+      diffValue.textContent = formatCurrency(diff);
+      billTotalValue.textContent = formatCurrency(billTotal);
+      if (Math.abs(diff) < 1000) {
+        statusValue.textContent = 'Khớp';
+        statusValue.style.color = 'var(--good)';
+      } else if (diff > 0) {
+        statusValue.textContent = 'Thừa';
+        statusValue.style.color = 'var(--warn)';
+      } else {
+        statusValue.textContent = 'Thiếu';
+        statusValue.style.color = 'var(--accent)';
+      }
+    }
+
+    function saveData() {
+      const data = getFormData();
+      localStorage.setItem('torishin_staff_daily', JSON.stringify(data));
+      alert('Đã lưu tạm dữ liệu vào trình duyệt.');
+    }
+
+    function loadData() {
+      const raw = localStorage.getItem('torishin_staff_daily');
+      if (!raw) return;
+      try {
+        const data = JSON.parse(raw);
+        form.date.value = data.date || '';
+        form.staff.value = data.staff || '';
+        form.revenue.value = data.revenue || '';
+        form.cash.value = data.cash || '';
+        form.bank.value = data.bank || '';
+        form.expense.value = data.expense || '';
+        form.note.value = data.note || '';
+        Object.entries(data.bills || {}).forEach(([value, count]) => {
+          const input = document.getElementById(`bill-${value}`);
+          if (input) input.value = count || 0;
+        });
+      } catch (e) {
+        console.warn('Không đọc được dữ liệu lưu trước', e);
+      }
+    }
+
+    function exportAsText() {
+      const data = getFormData();
+      const lines = [];
+      lines.push('BẢNG KÊ NGÀY - NHÂN VIÊN');
+      lines.push(`Ngày: ${data.date || 'Chưa nhập'}`);
+      lines.push(`Nhân viên: ${data.staff || 'Chưa nhập'}`);
+      lines.push(`Doanh thu: ${formatCurrency(data.revenue)}`);
+      lines.push(`Tiền mặt thu về: ${formatCurrency(data.cash)}`);
+      lines.push(`Tiền gửi ngân hàng: ${formatCurrency(data.bank)}`);
+      lines.push(`Chi phí phát sinh: ${formatCurrency(data.expense)}`);
+      lines.push(`Chênh lệch: ${formatCurrency(Number(data.cash) + Number(data.bank) - Number(data.revenue) + Number(data.expense))}`);
+      lines.push('Tiền giấy:');
+      Object.entries(data.bills).forEach(([value, count]) => {
+        if (Number(count) > 0) lines.push(`- ${Number(value).toLocaleString('vi-VN')} x ${count}`);
+      });
+      lines.push(`Ghi chú: ${data.note || 'Không có'}`);
+      const blob = new Blob([lines.join('\n')], {type:'text/plain;charset=utf-8'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `bang-ke-ngay-${data.date || 'daily'}.txt`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function exportAsJson() {
+      const data = getFormData();
+      const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json;charset=utf-8'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `bang-ke-ngay-${data.date || 'daily'}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    createBillFields();
+    loadData();
+    [form.date, form.staff, form.revenue, form.cash, form.bank, form.expense, form.note].forEach((input) => {
+      input.addEventListener('input', updateSummary);
+      input.addEventListener('change', updateSummary);
+    });
+    document.querySelectorAll('#billGrid input').forEach((input) => input.addEventListener('input', updateSummary));
+    document.getElementById('saveBtn').addEventListener('click', saveData);
+    document.getElementById('exportBtn').addEventListener('click', exportAsText);
+    document.getElementById('exportJsonBtn').addEventListener('click', exportAsJson);
+    form.date.value = new Date().toISOString().slice(0, 10);
+    updateSummary();
+  </script>
+</body>
+</html>

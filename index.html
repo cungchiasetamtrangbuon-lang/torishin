@@ -13,6 +13,9 @@
 }
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:var(--font);background:var(--bg);color:var(--ink);height:100vh;display:flex;flex-direction:column;overflow:hidden}
+.staff-link-banner{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 16px;background:#fff7ed;border:1px solid #fdba74;color:#9a2c00;font-size:13px;font-weight:600;flex-wrap:wrap}
+.staff-link-banner a{color:#b45309;text-decoration:none;font-weight:700}
+.staff-link-banner a:hover{text-decoration:underline}
 
 /* HEADER */
 .hdr{background:var(--ink);color:#fff;height:52px;display:flex;align-items:center;gap:0;flex-shrink:0;z-index:100;overflow:hidden}
@@ -219,6 +222,10 @@ tr.sum-row:hover td{background:#f1f5f9}
 </style>
 </head>
 <body>
+<div class="staff-link-banner">
+  <span>👤 Nhân viên: dùng link riêng để nhập bảng kê ngày và xuất file để gửi qua Line.</span>
+  <a href="staff_daily.html">Mở bảng kê ngày cho nhân viên</a>
+</div>
 
 <!-- HEADER -->
 <header class="hdr">
