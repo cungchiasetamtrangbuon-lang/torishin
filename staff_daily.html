@@ -457,15 +457,15 @@
       fillFormFromDate(today);
     }
 
-    /* Vercel / Render backend sync (optional)
-       1) Deploy the backend using server.js or api/sync.js.
-       2) Point API_URL at the deployed endpoint.
+    /* Render backend sync (recommended)
+       1) Deploy the backend with server.js on Render.
+       2) Set backend URL below to the Render app URL.
        3) Save and reload the page.
     */
     const BACKEND_CONFIG = {
       url: (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
         ? 'http://127.0.0.1:3000/api/sync'
-        : '/api/sync'
+        : 'https://<your-render-app>.onrender.com/api/sync'
     };
     let cloudEnabled = false;
     let cloudSyncInFlight = false;
