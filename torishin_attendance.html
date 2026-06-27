@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>🍣 Torishin — Chấm Công / 打刻</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@300;400;500&family=Sora:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --w:#ffffff;--w2:#f8f6f2;--w3:#f0ece4;--w4:#e4dfd5;
+  --ink:#18150f;--ink2:#35302a;--ink3:#6e6860;--ink4:#a8a098;
+  --r:#c94040;--rb:#fef0f0;--rbd:#fad0d0;
+  --g:#1e7a48;--gb:#eef8f2;--gbd:#b8e0cc;
+  --b:#1a4a9e;--bb:#eef2fc;--bbd:#b8ccf0;
+  --o:#8a5c08;--ob:#fef7e8;--obd:#f5dda0;
+  --bdr:#ddd8ce;--bdr2:#ccc4b8;
+  --sh:0 1px 4px rgba(24,21,15,.07),0 4px 16px rgba(24,21,15,.06);
+  --sh2:0 8px 32px rgba(24,21,15,.14),0 2px 6px rgba(24,21,15,.07);
+  --rr:12px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html{font-size:14px;-webkit-font-smoothing:antialiased;}
+body{font-family:'Sora',sans-serif;background:var(--w2);color:var(--ink);min-height:100vh;max-width:480px;margin:0 auto;}
+
+/* HEADER */
+.hdr{background:var(--ink);color:#fff;padding:14px 18px 12px;text-align:center;position:sticky;top:0;z-index:100;}
+.hdr-logo{font-family:'Noto Serif JP',serif;font-size:13px;letter-spacing:.18em;opacity:.7;margin-bottom:4px;}
+.hdr-clock{font-family:'JetBrains Mono',monospace;font-size:30px;font-weight:600;letter-spacing:.04em;line-height:1;}
+.hdr-date{font-size:11.5px;opacity:.65;margin-top:4px;letter-spacing:.03em;}
+
+/* TABS */
+.tabs{display:grid;grid-template-columns:1fr 1fr 1fr;border-bottom:1px solid var(--bdr);background:var(--w);}
+.tab{padding:11px 4px;text-align:center;font-size:11.5px;font-weight:600;color:var(--ink4);cursor:pointer;border-bottom:2px solid transparent;transition:.13s;letter-spacing:.02em;}
+.tab.on{color:var(--ink);border-bottom-color:var(--ink);}
+
+/* PAGE */
+.pg{padding:16px 14px;display:none;}
+.pg.on{display:block;}
+
+/* STAFF GRID */
+.staff-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px;}
+.staff-btn{border:2px solid var(--bdr);border-radius:var(--rr);padding:16px 12px;text-align:center;cursor:pointer;background:var(--w);transition:all .15s;position:relative;overflow:hidden;}
+.staff-btn:active{transform:scale(.96);}
+.staff-btn.working{border-color:var(--g);background:var(--gb);}
+.staff-btn.on-break{border-color:var(--o);background:var(--ob);}
+.staff-btn.done{border-color:var(--bdr2);background:var(--w3);opacity:.72;}
+.staff-btn.off{border-color:var(--bdr);background:var(--w2);opacity:.6;}
+.sb-dot{width:10px;height:10px;border-radius:50%;margin:0 auto 8px;background:var(--bdr2);}
+.sb-dot.working{background:var(--g);}
+.sb-dot.on-break{background:var(--o);}
+.sb-dot.done{background:var(--ink4);}
+.sb-name{font-size:14px;font-weight:700;margin-bottom:2px;}
+.sb-status{font-size:10.5px;color:var(--ink4);margin-bottom:4px;}
+.sb-time{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink3);}
+
+/* CLOCK PANEL */
+.clock-panel{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rr);box-shadow:var(--sh);overflow:hidden;margin-top:8px;}
+.cp-hdr{padding:16px 18px;border-bottom:1px solid var(--bdr);display:flex;align-items:center;gap:12px;}
+.cp-dot{width:14px;height:14px;border-radius:50%;flex-shrink:0;}
+.cp-name{font-size:18px;font-weight:700;}
+.cp-type{font-size:11px;color:var(--ink4);margin-top:2px;}
+.cp-back{margin-left:auto;font-size:12px;color:var(--ink4);cursor:pointer;padding:4px 10px;border:1px solid var(--bdr);border-radius:20px;background:var(--w2);}
+.cp-status{padding:18px;text-align:center;border-bottom:1px solid var(--bdr);}
+.cp-status-icon{font-size:36px;margin-bottom:6px;}
+.cp-status-label{font-size:14px;font-weight:700;margin-bottom:4px;}
+.cp-status-sub{font-size:12px;color:var(--ink4);}
+.cp-elapsed{font-family:'JetBrains Mono',monospace;font-size:24px;font-weight:600;color:var(--ink2);margin-top:8px;}
+
+.cp-info{padding:14px 18px;display:flex;flex-direction:column;gap:9px;border-bottom:1px solid var(--bdr);}
+.cp-row{display:flex;justify-content:space-between;align-items:center;font-size:13px;}
+.cp-lbl{color:var(--ink4);}
+.cp-val{font-family:'JetBrains Mono',monospace;font-weight:500;}
+
+.cp-actions{padding:14px 18px;display:flex;flex-direction:column;gap:9px;}
+.act-btn{width:100%;padding:15px;border-radius:10px;font-size:15px;font-weight:700;font-family:'Sora',sans-serif;border:none;cursor:pointer;letter-spacing:.02em;transition:all .13s;}
+.act-btn:active{transform:scale(.97);}
+.btn-in{background:var(--g);color:#fff;}
+.btn-in:hover{background:#186040;}
+.btn-break{background:var(--o);color:#fff;}
+.btn-break:hover{background:#7a5006;}
+.btn-resume{background:var(--b);color:#fff;}
+.btn-resume:hover{background:#153880;}
+.btn-out{background:var(--r);color:#fff;}
+.btn-out:hover{background:#a83030;}
+.btn-off{background:var(--w3);color:var(--ink3);border:1px solid var(--bdr);}
+.btn-off:hover{background:var(--w4);}
+
+/* RESULT CARD */
+.result-card{background:var(--gb);border:1.5px solid var(--gbd);border-radius:var(--rr);padding:16px 18px;margin:12px 0;}
+.rc-title{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--g);font-weight:700;margin-bottom:12px;}
+.rc-row{display:flex;justify-content:space-between;margin-bottom:8px;font-size:13px;}
+.rc-lbl{color:var(--ink3);}
+.rc-val{font-family:'JetBrains Mono',monospace;font-weight:600;}
+.rc-salary{display:flex;justify-content:space-between;margin-top:12px;padding-top:12px;border-top:1px solid var(--gbd);}
+.rc-salary-lbl{font-size:13px;font-weight:700;color:var(--g);}
+.rc-salary-val{font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:700;color:var(--g);}
+
+/* BREAK LOG */
+.break-list{padding:0 18px 14px;border-bottom:1px solid var(--bdr);}
+.break-list-h{font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--ink4);font-weight:600;margin-bottom:8px;}
+.break-item{display:flex;justify-content:space-between;font-size:12px;padding:5px 0;border-bottom:1px solid var(--w3);color:var(--ink3);}
+.break-item:last-child{border-bottom:none;}
+
+/* SUMMARY PAGE */
+.sum-date-nav{display:flex;align-items:center;gap:8px;margin-bottom:14px;background:var(--w);border-radius:var(--rr);padding:12px 14px;border:1px solid var(--bdr);}
+.sum-date{flex:1;text-align:center;font-size:14px;font-weight:700;}
+.nav-btn{width:34px;height:34px;border:1px solid var(--bdr);background:var(--w);border-radius:8px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;}
+.nav-btn:hover{background:var(--w3);}
+.sum-card{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rr);margin-bottom:10px;overflow:hidden;box-shadow:var(--sh);}
+.sc-h{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--bdr);}
+.sc-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+.sc-name{font-size:14px;font-weight:700;flex:1;}
+.sc-badge{font-size:10.5px;padding:2px 8px;border-radius:20px;font-weight:600;}
+.badge-w{background:var(--gb);color:var(--g);}
+.badge-b{background:var(--ob);color:var(--o);}
+.badge-d{background:var(--w3);color:var(--ink4);}
+.badge-o{background:var(--rb);color:var(--r);}
+.sc-body{padding:11px 14px;font-size:12.5px;display:flex;flex-direction:column;gap:7px;}
+.sc-row{display:flex;justify-content:space-between;}
+.sc-l{color:var(--ink4);}
+.sc-v{font-family:'JetBrains Mono',monospace;font-weight:500;}
+.sc-sal{display:flex;justify-content:space-between;padding-top:9px;margin-top:4px;border-top:1px solid var(--bdr);font-weight:700;}
+.sc-sal .sc-v{color:var(--g);}
+
+/* ADMIN PAGE */
+.admin-lock{text-align:center;padding:40px 20px;}
+.al-icon{font-size:40px;margin-bottom:14px;}
+.al-h{font-family:'Noto Serif JP',serif;font-size:18px;margin-bottom:6px;}
+.al-s{font-size:12px;color:var(--ink4);margin-bottom:20px;}
+.al-input{font-family:'JetBrains Mono',monospace;font-size:16px;padding:10px 14px;border-radius:8px;background:var(--w);border:1.5px solid var(--bdr);color:var(--ink);width:100%;text-align:center;letter-spacing:.12em;margin-bottom:10px;}
+.al-input:focus{outline:none;border-color:var(--ink);}
+.al-btn{width:100%;padding:13px;border-radius:8px;background:var(--ink);color:#fff;font-size:14px;font-weight:700;border:none;cursor:pointer;}
+.al-err{color:var(--r);font-size:12px;margin-top:6px;min-height:18px;text-align:center;}
+
+.admin-panel{}
+.adm-month-sel{display:flex;align-items:center;gap:8px;margin-bottom:14px;}
+.adm-month-sel select{flex:1;padding:9px 12px;border:1.5px solid var(--bdr);border-radius:8px;font-size:13px;background:var(--w);}
+.adm-month-sel select:focus{outline:none;border-color:var(--ink);}
+
+.kpi-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}
+.kpi{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rr);padding:13px;text-align:center;box-shadow:var(--sh);}
+.kpi-l{font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--ink4);margin-bottom:5px;}
+.kpi-v{font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:600;color:var(--ink2);}
+
+.staff-salary-card{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rr);margin-bottom:10px;overflow:hidden;}
+.ssc-hdr{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--bdr);}
+.ssc-color{width:4px;align-self:stretch;border-radius:2px;flex-shrink:0;}
+.ssc-name{font-size:14px;font-weight:700;flex:1;}
+.ssc-total{font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:700;color:var(--g);}
+.ssc-body{padding:12px 14px;}
+.ssc-row{display:flex;justify-content:space-between;font-size:12px;margin-bottom:7px;}
+.ssc-row:last-child{margin-bottom:0;}
+.ssc-l{color:var(--ink4);}
+.ssc-v{font-family:'JetBrains Mono',monospace;font-weight:500;}
+.ssc-detail{margin-top:10px;border-top:1px solid var(--bdr);padding-top:10px;}
+.ssc-det-h{font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--ink4);font-weight:600;margin-bottom:7px;}
+.day-row{display:flex;justify-content:space-between;font-size:11.5px;padding:4px 0;border-bottom:1px solid var(--w3);}
+.day-row:last-child{border-bottom:none;}
+.day-row .dr-d{color:var(--ink3);font-family:'JetBrains Mono',monospace;}
+.day-row .dr-v{color:var(--ink2);font-family:'JetBrains Mono',monospace;}
+.day-row .dr-s{color:var(--g);font-weight:600;font-family:'JetBrains Mono',monospace;}
+
+.export-row{display:flex;gap:8px;margin-top:14px;}
+.export-btn{flex:1;padding:11px;border-radius:8px;font-size:12.5px;font-weight:600;border:1px solid var(--bdr);background:var(--w);cursor:pointer;transition:.13s;}
+.export-btn:hover{background:var(--w3);}
+.export-btn.dk{background:var(--ink);color:#fff;border-color:var(--ink);}
+
+/* Toast */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--ink);color:#fff;padding:11px 20px;border-radius:24px;font-size:13px;font-weight:600;z-index:999;opacity:0;transition:all .28s;max-width:300px;text-align:center;pointer-events:none;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+/* Section headers */
+.sec-h{font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink4);font-weight:600;margin-bottom:10px;}
+.divider{height:1px;background:var(--bdr);margin:16px 0;}
+
+/* 休 marker */
+.kyuu-badge{display:inline-block;padding:1px 7px;border-radius:4px;font-size:11px;font-weight:700;background:var(--rb);color:var(--r);}
+</style>
+</head>
+<body>
+
+<header class="hdr">
+  <div class="hdr-logo">鳥心 TORISHIN — 打刻 / Chấm Công</div>
+  <div class="hdr-clock" id="liveClock">--:--:--</div>
+  <div class="hdr-date" id="liveDate">---</div>
+</header>
+
+<div class="tabs">
+  <div class="tab on" onclick="showTab('clock')">⏱ Chấm Công</div>
+  <div class="tab" onclick="showTab('summary')">📋 Hôm Nay</div>
+  <div class="tab" onclick="showTab('admin')">⚙ Quản Lý</div>
+</div>
+
+<div id="pg-clock" class="pg on"></div>
+<div id="pg-summary" class="pg"></div>
+<div id="pg-admin" class="pg"></div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════════════════
+// CONFIG
+// ══════════════════════════════════════════════════════
+const STAFF = [
+  {id:'trung',  name:'Trung',  jp:'店長', type:'main', base:12000000, hex:'#5b30a0'},
+  {id:'thuy',   name:'Thúy',   jp:'',     type:'main', base:10000000, hex:'#1a7a45'},
+  {id:'khuong', name:'Khương', jp:'',     type:'main', base:10000000, hex:'#1840a0'},
+  {id:'kha',    name:'Khá',    jp:'',     type:'pt',   rate:30000,    hex:'#b05010'},
+  {id:'tham',   name:'Thắm',   jp:'',     type:'pt',   rate:33000,    hex:'#982068'},
+  {id:'nhi',    name:'Nhi',    jp:'',     type:'pt',   rate:30000,    hex:'#a81818'},
+];
+const NIGHT_START = 22.0;
+const OT_THRESHOLD = 208;
+const MEAL_THRESHOLD = 6; // hours to qualify for meal allowance
+const MEAL_AMOUNT = 25000;
+const ADMIN_PASS = '1234';
+const STORAGE_KEY = 'torishin_attendance_v1';
+const DOW_VN = ['Chủ Nhật','Thứ Hai','Thứ Ba','Thứ Tư','Thứ Năm','Thứ Sáu','Thứ Bảy'];
+
+// ══════════════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════════════
+let state = {
+  records: {},   // {"YYYY-MM-DD": {"staffId": {clockIn,clockOut,breaks,status,isOff}}}
+  adminUnlocked: false,
+  adminMonth: null,
+  sumDateOffset: 0,
+  selectedStaff: null,
+};
+
+function loadState(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw) Object.assign(state, JSON.parse(raw));
+  }catch(e){}
+  if(!state.records) state.records = {};
+  const now = new Date();
+  state.adminMonth = state.adminMonth || (now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0'));
+}
+function saveState(){
+  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify({records:state.records,adminMonth:state.adminMonth})); }catch(e){}
+}
+
+// ══════════════════════════════════════════════════════
+// DATE HELPERS
+// ══════════════════════════════════════════════════════
+function todayKey(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function dateKey(offset){
+  const d=new Date(); d.setDate(d.getDate()+offset);
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function fmtDate(dateStr){
+  const [y,m,d]=dateStr.split('-').map(Number);
+  const dt=new Date(y,m-1,d);
+  return DOW_VN[dt.getDay()]+', '+String(d).padStart(2,'0')+'/'+String(m).padStart(2,'0')+'/'+y;
+}
+function fmtTime(ts){
+  if(!ts) return '--:--';
+  const d=new Date(ts);
+  return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+}
+function tsToHour(ts){
+  const d=new Date(ts);
+  return d.getHours()+d.getMinutes()/60+d.getSeconds()/3600;
+}
+
+// ══════════════════════════════════════════════════════
+// RECORD HELPERS
+// ══════════════════════════════════════════════════════
+function getDay(dateStr){ return state.records[dateStr]||(state.records[dateStr]={}); }
+function getRec(dateStr, sid){ return getDay(dateStr)[sid]||null; }
+function setRec(dateStr, sid, val){ getDay(dateStr)[sid]=val; saveState(); }
+
+// ══════════════════════════════════════════════════════
+// CALCULATION
+// ══════════════════════════════════════════════════════
+function calcHours(rec){
+  if(!rec||!rec.clockIn||!rec.clockOut) return null;
+  const breakMs=(rec.breaks||[]).reduce((s,b)=>s+(b.end&&b.start?b.end-b.start:0),0);
+  const workMs=rec.clockOut-rec.clockIn-breakMs;
+  if(workMs<=0) return {total:0,reg:0,night:0,breaks:breakMs/60000};
+
+  let inH=tsToHour(rec.clockIn);
+  let outH=tsToHour(rec.clockOut);
+  if(outH<inH) outH+=24; // midnight crossing
+
+  const span=outH-inH;
+  const workH=workMs/3600000;
+  // Night portion of total span
+  const nightSpan=Math.max(0, outH - Math.max(inH, NIGHT_START));
+  const nightFrac=span>0?nightSpan/span:0;
+  const nightH=workH*nightFrac;
+  const regH=workH-nightH;
+  return {
+    total:Math.round(workH*100)/100,
+    reg:Math.round(regH*100)/100,
+    night:Math.round(nightH*100)/100,
+    breaks:Math.round(breakMs/60000),
+  };
+}
+
+function calcDaySalary(staff, hours){
+  if(!hours) return 0;
+  if(staff.type==='pt'){
+    const base=hours.reg*staff.rate + hours.night*staff.rate*1.25;
+    const meal=hours.total>=MEAL_THRESHOLD?MEAL_AMOUNT:0;
+    return Math.round(base+meal);
+  } else {
+    // LCB: show night premium only (monthly base is fixed)
+    const hr=staff.base/273;
+    const nightPrem=hours.night*hr*0.25;
+    const meal=hours.total>=MEAL_THRESHOLD?MEAL_AMOUNT:0;
+    return Math.round(nightPrem+meal);
+  }
+}
+
+function calcMonthSalary(staff, monthKey){
+  const [y,m]=monthKey.split('-').map(Number);
+  let totalReg=0,totalNight=0,totalH=0,workDays=0,mealDays=0,offDays=0;
+  const dayDetails=[];
+
+  // Iterate all days in month
+  const daysInMonth=new Date(y,m,0).getDate();
+  for(let d=1;d<=daysInMonth;d++){
+    const dk=y+'-'+String(m).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+    const rec=getRec(dk,staff.id);
+    if(!rec) continue;
+    if(rec.isOff){offDays++;dayDetails.push({d,isOff:true});continue;}
+    const h=calcHours(rec);
+    if(!h) continue;
+    totalReg+=h.reg; totalNight+=h.night; totalH+=h.total; workDays++;
+    if(h.total>=MEAL_THRESHOLD) mealDays++;
+    dayDetails.push({d,h,clockIn:rec.clockIn,clockOut:rec.clockOut});
+  }
+
+  const meal=mealDays*MEAL_AMOUNT;
+  let salary=0;
+  if(staff.type==='pt'){
+    const ot=Math.max(0,totalH-OT_THRESHOLD);
+    const regH=Math.max(0,totalH-totalNight-ot);
+    salary=regH*staff.rate + totalNight*staff.rate*1.25 + ot*staff.rate*0.25;
+  } else {
+    const hr=staff.base/273;
+    salary=staff.base + totalNight*hr*0.25 + Math.max(0,totalH-OT_THRESHOLD)*hr*0.25;
+  }
+  return {salary:Math.round(salary),meal,total:Math.round(salary+meal),totalH,totalReg,totalNight,workDays,mealDays,offDays,dayDetails};
+}
+
+function fmtH(h){ if(!h&&h!==0) return '--'; const hh=Math.floor(h); const mm=Math.round((h-hh)*60); return hh+'h'+String(mm).padStart(2,'0')+'m'; }
+function fmtNum(n){ return Math.round(n).toLocaleString('vi-VN')+'đ'; }
+function fmtMin(m){ if(!m) return '--'; return Math.floor(m)+'ph'; }
+
+// Elapsed time since clockIn minus breaks
+function elapsed(rec){
+  if(!rec||!rec.clockIn) return null;
+  const now=Date.now();
+  const totalMs=now-rec.clockIn;
+  const breakMs=(rec.breaks||[]).reduce((s,b)=>s+(b.end?b.end-b.start:(b.start?now-b.start:0)),0);
+  const workMs=Math.max(0,totalMs-breakMs);
+  const h=Math.floor(workMs/3600000);
+  const m=Math.floor((workMs%3600000)/60000);
+  const s=Math.floor((workMs%60000)/1000);
+  return String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+}
+
+// ══════════════════════════════════════════════════════
+// LIVE CLOCK
+// ══════════════════════════════════════════════════════
+function updateClock(){
+  const now=new Date();
+  const h=String(now.getHours()).padStart(2,'0');
+  const m=String(now.getMinutes()).padStart(2,'0');
+  const s=String(now.getSeconds()).padStart(2,'0');
+  document.getElementById('liveClock').textContent=h+':'+m+':'+s;
+  document.getElementById('liveDate').textContent=DOW_VN[now.getDay()]+', '+String(now.getDate()).padStart(2,'0')+'/'+String(now.getMonth()+1).padStart(2,'0')+'/'+now.getFullYear();
+
+  // Update elapsed timers in clock panel
+  const elEl=document.getElementById('cp-elapsed');
+  if(elEl&&state.selectedStaff){
+    const rec=getRec(todayKey(),state.selectedStaff);
+    if(rec&&rec.clockIn&&!rec.clockOut){
+      elEl.textContent=elapsed(rec)||'--';
+    }
+  }
+}
+
+// ══════════════════════════════════════════════════════
+// TABS
+// ══════════════════════════════════════════════════════
+function showTab(tab){
+  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('on',['clock','summary','admin'][i]===tab));
+  document.querySelectorAll('.pg').forEach(p=>p.classList.remove('on'));
+  document.getElementById('pg-'+tab).classList.add('on');
+  if(tab==='clock') renderClock();
+  if(tab==='summary') renderSummary();
+  if(tab==='admin') renderAdmin();
+}
+
+// ══════════════════════════════════════════════════════
+// CLOCK TAB
+// ══════════════════════════════════════════════════════
+function renderClock(){
+  const el=document.getElementById('pg-clock');
+  if(state.selectedStaff) return renderStaffClock(state.selectedStaff);
+
+  const today=todayKey();
+  const dayRec=getDay(today);
+  const staffHtml=STAFF.map(s=>{
+    const rec=dayRec[s.id];
+    let statusClass='',dot='',statusTxt='',timeTxt='';
+    if(rec?.isOff){statusClass='off';dot='off';statusTxt='休 Nghỉ';}
+    else if(rec?.clockOut){statusClass='done';dot='done';statusTxt='Đã xong';timeTxt=fmtTime(rec.clockIn)+' – '+fmtTime(rec.clockOut);}
+    else if(rec?.clockIn&&rec?.breaks?.some(b=>!b.end)){statusClass='on-break';dot='on-break';statusTxt='Nghỉ giải lao';timeTxt='Vào: '+fmtTime(rec.clockIn);}
+    else if(rec?.clockIn){statusClass='working';dot='working';statusTxt='Đang làm';timeTxt='Vào: '+fmtTime(rec.clockIn);}
+    return `<div class="staff-btn ${statusClass}" onclick="selectStaff('${s.id}')">
+      <div class="sb-dot ${dot}"></div>
+      <div class="sb-name">${s.name}${s.jp?' <span style="font-size:10px;opacity:.5">'+s.jp+'</span>':''}</div>
+      <div class="sb-status">${statusTxt||'Chưa vào ca'}</div>
+      ${timeTxt?`<div class="sb-time">${timeTxt}</div>`:''}
+    </div>`;
+  }).join('');
+
+  el.innerHTML=`<div class="sec-h" style="margin-top:2px">Chọn nhân viên / 従業員を選択</div>
+  <div class="staff-grid">${staffHtml}</div>`;
+}
+
+function selectStaff(sid){
+  state.selectedStaff=sid;
+  renderStaffClock(sid);
+}
+
+function renderStaffClock(sid){
+  const s=STAFF.find(x=>x.id===sid);
+  const today=todayKey();
+  const rec=getRec(today,sid)||{};
+  const el=document.getElementById('pg-clock');
+
+  const status=rec.isOff?'off':rec.clockOut?'done':rec.clockIn?rec.breaks?.some(b=>!b.end)?'break':'working':'idle';
+  const statusIcon={idle:'⏳',working:'🟢',break:'🟡',done:'✅',off:'📅'}[status];
+  const statusLabel={idle:'Chưa vào ca / 未出勤',working:'Đang làm việc / 出勤中',break:'Đang nghỉ giải lao / 休憩中',done:'Đã kết thúc ca / 退勤済み',off:'Ngày nghỉ / 休日'}[status];
+  const statusSub={
+    idle:'Nhấn nút để bắt đầu ca làm việc',
+    working:'Vào ca: '+fmtTime(rec.clockIn),
+    break:'Nghỉ từ: '+fmtTime(rec.breaks?.findLast(b=>!b.end)?.start),
+    done:`Ca: ${fmtTime(rec.clockIn)} – ${fmtTime(rec.clockOut)}`,
+    off:'Đã đánh dấu nghỉ hôm nay',
+  }[status];
+
+  const hours=status==='done'?calcHours(rec):null;
+  const salary=hours?calcDaySalary(s,hours):null;
+
+  // Break log
+  const completedBreaks=(rec.breaks||[]).filter(b=>b.end);
+  const breakLogHtml=completedBreaks.length?`<div class="break-list">
+    <div class="break-list-h">Lịch sử nghỉ giải lao / 休憩履歴</div>
+    ${completedBreaks.map((b,i)=>`<div class="break-item"><span>Lần ${i+1}</span><span>${fmtTime(b.start)} – ${fmtTime(b.end)} (${Math.round((b.end-b.start)/60000)}ph)</span></div>`).join('')}
+  </div>`:'';
+
+  // Result card
+  const resultHtml=hours?`<div class="result-card">
+    <div class="rc-title">✅ Tổng kết ca / 勤務集計</div>
+    <div class="rc-row"><span class="rc-lbl">Vào ca / 出勤</span><span class="rc-val">${fmtTime(rec.clockIn)}</span></div>
+    <div class="rc-row"><span class="rc-lbl">Ra ca / 退勤</span><span class="rc-val">${fmtTime(rec.clockOut)}</span></div>
+    <div class="rc-row"><span class="rc-lbl">Tổng giờ làm</span><span class="rc-val">${fmtH(hours.total)}</span></div>
+    <div class="rc-row"><span class="rc-lbl">Giờ ngày / Đêm</span><span class="rc-val">${fmtH(hours.reg)} / ${fmtH(hours.night)}</span></div>
+    <div class="rc-row"><span class="rc-lbl">Nghỉ giải lao</span><span class="rc-val">${fmtMin(hours.breaks)}</span></div>
+    <div class="rc-salary">
+      <span class="rc-salary-lbl">${s.type==='pt'?'Lương ca / 日給':'Phụ cấp đêm / 夜勤手当'}</span>
+      <span class="rc-salary-val">${fmtNum(salary)}</span>
+    </div>
+  </div>`:''
+
+  // Action buttons
+  let actionsHtml='';
+  if(status==='idle'){
+    actionsHtml=`
+      <button class="act-btn btn-in" onclick="clockIn('${sid}')">🟢 Vào Ca / 出勤</button>
+      <button class="act-btn btn-off" onclick="markOff('${sid}')">📅 Đánh Dấu Nghỉ / 休日</button>`;
+  } else if(status==='working'){
+    actionsHtml=`
+      <button class="act-btn btn-break" onclick="startBreak('${sid}')">🟡 Bắt Đầu Giải Lao / 休憩</button>
+      <button class="act-btn btn-out" onclick="clockOut('${sid}')">🔴 Kết Thúc Ca / 退勤</button>`;
+  } else if(status==='break'){
+    actionsHtml=`<button class="act-btn btn-resume" onclick="endBreak('${sid}')">🔵 Quay Lại Làm / 休憩終了</button>`;
+  } else if(status==='done'||status==='off'){
+    actionsHtml=`<button class="act-btn btn-off" onclick="resetDay('${sid}')" style="font-size:12px;padding:10px">↩ Chỉnh sửa / やり直し</button>`;
+  }
+
+  // Info rows
+  let infoHtml='';
+  if(status==='working'||status==='break'){
+    const h=calcHours({...rec,clockOut:Date.now()});
+    infoHtml=`<div class="cp-info">
+      <div class="cp-row"><span class="cp-lbl">Vào ca / 出勤</span><span class="cp-val">${fmtTime(rec.clockIn)}</span></div>
+      <div class="cp-row"><span class="cp-lbl">Số lần giải lao</span><span class="cp-val">${completedBreaks.length} lần</span></div>
+      ${h?`<div class="cp-row"><span class="cp-lbl">Giờ làm (tạm tính)</span><span class="cp-val">${fmtH(h.total)}</span></div>`:''}
+    </div>`;
+  }
+
+  el.innerHTML=`<div class="clock-panel">
+    <div class="cp-hdr">
+      <div class="cp-dot" style="background:${s.hex}"></div>
+      <div><div class="cp-name">${s.name} ${s.jp?`<span style="font-size:11px;opacity:.5">${s.jp}</span>`:''}</div>
+      <div class="cp-type">${s.type==='pt'?`PT — ${s.rate.toLocaleString('vi-VN')}đ/h`:`LCB — ${(s.base/1e6).toFixed(0)}M/tháng`}</div></div>
+      <div class="cp-back" onclick="backToGrid()">← Quay lại</div>
+    </div>
+    <div class="cp-status">
+      <div class="cp-status-icon">${statusIcon}</div>
+      <div class="cp-status-label">${statusLabel}</div>
+      <div class="cp-status-sub">${statusSub}</div>
+      ${(status==='working'||status==='break')?`<div class="cp-elapsed" id="cp-elapsed">${elapsed(rec)||'00:00:00'}</div>`:''}
+    </div>
+    ${infoHtml}
+    ${breakLogHtml}
+    ${resultHtml}
+    <div class="cp-actions">${actionsHtml}</div>
+  </div>`;
+}
+
+function backToGrid(){ state.selectedStaff=null; renderClock(); }
+
+// ── CLOCK ACTIONS ─────────────────────────────────────
+function clockIn(sid){
+  const today=todayKey(); const rec=getRec(today,sid)||{};
+  if(rec.clockIn){toast('Đã vào ca rồi!','w');return;}
+  setRec(today,sid,{clockIn:Date.now(),clockOut:null,breaks:[],status:'working'});
+  toast('✅ Vào ca thành công!');
+  renderStaffClock(sid);
+}
+function startBreak(sid){
+  const today=todayKey(); const rec=getRec(today,sid);
+  if(!rec?.clockIn){toast('Chưa vào ca!','e');return;}
+  if(rec.breaks?.some(b=>!b.end)){toast('Đang nghỉ giải lao rồi!','w');return;}
+  rec.breaks=rec.breaks||[];
+  rec.breaks.push({start:Date.now(),end:null});
+  setRec(today,sid,rec);
+  toast('🟡 Bắt đầu nghỉ giải lao');
+  renderStaffClock(sid);
+}
+function endBreak(sid){
+  const today=todayKey(); const rec=getRec(today,sid);
+  const openBreak=rec?.breaks?.findLast(b=>!b.end);
+  if(!openBreak){toast('Không có giải lao đang mở!','e');return;}
+  openBreak.end=Date.now();
+  setRec(today,sid,rec);
+  toast('🔵 Quay lại làm việc');
+  renderStaffClock(sid);
+}
+function clockOut(sid){
+  const today=todayKey(); const rec=getRec(today,sid);
+  if(!rec?.clockIn){toast('Chưa vào ca!','e');return;}
+  // Close any open break
+  const openBreak=rec?.breaks?.findLast(b=>!b.end);
+  if(openBreak) openBreak.end=Date.now();
+  rec.clockOut=Date.now();
+  setRec(today,sid,rec);
+  toast('🔴 Kết thúc ca!');
+  renderStaffClock(sid);
+}
+function markOff(sid){
+  if(!confirm('Đánh dấu '+STAFF.find(s=>s.id===sid).name+' nghỉ hôm nay?')) return;
+  const today=todayKey();
+  setRec(today,sid,{isOff:true});
+  toast('📅 Đã đánh dấu nghỉ');
+  renderStaffClock(sid);
+}
+function resetDay(sid){
+  if(!confirm('Xóa dữ liệu hôm nay của '+STAFF.find(s=>s.id===sid).name+'?')) return;
+  const today=todayKey();
+  delete getDay(today)[sid];
+  saveState();
+  toast('↩ Đã xóa, có thể nhập lại');
+  renderStaffClock(sid);
+}
+
+// ══════════════════════════════════════════════════════
+// SUMMARY TAB
+// ══════════════════════════════════════════════════════
+function renderSummary(){
+  const el=document.getElementById('pg-summary');
+  const dk=dateKey(state.sumDateOffset);
+  const dayRec=getDay(dk);
+  const isToday=state.sumDateOffset===0;
+
+  const cards=STAFF.map(s=>{
+    const rec=dayRec[s.id];
+    if(!rec) return `<div class="sum-card">
+      <div class="sc-h"><div class="sc-dot" style="background:${s.hex}"></div>
+      <span class="sc-name">${s.name}</span><span class="sc-badge badge-o">Chưa có dữ liệu</span></div>
+    </div>`;
+    if(rec.isOff) return `<div class="sum-card">
+      <div class="sc-h"><div class="sc-dot" style="background:${s.hex}"></div>
+      <span class="sc-name">${s.name}</span><span class="sc-badge badge-o">休 Nghỉ</span></div>
+    </div>`;
+
+    const status=rec.clockOut?'done':rec.clockIn?rec.breaks?.some(b=>!b.end)?'break':'working':'idle';
+    const badgeCls={working:'badge-w',break:'badge-b',done:'badge-d',idle:'badge-o'}[status];
+    const badgeTxt={working:'🟢 Đang làm',break:'🟡 Giải lao',done:'✅ Xong ca',idle:'Chưa vào'}[status];
+    const hours=rec.clockOut?calcHours(rec):null;
+    const sal=hours?calcDaySalary(s,hours):null;
+    const breaks=(rec.breaks||[]).filter(b=>b.end);
+
+    return `<div class="sum-card">
+      <div class="sc-h"><div class="sc-dot" style="background:${s.hex}"></div>
+      <span class="sc-name">${s.name}</span><span class="sc-badge ${badgeCls}">${badgeTxt}</span></div>
+      <div class="sc-body">
+        ${rec.clockIn?`<div class="sc-row"><span class="sc-l">Vào ca</span><span class="sc-v">${fmtTime(rec.clockIn)}</span></div>`:''}
+        ${rec.clockOut?`<div class="sc-row"><span class="sc-l">Ra ca</span><span class="sc-v">${fmtTime(rec.clockOut)}</span></div>`:''}
+        ${hours?`<div class="sc-row"><span class="sc-l">Tổng giờ</span><span class="sc-v">${fmtH(hours.total)}</span></div>`:''}
+        ${hours&&hours.night>0.05?`<div class="sc-row"><span class="sc-l">Giờ đêm (sau 22h)</span><span class="sc-v">${fmtH(hours.night)}</span></div>`:''}
+        ${breaks.length?`<div class="sc-row"><span class="sc-l">Nghỉ giải lao</span><span class="sc-v">${breaks.length} lần / ${fmtMin(breaks.reduce((a,b)=>a+Math.round((b.end-b.start)/60000),0))}</span></div>`:''}
+        ${sal!==null?`<div class="sc-sal"><span>${s.type==='pt'?'Lương ca':'Phụ cấp đêm'}</span><span class="sc-v">${fmtNum(sal)}</span></div>`:''}
+      </div>
+    </div>`;
+  }).join('');
+
+  el.innerHTML=`<div class="sum-date-nav">
+    <button class="nav-btn" onclick="sumNav(-1)">‹</button>
+    <div class="sum-date">${fmtDate(dk)}${isToday?' <span style="font-size:10px;background:#1e7a48;color:#fff;border-radius:4px;padding:1px 6px;vertical-align:middle">HÔM NAY</span>':''}</div>
+    <button class="nav-btn" onclick="sumNav(1)">›</button>
+  </div>
+  ${cards}`;
+}
+function sumNav(d){ state.sumDateOffset+=d; renderSummary(); }
+
+// ══════════════════════════════════════════════════════
+// ADMIN TAB
+// ══════════════════════════════════════════════════════
+function renderAdmin(){
+  const el=document.getElementById('pg-admin');
+  if(!state.adminUnlocked){ renderAdminLock(el); return; }
+  renderAdminPanel(el);
+}
+function renderAdminLock(el){
+  el.innerHTML=`<div class="admin-lock">
+    <div class="al-icon">🔒</div>
+    <div class="al-h">Khu vực Quản Lý / 管理エリア</div>
+    <div class="al-s">Nhập mật khẩu quản lý để xem báo cáo lương</div>
+    <input class="al-input" type="password" id="adminPass" placeholder="••••" maxlength="8" onkeydown="if(event.key==='Enter')adminLogin()">
+    <button class="al-btn" onclick="adminLogin()">Đăng Nhập / ログイン</button>
+    <div class="al-err" id="adminErr"></div>
+  </div>`;
+  setTimeout(()=>document.getElementById('adminPass')?.focus(),100);
+}
+function adminLogin(){
+  const pass=document.getElementById('adminPass')?.value||'';
+  if(pass===ADMIN_PASS){ state.adminUnlocked=true; renderAdminPanel(document.getElementById('pg-admin')); }
+  else { document.getElementById('adminErr').textContent='❌ Sai mật khẩu'; }
+}
+
+function renderAdminPanel(el){
+  const now=new Date();
+  // Generate month options (last 6 months + next 1)
+  const months=[];
+  for(let i=-5;i<=1;i++){
+    const d=new Date(now.getFullYear(),now.getMonth()+i,1);
+    const k=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+    months.push({k,label:'Tháng '+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear()});
+  }
+  const selMk=state.adminMonth||months[months.length-2].k;
+  const [sy,sm]=selMk.split('-').map(Number);
+
+  // Calc all staff for month
+  const summaries=STAFF.map(s=>({s,sum:calcMonthSalary(s,selMk)}));
+  const totalSalary=summaries.reduce((a,b)=>a+b.sum.total,0);
+  const totalHours=summaries.reduce((a,b)=>a+b.sum.totalH,0);
+
+  const kpiHtml=`<div class="kpi-row">
+    <div class="kpi"><div class="kpi-l">Tổng lương tháng</div><div class="kpi-v">${(totalSalary/1e6).toFixed(1)}M</div></div>
+    <div class="kpi"><div class="kpi-l">Tổng giờ làm</div><div class="kpi-v">${fmtH(totalHours)}</div></div>
+  </div>`;
+
+  const staffCards=summaries.map(({s,sum})=>{
+    const dayRowsHtml=sum.dayDetails.map(dd=>{
+      if(dd.isOff) return `<div class="day-row"><span class="dr-d">Ngày ${String(dd.d).padStart(2,'0')}</span><span><span class="kyuu-badge">休</span></span><span class="dr-s">—</span></div>`;
+      const daySal=calcDaySalary(s,dd.h);
+      return `<div class="day-row"><span class="dr-d">Ngày ${String(dd.d).padStart(2,'0')}</span><span class="dr-v">${fmtH(dd.h.total)}</span><span class="dr-s">${fmtNum(daySal)}</span></div>`;
+    }).join('');
+
+    return `<div class="staff-salary-card">
+      <div class="ssc-hdr">
+        <div class="ssc-color" style="background:${s.hex}"></div>
+        <div class="ssc-name">${s.name}${s.jp?' — '+s.jp:''}<br><span style="font-size:10px;color:var(--ink4);font-weight:400">${s.type==='pt'?s.rate.toLocaleString('vi-VN')+'đ/h':'LCB '+( s.base/1e6).toFixed(0)+'M'}</span></div>
+        <div class="ssc-total">${fmtNum(sum.total)}</div>
+      </div>
+      <div class="ssc-body">
+        <div class="ssc-row"><span class="ssc-l">Số ngày làm</span><span class="ssc-v">${sum.workDays} ngày</span></div>
+        <div class="ssc-row"><span class="ssc-l">Tổng giờ làm</span><span class="ssc-v">${fmtH(sum.totalH)}</span></div>
+        <div class="ssc-row"><span class="ssc-l">Giờ đêm (≥22h)</span><span class="ssc-v">${fmtH(sum.totalNight)}</span></div>
+        ${sum.totalH>OT_THRESHOLD?`<div class="ssc-row"><span class="ssc-l">OT (vượt ${OT_THRESHOLD}h)</span><span class="ssc-v" style="color:var(--r)">${fmtH(sum.totalH-OT_THRESHOLD)}</span></div>`:''}
+        <div class="ssc-row"><span class="ssc-l">Tiền ăn (${sum.mealDays} ngày)</span><span class="ssc-v">${fmtNum(sum.meal)}</span></div>
+        ${sum.offDays?`<div class="ssc-row"><span class="ssc-l">休 Ngày nghỉ</span><span class="ssc-v">${sum.offDays} ngày</span></div>`:''}
+        ${s.type==='main'?`<div class="ssc-row"><span class="ssc-l">Lương cơ bản</span><span class="ssc-v">${fmtNum(s.base)}</span></div>`:''}
+        <div class="ssc-detail">
+          <div class="ssc-det-h">Chi tiết theo ngày</div>
+          ${dayRowsHtml||'<div style="font-size:12px;color:var(--ink4);padding:4px 0">Chưa có dữ liệu</div>'}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  el.innerHTML=`<div class="admin-panel">
+    <div class="adm-month-sel">
+      <select id="adminMonthSel" onchange="changeAdminMonth(this.value)">
+        ${months.map(m=>`<option value="${m.k}"${m.k===selMk?' selected':''}>${m.label}</option>`).join('')}
+      </select>
+      <button class="export-btn dk" onclick="exportCSV()">📊 Xuất CSV</button>
+    </div>
+    ${kpiHtml}
+    ${staffCards}
+    <button class="export-btn btn-off" style="width:100%;margin-top:6px;color:var(--r)" onclick="adminLogout()">🔒 Đăng Xuất</button>
+  </div>`;
+}
+function changeAdminMonth(mk){ state.adminMonth=mk; renderAdminPanel(document.getElementById('pg-admin')); }
+function adminLogout(){ state.adminUnlocked=false; renderAdmin(); }
+
+// ══════════════════════════════════════════════════════
+// CSV EXPORT
+// ══════════════════════════════════════════════════════
+function exportCSV(){
+  const mk=state.adminMonth;
+  const [y,m]=mk.split('-').map(Number);
+  const daysInMonth=new Date(y,m,0).getDate();
+  const rows=[['Ngày','Nhân viên','Loại','Vào ca','Ra ca','Giờ làm','Giờ đêm','Nghỉ (ph)','休','Lương ngày']];
+  for(let d=1;d<=daysInMonth;d++){
+    const dk=y+'-'+String(m).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+    STAFF.forEach(s=>{
+      const rec=getRec(dk,s.id);
+      if(!rec) return;
+      if(rec.isOff){rows.push([d,s.name,s.type,'','','','','','休','0']);return;}
+      const h=calcHours(rec);
+      const sal=h?calcDaySalary(s,h):0;
+      rows.push([d,s.name,s.type,fmtTime(rec.clockIn),fmtTime(rec.clockOut),h?h.total.toFixed(2):'',h?h.night.toFixed(2):'',h?h.breaks:'','',sal]);
+    });
+  }
+  const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8;'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`cham-cong-${mk}.csv`;
+  a.click();
+  toast('📊 Đã xuất CSV');
+}
+
+// ══════════════════════════════════════════════════════
+// TOAST
+// ══════════════════════════════════════════════════════
+let toastT;
+function toast(msg,type='s'){
+  const el=document.getElementById('toast');
+  el.textContent=msg;
+  el.style.background=type==='e'?'var(--r)':type==='w'?'var(--o)':'var(--ink)';
+  el.classList.add('show');
+  clearTimeout(toastT);
+  toastT=setTimeout(()=>el.classList.remove('show'),2200);
+}
+
+// ══════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════
+loadState();
+renderClock();
+setInterval(updateClock,1000);
+updateClock();
+</script>
+</body>
+</html>
