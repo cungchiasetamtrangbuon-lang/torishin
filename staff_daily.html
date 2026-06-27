@@ -231,6 +231,7 @@
     }
     function saveState(){
       try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(S)); }catch(e){}
+      try{ if(typeof saveToCloud === 'function') saveToCloud(); }catch(e){}
     }
     function getMonthIdForDate(dateValue){
       const d = new Date(dateValue || new Date().toISOString().slice(0,10));
@@ -433,6 +434,7 @@
       loadSharedState();
       const today = new Date().toISOString().slice(0,10);
       if($('date')) $('date').value = today;
+      initCloudSync();
       window.addEventListener('storage', onStorageChange);
       ['cash','card','transfer','capichi','grab'].forEach(id=>{
         const el = $(id);
@@ -454,6 +456,61 @@
       if($('downloadBtn')) $('downloadBtn').addEventListener('click', downloadReport);
       fillFormFromDate(today);
     }
+
+    /* Google Sheets / Apps Script sync (optional)
+       1) Deploy the Apps Script in google_apps_script.gs.
+       2) Paste the web app URL into GOOGLE_SHEETS_CONFIG.scriptUrl.
+       3) Save and reload the page.
+    */
+    const GOOGLE_SHEETS_CONFIG = {
+      scriptUrl: "",
+      sheetName: "data"
+    };
+    let cloudEnabled = false;
+    let cloudSyncInFlight = false;
+
+    function initCloudSync(){
+      if(!GOOGLE_SHEETS_CONFIG.scriptUrl) return;
+      cloudEnabled = true;
+      loadFromCloud();
+      document.addEventListener('visibilitychange', ()=>{
+        if(document.visibilityState === 'visible') loadFromCloud();
+      });
+    }
+
+    async function saveToCloud(){
+      if(!cloudEnabled || !GOOGLE_SHEETS_CONFIG.scriptUrl) return;
+      if(cloudSyncInFlight) return;
+      try{
+        cloudSyncInFlight = true;
+        S._lastUpdated = Date.now();
+        const response = await fetch(GOOGLE_SHEETS_CONFIG.scriptUrl, {
+          method: 'POST',
+          mode: 'cors',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ action: 'save', key: STORAGE_KEY, sheet: GOOGLE_SHEETS_CONFIG.sheetName, data: S })
+        });
+        if(!response.ok) throw new Error('save failed');
+      }catch(e){ console.warn('saveToCloud failed', e); }
+      finally { cloudSyncInFlight = false; }
+    }
+
+    async function loadFromCloud(){
+      if(!cloudEnabled || !GOOGLE_SHEETS_CONFIG.scriptUrl) return;
+      try{
+        const url = `${GOOGLE_SHEETS_CONFIG.scriptUrl}?action=load&key=${encodeURIComponent(STORAGE_KEY)}&sheet=${encodeURIComponent(GOOGLE_SHEETS_CONFIG.sheetName)}`;
+        const response = await fetch(url, { mode: 'cors' });
+        if(!response.ok) throw new Error('load failed');
+        const payload = await response.json();
+        if(payload && payload.data){
+          const remote = payload.data;
+          const localTs = S._lastUpdated || 0;
+          const remoteTs = remote._lastUpdated || 0;
+          if(remoteTs > localTs){ Object.assign(S, remote); fillFormFromDate($('date')?.value); saveState(); }
+        }
+      }catch(e){ console.warn('loadFromCloud failed', e); }
+    }
+
     init();
   </script>
 </body>
