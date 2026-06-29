@@ -459,7 +459,7 @@ const STAFF=[
   {id:'thuy',  name:'Thúy',  jp:'トゥイ',  type:'main',base:10000000,hex:'#1a7a45',ds:14.5,de:26,  fix:true, defaultBreak:30, requestedOff:[5,12,19,26]},
   {id:'khuong',name:'Khương',jp:'クオン',  type:'main',base:10000000,hex:'#1840a0',ds:14.5,de:26,  fix:true, defaultBreak:30, requestedOff:[3,10,17,24]},
   {id:'kha',   name:'Khá',   jp:'カー',    type:'pt',  rate:30000,   hex:'#b05010',ds:16,  de:23,  fix:false,defaultBreak:0,  requestedOff:[2,9,16,23], kiboHours:{}},
-  {id:'tham',  name:'Thắm',  jp:'タム',    type:'pt',  rate:33000,   hex:'#982068',ds:18,  de:23,  fix:false,defaultBreak:0,  requestedOff:[], kiboHours:{}},
+  {id:'tham',  name:'Thắm',  jp:'タム',    type:'pt',  rate:33000,   hex:'#982068',ds:18.5,de:23,  fix:false,defaultBreak:0,  requestedOff:[], kiboHours:{}, weekendFree:true},
   {id:'nhi',   name:'Nhi',   jp:'ニー',    type:'pt',  rate:30000,   hex:'#a81818',ds:18.5,de:23,  fix:false,defaultBreak:0,  requestedOff:[], kiboHours:{}},
 ];
 
@@ -671,7 +671,8 @@ function buildDefault(){
         if(getA(d).length>=MAX)return false;
         const pt=gs(id);
         const kh=pt&&pt.kiboHours&&pt.kiboHours[d];
-        const actualS=kh&&kh.start!=null?kh.start:Math.max(s,pt&&pt.ds||s);
+        const minS=(pt&&pt.weekendFree&&(w===0||w===6))?s:(pt&&pt.ds||s);
+        const actualS=kh&&kh.start!=null?kh.start:Math.max(s,minS);
         const actualE=kh&&kh.end!=null?kh.end:e;
         sched[d].push({staffId:id,start:actualS,end:actualE,breakMin:brk||0,note:kh?'⏱特':''});
         return true;
