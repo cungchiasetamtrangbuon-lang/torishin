@@ -305,6 +305,7 @@ body{font-family:'Sora',sans-serif;background:var(--w2);color:var(--ink);min-hei
     <button class="hm-btn" onclick="changeMonth(-1)">‹</button>
     <div class="hm-lbl" id="hmLbl"></div>
     <span id="saveInd" style="font-size:9px;color:var(--g);opacity:0;transition:opacity .4s;margin-left:4px;" title="Đã lưu vào máy">💾</span>
+    <span id="syncBadge" style="font-size:9px;padding:2px 7px;border-radius:8px;color:#fff;opacity:0;transition:opacity .3s;margin-left:4px;"></span>
     <button class="hm-btn" onclick="changeMonth(1)">›</button>
   </div>
   <div class="ha" id="haEl">
@@ -470,6 +471,8 @@ let sched={};
 // LOCAL STORAGE — tự lưu vào PC
 // ════════════════════════════════════
 const STORAGE_KEY='torishin_shift_planner_v1';
+const BACKEND_URL=(window.location.hostname==='localhost'||window.location.hostname==='127.0.0.1')
+  ?'http://127.0.0.1:3000':'https://torishin.onrender.com';
 let monthScheds={};
 
 function monthKey(){return curY+'-'+curM;}
@@ -477,12 +480,58 @@ function monthKey(){return curY+'-'+curM;}
 function saveState(){
   try{
     monthScheds[monthKey()]=normalizeSched(JSON.parse(JSON.stringify(sched)));
-    localStorage.setItem(STORAGE_KEY,JSON.stringify({
-      v:1,curY,curM,OT_NIGHT,MAX,PASS,staff:STAFF,monthScheds
-    }));
+    const payload={v:1,curY,curM,OT_NIGHT,MAX,PASS,staff:STAFF,monthScheds};
+    localStorage.setItem(STORAGE_KEY,JSON.stringify(payload));
     const ind=document.getElementById('saveInd');
     if(ind){ind.style.opacity='1';clearTimeout(ind._t);ind._t=setTimeout(()=>ind.style.opacity='0',1800);}
   }catch(e){console.warn('Lưu thất bại',e);}
+  saveToCloud();
+}
+
+// ════════════════════════════════════
+// CLOUD SYNC
+// ════════════════════════════════════
+let _syncFlight=false;
+function setSyncBadge(s){
+  const el=document.getElementById('syncBadge');if(!el)return;
+  const txt={ok:'☁ Đã lưu',err:'⚠ Offline',syncing:'↑ Đang lưu...','':''};
+  const col={ok:'#1e7a48',err:'#c94040',syncing:'#8a5c08','':'transparent'};
+  el.textContent=txt[s]||'';el.style.background=col[s]||'transparent';el.style.opacity=s?'1':'0';
+}
+async function saveToCloud(){
+  if(_syncFlight)return;_syncFlight=true;setSyncBadge('syncing');
+  try{
+    const payload={v:1,curY,curM,OT_NIGHT,MAX,PASS,staff:STAFF,monthScheds,_lastUpdated:Date.now()};
+    const r=await fetch(BACKEND_URL,{method:'POST',mode:'cors',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({key:STORAGE_KEY,data:payload})});
+    if(!r.ok)throw new Error();
+    setSyncBadge('ok');setTimeout(()=>setSyncBadge(''),3000);
+  }catch(e){setSyncBadge('err');}
+  finally{_syncFlight=false;}
+}
+async function loadFromCloud(){
+  try{
+    const r=await fetch(`${BACKEND_URL}?key=${encodeURIComponent(STORAGE_KEY)}`,{mode:'cors'});
+    if(!r.ok)throw new Error();
+    const res=await r.json();
+    if(!res?.data)return;
+    const remote=res.data;
+    const localRaw=localStorage.getItem(STORAGE_KEY);
+    const localTs=localRaw?JSON.parse(localRaw)._lastUpdated||0:0;
+    const remoteTs=remote._lastUpdated||0;
+    if(remoteTs>localTs){
+      if(remote.OT_NIGHT!=null)OT_NIGHT=remote.OT_NIGHT;
+      if(remote.MAX!=null)MAX=remote.MAX;
+      if(remote.PASS)PASS=remote.PASS;
+      if(remote.curY)curY=remote.curY;
+      if(remote.curM)curM=remote.curM;
+      if(remote.monthScheds)monthScheds=remote.monthScheds;
+      if(remote.staff)remote.staff.forEach(sv=>{const s=STAFF.find(x=>x.id===sv.id);if(s)Object.assign(s,sv);});
+      localStorage.setItem(STORAGE_KEY,JSON.stringify(remote));
+      loadMonthSched();renderAll();
+      setSyncBadge('ok');setTimeout(()=>setSyncBadge(''),3000);
+    }
+  }catch(e){setSyncBadge('err');}
 }
 
 function loadState(){
@@ -1627,6 +1676,7 @@ function buildPrintTableHtml(half){
       <span>店舗：Torishin — 鳥心</span>
       <span>営業月：${curY}年${curM}月</span>
       <span>出力日時：${outTime}</span>
+      <span style="color:#c94040;font-weight:700;">v2026-06-29</span>
     </div>
     <table>
       <thead><tr style="height:26px;">${thDates}</tr><tr style="height:22px;">${thDow}</tr></thead>
@@ -1666,6 +1716,8 @@ function triggerPrint(){
 
 if(!loadState()){buildDefault();saveState();}
 renderAll();
+loadFromCloud();
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')loadFromCloud();});
 </script>
 </body>
 </html>
