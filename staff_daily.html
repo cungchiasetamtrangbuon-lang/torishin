@@ -517,7 +517,7 @@
           const remote = payload.data;
           const localTs = S._lastUpdated || 0;
           const remoteTs = remote._lastUpdated || 0;
-          if(remoteTs > localTs){ Object.assign(S, remote); fillFormFromDate($('date')?.value); saveState(); setSyncBadge('ok'); }
+          if(remoteTs > localTs){ Object.assign(S, remote); fillFormFromDate($('date')?.value); try{localStorage.setItem(STORAGE_KEY,JSON.stringify(S));}catch(e){} setSyncBadge('ok'); }
         }
       }catch(e){ console.warn('loadFromCloud failed', e); }
     }
