@@ -333,7 +333,27 @@ function loadState(){
 }
 
 function saveState(){
-  try{ localStorage.setItem('torishin_rev_v3', JSON.stringify(S)); }catch(e){}
+  try{ S._lastUpdated=Date.now(); localStorage.setItem('torishin_rev_v3', JSON.stringify(S)); }catch(e){}
+}
+
+async function loadFromCloud(){
+  try{
+    const BACKEND=(window.location.hostname==='localhost'||window.location.hostname==='127.0.0.1')
+      ?'http://127.0.0.1:3000':'https://torishin.onrender.com';
+    const r=await fetch(`${BACKEND}?key=torishin_rev_v3`,{mode:'cors'});
+    if(!r.ok)return;
+    const res=await r.json();
+    if(!res?.data)return;
+    const remote=res.data;
+    const localTs=S._lastUpdated||0;
+    const remoteTs=remote._lastUpdated||0;
+    if(remoteTs>localTs){
+      Object.assign(S,remote);
+      S.months.forEach(m=>{if(!S.data[m.id])S.data[m.id]=seedMonthData(m.id,m.days);});
+      try{localStorage.setItem('torishin_rev_v3',JSON.stringify(S));}catch(e){}
+      renderContent();
+    }
+  }catch(e){}
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1163,10 +1183,10 @@ function importJSON(){
 loadState();
 renderShell();
 renderContent();
+loadFromCloud();
 
-// Re-render dashboard when switching back to it (live data)
 document.addEventListener('visibilitychange',()=>{
-  if(!document.hidden&&S.curTab==='dashboard') renderDashboard();
+  if(!document.hidden){loadFromCloud();if(S.curTab==='dashboard')renderDashboard();}
 });
 </script>
 </body>
