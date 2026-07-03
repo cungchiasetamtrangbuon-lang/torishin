@@ -456,12 +456,12 @@ const JP=['日','月','火','水','木','金','土'];
 // STAFF: fix=true → giờ cố định (chỉ nhập giải lao)
 // defaultBreak: phút giải lao mặc định
 const STAFF=[
-  {id:'trung', name:'Trung',  jp:'チュン',  type:'main',base:12000000,hex:'#5b30a0',ds:14.5,de:26,  fix:true, defaultBreak:30, requestedOff:[4,11,18,25,30]},
-  {id:'thuy',  name:'Thúy',  jp:'トゥイ',  type:'main',base:10000000,hex:'#1a7a45',ds:14.5,de:26,  fix:true, defaultBreak:30, requestedOff:[5,12,19,26]},
-  {id:'khuong',name:'Khương',jp:'クオン',  type:'main',base:10000000,hex:'#1840a0',ds:14.5,de:26,  fix:true, defaultBreak:30, requestedOff:[3,10,17,24]},
-  {id:'kha',   name:'Khá',   jp:'カー',    type:'pt',  rate:30000,   hex:'#b05010',ds:16,  de:23,  fix:false,defaultBreak:0,  requestedOff:[2,9,16,23], kiboHours:{}},
-  {id:'tham',  name:'Thắm',  jp:'タム',    type:'pt',  rate:33000,   hex:'#982068',ds:18.5,de:23,  fix:false,defaultBreak:0,  requestedOff:[], kiboHours:{}, weekendFree:true},
-  {id:'nhi',   name:'Nhi',   jp:'ニー',    type:'pt',  rate:30000,   hex:'#a81818',ds:18.5,de:23,  fix:false,defaultBreak:0,  requestedOff:[], kiboHours:{}},
+  {id:'trung', name:'Trung',  jp:'チュン',type:'main',base:12000000,hex:'#5b30a0',ds:14.5,de:26,  fix:true, defaultBreak:30, requestedOff:[4,11,18,25,30]},
+  {id:'thuy',  name:'Thúy',  jp:'トゥイ',type:'main',base:10000000,hex:'#1a7a45',ds:14.5,de:26,  fix:true, defaultBreak:30, requestedOff:[5,12,19,26]},
+  {id:'khuong',name:'Khương',jp:'クオン',type:'main',base:10000000,hex:'#1840a0',ds:14.5,de:26,  fix:true, defaultBreak:30, requestedOff:[3,10,17,24]},
+  {id:'kha',   name:'Khá',   jp:'カー',  type:'pt',  rate:30000,   hex:'#b05010',ds:16,  de:23,  fix:false,defaultBreak:0,  requestedOff:[2,9,16,23], kiboHours:{}},
+  {id:'tham',  name:'Thắm',  jp:'タム',  type:'pt',  rate:33000,   hex:'#982068',ds:18.5,de:23,  fix:false,defaultBreak:0,  requestedOff:[], kiboHours:{}, weekendFree:true},
+  {id:'nhi',   name:'Nhi',   jp:'ニー',  type:'pt',  rate:30000,   hex:'#a81818',ds:18.5,de:23,  fix:false,defaultBreak:0,  requestedOff:[], kiboHours:{}},
 ];
 
 // sched[day] = [{staffId,start,end,breakMin,note}]
@@ -480,7 +480,7 @@ function monthKey(){return curY+'-'+curM;}
 function saveState(){
   try{
     monthScheds[monthKey()]=normalizeSched(JSON.parse(JSON.stringify(sched)));
-    const payload={v:1,curY,curM,OT_NIGHT,MAX,PASS,staff:STAFF,monthScheds};
+    const payload={v:1,curY,curM,OT_NIGHT,MAX,PASS,staff:STAFF,monthScheds,_lastUpdated:Date.now()};
     localStorage.setItem(STORAGE_KEY,JSON.stringify(payload));
     const ind=document.getElementById('saveInd');
     if(ind){ind.style.opacity='1';clearTimeout(ind._t);ind._t=setTimeout(()=>ind.style.opacity='0',1800);}
@@ -609,8 +609,7 @@ function computeStaffOff(){
     off[s.id]=new Set(((s.requestedOff)||[]).filter(d=>d>=1&&d<=dm));
   });
 
-  // ── Sửa xung đột kibo NVCT ──
-  // Nếu 2+ NVCT kibo cùng ngày → dời người sau sang ngày khác trong cùng tuần (hoặc tuần tiếp)
+  // ── Sửa xung đột kibo NVCT (kibo được ưu tiên, dời sang ngày gần nhất) ──
   for(let d=1;d<=dm;d++){
     const clash=MAINS.filter(id=>off[id].has(d));
     if(clash.length<2)continue;
@@ -618,14 +617,12 @@ function computeStaffOff(){
       const id=clash[i];
       off[id].delete(d);
       let moved=false;
-      // Thử trong cùng tuần trước
       const ws=Math.floor((d-1)/7)*7+1;
       for(let d2=ws;d2<=Math.min(ws+6,dm)&&!moved;d2++){
         if(!off[id].has(d2)&&!MAINS.filter(m=>m!==id).some(m=>off[m].has(d2))){
           off[id].add(d2);moved=true;
         }
       }
-      // Sau đó thử toàn tháng
       for(let d2=1;d2<=dm&&!moved;d2++){
         if(!off[id].has(d2)&&!MAINS.filter(m=>m!==id).some(m=>off[m].has(d2))){
           off[id].add(d2);moved=true;
@@ -634,22 +631,24 @@ function computeStaffOff(){
     }
   }
 
-  // ── NVCT: 1 ngày nghỉ/tuần ngoài kibo ──
-  // Tuần = mỗi 7 ngày từ ngày 1 (tuần 1: 1-7, tuần 2: 8-14, ...)
-  const weeks=[];
-  for(let s=1;s<=dm;s+=7) weeks.push({from:s,to:Math.min(s+6,dm)});
+  // ── NVCT: thêm ngày nghỉ extra để đủ 26 công/tháng ──
+  const TARGET_WORK_MAIN=26;
+  const needOffMain=Math.max(0,dm-TARGET_WORK_MAIN);
 
   MAINS.forEach(id=>{
-    weeks.forEach(wk=>{
-      // Đã có ngày nghỉ trong tuần này (kibo hoặc đã thêm) → bỏ qua
-      if([...off[id]].some(d=>d>=wk.from&&d<=wk.to))return;
-      // Tìm ngày không trùng NVCT khác
-      for(let d=wk.from;d<=wk.to;d++){
-        if(!off[id].has(d)&&!MAINS.filter(m=>m!==id).some(m=>off[m].has(d))){
-          off[id].add(d);break;
-        }
-      }
-    });
+    let extra=needOffMain-off[id].size;
+    if(extra<=0)return;
+    // Chỉ chọn ngày không có NVCT khác nghỉ
+    const cands=[];
+    for(let d=1;d<=dm;d++){
+      if(off[id].has(d))continue;
+      if(MAINS.filter(m=>m!==id).some(m=>off[m].has(d)))continue;
+      cands.push(d);
+    }
+    for(const d of cands){
+      if(extra<=0)break;
+      off[id].add(d);extra--;
+    }
   });
 
   // ── PT: bù ngày nghỉ để cap 26 ngày/tháng ──
@@ -1476,11 +1475,13 @@ window.toggleKibo=function(sid,d,el){
   const idx=s.requestedOff.indexOf(d);
   if(idx>=0){s.requestedOff.splice(idx,1);el.classList.remove('on');}
   else{s.requestedOff.push(d);el.classList.add('on');}
+  saveState();
 };
 window.clearKibo=function(sid){
   const s=gs(sid);if(!s)return;
   s.requestedOff=[];
   document.querySelectorAll(`#kibo-${sid} .kd`).forEach(el=>el.classList.remove('on'));
+  saveState();
 };
 
 // ── Kibo giờ đặc biệt (PT only) ──

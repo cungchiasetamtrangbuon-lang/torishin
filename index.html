@@ -13,9 +13,6 @@
 }
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:var(--font);background:var(--bg);color:var(--ink);height:100vh;display:flex;flex-direction:column;overflow:hidden}
-.staff-link-banner{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 16px;background:#fff7ed;border:1px solid #fdba74;color:#9a2c00;font-size:13px;font-weight:600;flex-wrap:wrap}
-.staff-link-banner a{color:#b45309;text-decoration:none;font-weight:700}
-.staff-link-banner a:hover{text-decoration:underline}
 
 /* HEADER */
 .hdr{background:var(--ink);color:#fff;height:52px;display:flex;align-items:center;gap:0;flex-shrink:0;z-index:100;overflow:hidden}
@@ -193,7 +190,7 @@ tr.sum-row:hover td{background:#f1f5f9}
 .bk-row-label{flex:1;min-width:0}
 .bk-row-label .jp{font-size:10.5px;color:var(--muted);display:block;margin-bottom:1px}
 .bk-row-label .vn{font-size:13.5px;font-weight:600;color:var(--ink);display:block}
-.bk-input{width:min(140px,100%);padding:9px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:15px;font-weight:700;text-align:right;font-family:var(--font);background:#fafafa;transition:.12s}
+.bk-input{width:140px;padding:9px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:15px;font-weight:700;text-align:right;font-family:var(--font);background:#fafafa;transition:.12s}
 .bk-input:focus{border-color:var(--accent);outline:none;background:#fff}
 .bill-row{display:grid;grid-template-columns:90px 56px 1fr;gap:8px;align-items:center;padding:8px 14px;border-bottom:1px solid var(--border)}
 .bill-row:last-child{border-bottom:none}
@@ -201,7 +198,7 @@ tr.sum-row:hover td{background:#f1f5f9}
 .bill-count{padding:8px 6px;border:1.5px solid var(--border);border-radius:6px;text-align:center;font-size:16px;font-weight:800;font-family:var(--font);width:100%;background:#fafafa;transition:.12s}
 .bill-count:focus{border-color:var(--info);outline:none;background:#fff}
 .bill-sub{font-size:12.5px;font-weight:600;text-align:right;color:var(--info)}
-.bk-diff{padding:10px 16px;font-size:13px;font-weight:700;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.bk-diff{padding:10px 16px;font-size:13px;font-weight:700;display:flex;justify-content:space-between;align-items:center}
 .bk-diff.ok{background:#f0fdf4;color:var(--good)}
 .bk-diff.err{background:#fef2f2;color:var(--bad)}
 .bk-diff.neu{background:var(--bg);color:var(--muted)}
@@ -210,26 +207,6 @@ tr.sum-row:hover td{background:#f1f5f9}
 .bk-save-btn:active{transform:scale(.985)}
 .bk-today-btn{padding:4px 10px;font-size:11px;border:1px solid var(--border);background:#fff;border-radius:6px;cursor:pointer;color:var(--muted);margin-left:4px}
 .bk-today-btn:hover{background:var(--bg);color:var(--ink)}
-
-@media (max-width:700px){
-  .bk-date-nav{padding:12px 12px 10px}
-  .bk-date-label{font-size:15px}
-  .bk-total-card{padding:16px}
-  .bk-total-val{font-size:24px}
-  .bk-row{flex-direction:column;align-items:stretch;gap:8px;padding:12px 12px}
-  .bk-input{width:100%;text-align:left}
-  .bill-row{grid-template-columns:74px 52px 1fr;gap:6px;padding:8px 12px}
-  .bill-denom{font-size:11px}
-  .bk-diff{flex-direction:column;align-items:flex-start}
-}
-
-/* Line report */
-.bk-line-card{background:#f8fafc;border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-top:12px}
-.bk-line-hdr{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:8px}
-.bk-line-report{width:100%;min-height:120px;border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-size:12.5px;line-height:1.5;font-family:var(--font);background:#fff;color:var(--ink);resize:vertical}
-.bk-line-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
-.bk-line-btn{padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:#fff;cursor:pointer;font-size:12px;font-weight:700;color:var(--ink)}
-.bk-line-btn:hover{background:var(--bg)}
 
 /* Print */
 @media print{
@@ -242,17 +219,12 @@ tr.sum-row:hover td{background:#f1f5f9}
 </style>
 </head>
 <body>
-<div class="staff-link-banner">
-  <span>👤 Nhân viên: dùng link riêng để nhập bảng kê ngày và xuất file để gửi qua Line.</span>
-  <a href="staff_daily.html">Mở bảng kê ngày cho nhân viên</a>
-</div>
 
 <!-- HEADER -->
 <header class="hdr">
   <div class="hdr-logo">🍣 <span>TORISHIN</span></div>
   <div class="hdr-months" id="monthTabs"></div>
   <div class="hdr-actions">
-    <a class="hdr-btn" href="staff_daily.html" title="Mở bảng kê cho nhân viên">📝 Bảng kê NV</a>
     <button class="hdr-btn" onclick="exportJSON()" title="Xuất dữ liệu JSON">⬇ Xuất</button>
     <button class="hdr-btn" onclick="importJSON()" title="Nhập dữ liệu JSON">⬆ Nhập</button>
     <button class="hdr-btn" onclick="window.print()" title="In trang">🖨</button>
@@ -558,35 +530,6 @@ function bkUpdateBills(){
   }
 }
 
-function bkShowLineReport(reportText){
-  const box=document.getElementById('bk-line-box');
-  const ta=document.getElementById('bk-line-report');
-  if(ta) ta.value=reportText||'';
-  if(box) box.style.display=reportText? 'block':'none';
-}
-
-function bkCopyReport(){
-  const ta=document.getElementById('bk-line-report');
-  const text=ta?.value||'';
-  if(!text) return;
-  if(navigator.clipboard?.writeText){
-    navigator.clipboard.writeText(text).then(()=>alert('Đã copy báo cáo vào clipboard.'));
-  } else {
-    ta.select(); document.execCommand('copy'); alert('Đã copy báo cáo.');
-  }
-}
-
-function bkDownloadReport(){
-  const ta=document.getElementById('bk-line-report');
-  const text=ta?.value||'';
-  if(!text) return;
-  const blob=new Blob([text],{type:'text/plain;charset=utf-8'});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');
-  a.href=url; a.download='bang-ke-ngay-line.txt'; a.click();
-  URL.revokeObjectURL(url);
-}
-
 function bkSave(){
   const d=bkGetDate(), idx=bkDayIndex(d);
   if(idx<0){ alert('Ngày này không thuộc tháng '+S.curMonth); return; }
@@ -600,36 +543,15 @@ function bkSave(){
   const total=(cash||0)+(card||0)+(tf||0)+(cap||0)+(grb||0);
   const bills={};
   BILLS.forEach(b=>{const cnt=parseInt(document.getElementById('bill_'+b)?.value)||0;if(cnt)bills[b]=cnt;});
-  const billSum=BILLS.reduce((s,b)=>s+(bills[b]||0)*b,0);
-  const diff=billSum-(cash||0);
   const dt=md.doanhThu[idx]||{};
   if(hasBreakdown) dt.rev=total;
   if(cash!==null) dt.cash=cash; if(card!==null) dt.card=card;
   if(tf!==null) dt.transfer=tf; if(cap!==null) dt.capichi=cap; if(grb!==null) dt.grab=grb;
   if(Object.keys(bills).length) dt.bills=bills;
-  const fmt=(v)=>v!=null&&v!==0?Math.round(v).toLocaleString('vi-VN')+'đ':'0đ';
-  const report=[
-    'BẢNG KÊ NGÀY - NHÂN VIÊN',
-    `Ngày: ${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`,
-    `Thứ: ${DOW_FULL_VN[d.getDay()]}`,
-    '',
-    'PHÂN LOẠI DOANH THU',
-    `Tiền mặt: ${fmt(cash||0)}`,
-    `Thẻ ngân hàng: ${fmt(card||0)}`,
-    `Chuyển khoản: ${fmt(tf||0)}`,
-    `Capichi: ${fmt(cap||0)}`,
-    `Grab: ${fmt(grb||0)}`,
-    '',
-    `Tổng doanh thu: ${fmt(total)}`,
-    `Tổng tiền mặt đếm được: ${fmt(billSum)}`,
-    `Chênh lệch: ${fmt(diff)}`,
-  ].join('\n');
-  dt.report=report;
   md.doanhThu[idx]=dt;
   saveState();
-  bkShowLineReport(report);
   const btn=document.querySelector('.bk-save-btn');
-  if(btn){btn.textContent='✓ Đã lưu và tạo báo cáo';btn.style.background='var(--good)';
+  if(btn){btn.textContent='✓ Đã lưu thành công!';btn.style.background='var(--good)';
     setTimeout(()=>{btn.textContent='💾 Lưu Bảng Kê / 保存';btn.style.background='';},2000);}
 }
 
@@ -674,7 +596,6 @@ function renderBaoKe(){
     </div>`).join('');
 
   const billSum=BILLS.reduce((s,b)=>s+(bills[b]||0)*b,0);
-  const savedReport=dt?.report||'';
 
   document.getElementById('main').innerHTML=`
   <div class="page-hdr">
@@ -732,14 +653,6 @@ function renderBaoKe(){
   </div>
 
   <button class="bk-save-btn" onclick="bkSave()">💾 Lưu Bảng Kê / 保存</button>
-  <div class="bk-line-card" id="bk-line-box" style="display:${savedReport?'block':'none'}">
-    <div class="bk-line-hdr">📱 Báo cáo để gửi Line / LINE送信用</div>
-    <textarea class="bk-line-report" id="bk-line-report" readonly>${savedReport}</textarea>
-    <div class="bk-line-actions">
-      <button class="bk-line-btn" type="button" onclick="bkCopyReport()">📋 Copy</button>
-      <button class="bk-line-btn" type="button" onclick="bkDownloadReport()">⬇ Tải .txt</button>
-    </div>
-  </div>
   <div style="height:20px"></div>
   `}`;
 }
