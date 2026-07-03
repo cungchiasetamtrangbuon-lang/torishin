@@ -189,6 +189,7 @@
             <button class="btn btn-secondary" id="copyBtn">📋 Copy</button>
             <button class="btn btn-secondary" id="downloadBtn">⬇ Tải .txt</button>
           </div>
+          <div id="syncBadge" style="margin-top:8px;font-size:12px;padding:4px 10px;border-radius:8px;display:inline-block;opacity:0;transition:opacity .3s;"></div>
         </div>
       </div>
     </div>
@@ -230,7 +231,7 @@
       }
     }
     function saveState(){
-      try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(S)); }catch(e){}
+      try{ S._lastUpdated=Date.now(); localStorage.setItem(STORAGE_KEY, JSON.stringify(S)); }catch(e){}
       try{ if(typeof saveToCloud === 'function') saveToCloud(); }catch(e){}
     }
     function getMonthIdForDate(dateValue){
@@ -478,12 +479,22 @@
       });
     }
 
+    function setSyncBadge(state){
+      const el=document.getElementById('syncBadge');if(!el)return;
+      const map={ok:{text:'☁ Đã lưu lên cloud',bg:'#d1fae5',color:'#065f46'},
+                 err:{text:'⚠ Lưu cloud thất bại',bg:'#fee2e2',color:'#991b1b'},
+                 syncing:{text:'↑ Đang đồng bộ...',bg:'#fef3c7',color:'#92400e'}};
+      const m=map[state];if(!m){el.style.opacity='0';return;}
+      el.textContent=m.text;el.style.background=m.bg;el.style.color=m.color;el.style.opacity='1';
+      if(state==='ok')setTimeout(()=>el.style.opacity='0',3000);
+    }
+
     async function saveToCloud(){
       if(!cloudEnabled || !BACKEND_CONFIG.url) return;
       if(cloudSyncInFlight) return;
+      setSyncBadge('syncing');
       try{
         cloudSyncInFlight = true;
-        S._lastUpdated = Date.now();
         const response = await fetch(BACKEND_CONFIG.url, {
           method: 'POST',
           mode: 'cors',
@@ -491,7 +502,8 @@
           body: JSON.stringify({ key: STORAGE_KEY, data: S })
         });
         if(!response.ok) throw new Error('save failed');
-      }catch(e){ console.warn('saveToCloud failed', e); }
+        setSyncBadge('ok');
+      }catch(e){ setSyncBadge('err'); console.warn('saveToCloud failed', e); }
       finally { cloudSyncInFlight = false; }
     }
 
@@ -505,7 +517,7 @@
           const remote = payload.data;
           const localTs = S._lastUpdated || 0;
           const remoteTs = remote._lastUpdated || 0;
-          if(remoteTs > localTs){ Object.assign(S, remote); fillFormFromDate($('date')?.value); saveState(); }
+          if(remoteTs > localTs){ Object.assign(S, remote); fillFormFromDate($('date')?.value); saveState(); setSyncBadge('ok'); }
         }
       }catch(e){ console.warn('loadFromCloud failed', e); }
     }
