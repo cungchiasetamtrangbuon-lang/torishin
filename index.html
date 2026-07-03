@@ -225,6 +225,7 @@ tr.sum-row:hover td{background:#f1f5f9}
   <div class="hdr-logo">🍣 <span>TORISHIN</span></div>
   <div class="hdr-months" id="monthTabs"></div>
   <div class="hdr-actions">
+    <button class="hdr-btn" id="syncCloudBtn" onclick="saveToCloud()" title="Đồng bộ lên cloud">☁ Đồng bộ</button>
     <button class="hdr-btn" onclick="exportJSON()" title="Xuất dữ liệu JSON">⬇ Xuất</button>
     <button class="hdr-btn" onclick="importJSON()" title="Nhập dữ liệu JSON">⬆ Nhập</button>
     <button class="hdr-btn" onclick="window.print()" title="In trang">🖨</button>
@@ -333,7 +334,29 @@ function loadState(){
 }
 
 function saveState(){
-  try{ S._lastUpdated=Date.now(); localStorage.setItem('torishin_rev_v3', JSON.stringify(S)); }catch(e){}
+  try{ localStorage.setItem('torishin_rev_v3', JSON.stringify(S)); }catch(e){}
+}
+
+let _syncFlight=false;
+async function saveToCloud(){
+  if(_syncFlight)return;
+  const btn=document.getElementById('syncCloudBtn');
+  if(btn){btn.textContent='↑ Đang lưu...';btn.style.opacity='.7';}
+  try{
+    _syncFlight=true;
+    S._lastUpdated=Date.now();
+    localStorage.setItem('torishin_rev_v3',JSON.stringify(S));
+    const BACKEND=(window.location.hostname==='localhost'||window.location.hostname==='127.0.0.1')
+      ?'http://127.0.0.1:3000':'https://torishin.onrender.com';
+    const r=await fetch(BACKEND,{method:'POST',mode:'cors',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({key:'torishin_rev_v3',data:S})});
+    if(!r.ok)throw new Error();
+    if(btn){btn.textContent='☁ Đã lưu';btn.style.opacity='1';btn.style.color='#6ee7b7';
+      setTimeout(()=>{btn.textContent='☁ Đồng bộ';btn.style.color='';},2500);}
+  }catch(e){
+    if(btn){btn.textContent='⚠ Lỗi';btn.style.opacity='1';btn.style.color='#fca5a5';
+      setTimeout(()=>{btn.textContent='☁ Đồng bộ';btn.style.color='';},2500);}
+  }finally{_syncFlight=false;}
 }
 
 async function loadFromCloud(){
