@@ -391,16 +391,16 @@ async function saveToCloud(){
   if(_syncFlight){ _syncDirty=true; return; }
   _syncFlight=true; _syncDirty=false; setSyncBadge('syncing');
   try{
-    // Transaction: đọc dữ liệu Firebase, merge với local, rồi ghi — không bao giờ ghi đè máy khác
-    await _fbRef.transaction(current=>{
-      const base=current||{};
-      return {
-        records: mergeRecords(base.records||{}, state.records),
-        staffConfig: Object.assign({}, base.staffConfig||{}, state.staffConfig),
-        adminPass: state.adminPass||base.adminPass||null,
-        _lastUpdated: Date.now()
-      };
+    // update() với path cụ thể: chỉ ghi đúng record đó, không đụng record của máy khác
+    const updates={};
+    Object.entries(state.records||{}).forEach(([dk,day])=>{
+      Object.entries(day||{}).forEach(([sid,rec])=>{
+        updates[`records/${dk}/${sid}`]=rec;
+      });
     });
+    updates['staffConfig']=state.staffConfig;
+    if(state.adminPass!=null) updates['adminPass']=state.adminPass;
+    await _fbRef.update(updates);
     setSyncBadge('ok'); setTimeout(()=>setSyncBadge(''),3000);
   }catch(e){ setSyncBadge('err'); }
   finally{ _syncFlight=false; if(_syncDirty) setTimeout(saveToCloud,500); }
