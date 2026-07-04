@@ -565,9 +565,10 @@ function confirmPin(){
   const entered=document.getElementById('pinInput').value.trim();
   const pin=String(state.staffConfig[_pinTarget]?.pin||'').trim();
   if(String(entered)===String(pin)){
+    const sid=_pinTarget;
     closePinModal();
-    state.selectedStaff=_pinTarget;
-    renderStaffClock(_pinTarget);
+    state.selectedStaff=sid;
+    renderStaffClock(sid);
   } else {
     document.getElementById('pinErr').textContent='❌ Sai PIN, thử lại';
     document.getElementById('pinInput').value='';
