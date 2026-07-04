@@ -686,7 +686,8 @@ function renderStaffClock(sid){
   if(status==='idle'){
     actionsHtml=`
       <button class="act-btn btn-in" onclick="clockIn('${sid}')">🟢 Vào Ca / 出勤</button>
-      <button class="act-btn btn-off" onclick="markOff('${sid}')">📅 Đánh Dấu Nghỉ / 休日</button>`;
+      <button class="act-btn btn-off" onclick="markOff('${sid}')">📅 Đánh Dấu Nghỉ / 休日</button>
+      <button class="act-btn" style="background:#5b30a0;color:#fff;font-size:13px" onclick="openEditTime('${today}','${sid}')">⌨ Nhập Giờ Thủ Công</button>`;
   } else if(status==='working'){
     actionsHtml=`
       <button class="act-btn btn-break" onclick="startBreak('${sid}')">🟡 Bắt Đầu Giải Lao / 休憩</button>
@@ -694,7 +695,9 @@ function renderStaffClock(sid){
   } else if(status==='break'){
     actionsHtml=`<button class="act-btn btn-resume" onclick="endBreak('${sid}')">🔵 Quay Lại Làm / 休憩終了</button>`;
   } else if(status==='done'||status==='off'){
-    actionsHtml=`<button class="act-btn btn-off" onclick="resetDay('${sid}')" style="font-size:12px;padding:10px">↩ Chỉnh sửa / やり直し</button>`;
+    actionsHtml=`
+      <button class="act-btn" style="background:#1840a0;color:#fff;font-size:13px" onclick="openEditTime('${today}','${sid}')">✏️ Sửa Giờ</button>
+      <button class="act-btn btn-off" onclick="resetDay('${sid}')" style="font-size:12px;padding:10px">↩ Xóa & Nhập Lại</button>`;
   }
 
   // Info rows
@@ -831,7 +834,8 @@ function renderSummary(){
     const status=rec.clockOut?'done':rec.clockIn?rec.breaks?.some(b=>!b.end)?'break':'working':'idle';
     const badgeCls={working:'badge-w',break:'badge-b',done:'badge-d',idle:'badge-o'}[status];
     const badgeTxt={working:'🟢 Đang làm',break:'🟡 Giải lao',done:'✅ Xong ca',idle:'Chưa vào'}[status];
-    const hours=rec.clockOut?calcHours(rec):null;
+    const isWorking=rec.clockIn&&!rec.clockOut;
+    const hours=rec.clockIn?calcHours({...rec,clockOut:rec.clockOut||Date.now()}):null;
     const sal=hours?calcDaySalary(s,hours):null;
     const breaks=(rec.breaks||[]).filter(b=>b.end);
 
@@ -841,10 +845,10 @@ function renderSummary(){
       <div class="sc-body">
         ${rec.clockIn?`<div class="sc-row"><span class="sc-l">Vào ca</span><span class="sc-v">${fmtTime(rec.clockIn)}</span></div>`:''}
         ${rec.clockOut?`<div class="sc-row"><span class="sc-l">Ra ca</span><span class="sc-v">${fmtTime(rec.clockOut)}</span></div>`:''}
-        ${hours?`<div class="sc-row"><span class="sc-l">Tổng giờ</span><span class="sc-v">${fmtH(hours.total)}</span></div>`:''}
+        ${hours?`<div class="sc-row"><span class="sc-l">Tổng giờ${isWorking?' ⏱':''}</span><span class="sc-v">${fmtH(hours.total)}</span></div>`:''}
         ${hours&&hours.night>0.05?`<div class="sc-row"><span class="sc-l">Giờ đêm (sau 22h)</span><span class="sc-v">${fmtH(hours.night)}</span></div>`:''}
         ${breaks.length?`<div class="sc-row"><span class="sc-l">Nghỉ giải lao</span><span class="sc-v">${breaks.length} lần / ${fmtMin(breaks.reduce((a,b)=>a+Math.round((b.end-b.start)/60000),0))}</span></div>`:''}
-        ${sal!==null?`<div class="sc-sal"><span>${s.type==='pt'?'Lương ca':'Phụ cấp đêm'}</span><span class="sc-v">${fmtNum(sal)}</span></div>`:''}
+        ${sal!==null?`<div class="sc-sal"><span>${s.type==='pt'?'Lương ca':'Phụ cấp đêm'}${isWorking?' (~)':''}</span><span class="sc-v">${fmtNum(sal)}</span></div>`:''}
       </div>
     </div>`;
   }).join('');
@@ -949,6 +953,7 @@ function renderAdminPanel(el){
     </div>
     ${kpiHtml}
     ${staffCards}
+    ${renderManualEntry()}
     ${renderSalarySettings()}
     ${renderAdminPassSection()}
     <button class="export-btn btn-off" style="width:100%;margin-top:6px;color:var(--r)" onclick="adminLogout()">🔒 Đăng Xuất</button>
@@ -1011,6 +1016,31 @@ function exportExcel(){
 }
 
 // ══════════════════════════════════════════════════════
+// MANUAL ENTRY
+// ══════════════════════════════════════════════════════
+function renderManualEntry(){
+  const today=new Date().toISOString().split('T')[0];
+  return `<div style="margin-top:16px;background:var(--w);border:1px solid var(--bdr);border-radius:var(--rr);overflow:hidden;">
+    <div style="padding:12px 16px;border-bottom:1px solid var(--bdr);font-weight:700;font-size:13px;">⌨ Nhập/Sửa giờ cho ngày cụ thể</div>
+    <div style="padding:12px 16px;display:flex;flex-direction:column;gap:10px;">
+      <div style="display:flex;gap:8px;">
+        <select id="meStaff" style="flex:1;padding:9px 10px;border:1px solid var(--bdr);border-radius:8px;font-size:13px;">
+          ${STAFF.map(s=>`<option value="${s.id}">${s.name}</option>`).join('')}
+        </select>
+        <input type="date" id="meDate" value="${today}"
+          style="flex:1;padding:9px 10px;border:1px solid var(--bdr);border-radius:8px;font-size:13px;">
+      </div>
+      <button onclick="openManualEntry()" style="padding:10px;background:var(--ink);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">✏️ Mở chỉnh giờ</button>
+    </div>
+  </div>`;
+}
+function openManualEntry(){
+  const sid=document.getElementById('meStaff')?.value;
+  const dk=document.getElementById('meDate')?.value;
+  if(!sid||!dk){toast('Chọn nhân viên và ngày','e');return;}
+  openEditTime(dk,sid);
+}
+
 // ADMIN PASSWORD
 // ══════════════════════════════════════════════════════
 function renderAdminPassSection(){
