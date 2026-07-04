@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
 <title>🍣 Torishin — Chấm Công / 打刻</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@300;400;500&family=Sora:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
 <style>
 :root{
   --w:#ffffff;--w2:#f8f6f2;--w3:#f0ece4;--w4:#e4dfd5;
@@ -230,20 +231,53 @@ let state = {
   adminMonth: null,
   sumDateOffset: 0,
   selectedStaff: null,
+  staffConfig: {}, // {id: {base|rate}} — salary overrides
 };
 
+function applyStaffConfig(){
+  STAFF.forEach(s=>{
+    const cfg=state.staffConfig[s.id];
+    if(!cfg) return;
+    if(s.type==='main'&&cfg.base) s.base=Number(cfg.base);
+    if(s.type==='pt'&&cfg.rate) s.rate=Number(cfg.rate);
+  });
+}
 function loadState(){
   try{
     const raw = localStorage.getItem(STORAGE_KEY);
     if(raw) Object.assign(state, JSON.parse(raw));
   }catch(e){}
   if(!state.records) state.records = {};
+  if(!state.staffConfig) state.staffConfig = {};
+  applyStaffConfig();
   const now = new Date();
   state.adminMonth = state.adminMonth || (now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0'));
 }
 function saveState(){
-  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify({records:state.records,adminMonth:state.adminMonth})); }catch(e){}
+  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify({records:state.records,adminMonth:state.adminMonth,staffConfig:state.staffConfig,_lastUpdated:Date.now()})); }catch(e){}
+}
+function saveStateAndSync(){
+  saveState();
   saveToCloud();
+}
+
+// Merge records từ 2 nguồn — không ghi đè, lấy record đầy đủ hơn
+function mergeRecords(local, remote){
+  const merged={};
+  const dates=new Set([...Object.keys(local||{}),...Object.keys(remote||{})]);
+  dates.forEach(dk=>{
+    const l=local?.[dk]||{}, r=remote?.[dk]||{};
+    const sids=new Set([...Object.keys(l),...Object.keys(r)]);
+    merged[dk]={};
+    sids.forEach(sid=>{
+      const lr=l[sid], rr=r[sid];
+      if(!lr){merged[dk][sid]=rr;return;}
+      if(!rr){merged[dk][sid]=lr;return;}
+      // Ưu tiên record có clockOut (đầy đủ hơn)
+      merged[dk][sid]=(rr.clockOut&&!lr.clockOut)?rr:lr;
+    });
+  });
+  return merged;
 }
 
 // ══════════════════════════════════════════════════════
@@ -260,39 +294,32 @@ function setSyncBadge(status){ // 'ok'|'err'|'syncing'|''
 }
 async function saveToCloud(){
   if(_syncFlight) return;
-  _syncFlight=true;
-  setSyncBadge('syncing');
+  _syncFlight=true; setSyncBadge('syncing');
   try{
-    const payload={records:state.records};
-    payload._lastUpdated=Date.now();
+    const payload={records:state.records,staffConfig:state.staffConfig,_lastUpdated:Date.now()};
     const r=await fetch(BACKEND_URL,{method:'POST',mode:'cors',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:STORAGE_KEY,data:payload})});
     if(!r.ok) throw new Error('save failed');
-    setSyncBadge('ok');
-    setTimeout(()=>setSyncBadge(''),3000);
+    setSyncBadge('ok'); setTimeout(()=>setSyncBadge(''),3000);
   }catch(e){setSyncBadge('err');}
   finally{_syncFlight=false;}
 }
 async function loadFromCloud(){
   try{
     const r=await fetch(`${BACKEND_URL}?key=${encodeURIComponent(STORAGE_KEY)}`,{mode:'cors'});
-    if(!r.ok) throw new Error('load failed');
+    if(!r.ok) throw new Error();
     const payload=await r.json();
-    if(payload?.data?.records){
-      const remote=payload.data;
-      const localTs=(JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}'))._lastUpdated||0;
-      const remoteTs=remote._lastUpdated||0;
-      if(remoteTs>localTs){
-        state.records=remote.records;
-        try{localStorage.setItem(STORAGE_KEY,JSON.stringify({records:state.records,adminMonth:state.adminMonth}));}catch(e){}
-        // refresh current view
-        const tab=document.querySelector('.tab.on')?.dataset?.tab||'clock';
-        if(tab==='clock') renderClock();
-        else if(tab==='summary') renderSummary();
-        else if(tab==='admin'&&state.adminUnlocked) renderAdminPanel(document.getElementById('pg-admin'));
-      }
-      setSyncBadge('ok');
-      setTimeout(()=>setSyncBadge(''),3000);
-    }
+    if(!payload?.data?.records) return;
+    const remote=payload.data;
+    // Luôn merge — không ghi đè hoàn toàn
+    state.records=mergeRecords(state.records, remote.records);
+    if(remote.staffConfig) Object.assign(state.staffConfig, remote.staffConfig);
+    applyStaffConfig();
+    saveState();
+    const tab=document.querySelector('.tab.on')?.dataset?.tab||'clock';
+    if(tab==='clock') renderClock();
+    else if(tab==='summary') renderSummary();
+    else if(tab==='admin'&&state.adminUnlocked) renderAdminPanel(document.getElementById('pg-admin'));
+    setSyncBadge('ok'); setTimeout(()=>setSyncBadge(''),3000);
   }catch(e){setSyncBadge('err');}
 }
 
@@ -324,7 +351,7 @@ function tsToHour(ts){
 // ══════════════════════════════════════════════════════
 function getDay(dateStr){ return state.records[dateStr]||(state.records[dateStr]={}); }
 function getRec(dateStr, sid){ return getDay(dateStr)[sid]||null; }
-function setRec(dateStr, sid, val){ getDay(dateStr)[sid]=val; saveState(); }
+function setRec(dateStr, sid, val){ getDay(dateStr)[sid]=val; saveStateAndSync(); }
 
 // ══════════════════════════════════════════════════════
 // CALCULATION
@@ -623,7 +650,7 @@ function resetDay(sid){
   if(!confirm('Xóa dữ liệu hôm nay của '+STAFF.find(s=>s.id===sid).name+'?')) return;
   const today=todayKey();
   delete getDay(today)[sid];
-  saveState();
+  saveStateAndSync();
   toast('↩ Đã xóa, có thể nhập lại');
   renderStaffClock(sid);
 }
@@ -759,10 +786,12 @@ function renderAdminPanel(el){
       <select id="adminMonthSel" onchange="changeAdminMonth(this.value)">
         ${months.map(m=>`<option value="${m.k}"${m.k===selMk?' selected':''}>${m.label}</option>`).join('')}
       </select>
-      <button class="export-btn dk" onclick="exportCSV()">📊 Xuất CSV</button>
+      <button class="export-btn dk" onclick="exportCSV()">📊 CSV</button>
+      <button class="export-btn dk" onclick="exportExcel()" style="background:var(--g);">📗 Excel</button>
     </div>
     ${kpiHtml}
     ${staffCards}
+    ${renderSalarySettings()}
     <button class="export-btn btn-off" style="width:100%;margin-top:6px;color:var(--r)" onclick="adminLogout()">🔒 Đăng Xuất</button>
   </div>`;
 }
@@ -770,10 +799,9 @@ function changeAdminMonth(mk){ state.adminMonth=mk; renderAdminPanel(document.ge
 function adminLogout(){ state.adminUnlocked=false; renderAdmin(); }
 
 // ══════════════════════════════════════════════════════
-// CSV EXPORT
+// EXPORT (CSV + Excel)
 // ══════════════════════════════════════════════════════
-function exportCSV(){
-  const mk=state.adminMonth;
+function buildExportRows(mk){
   const [y,m]=mk.split('-').map(Number);
   const daysInMonth=new Date(y,m,0).getDate();
   const rows=[['Ngày','Nhân viên','Loại','Vào ca','Ra ca','Giờ làm','Giờ đêm','Nghỉ (ph)','休','Lương ngày']];
@@ -782,19 +810,81 @@ function exportCSV(){
     STAFF.forEach(s=>{
       const rec=getRec(dk,s.id);
       if(!rec) return;
-      if(rec.isOff){rows.push([d,s.name,s.type,'','','','','','休','0']);return;}
+      if(rec.isOff){rows.push([d,s.name,s.type,'','','','','','休',0]);return;}
       const h=calcHours(rec);
       const sal=h?calcDaySalary(s,h):0;
-      rows.push([d,s.name,s.type,fmtTime(rec.clockIn),fmtTime(rec.clockOut),h?h.total.toFixed(2):'',h?h.night.toFixed(2):'',h?h.breaks:'','',sal]);
+      rows.push([d,s.name,s.type,fmtTime(rec.clockIn),fmtTime(rec.clockOut),h?+h.total.toFixed(2):'',h?+h.night.toFixed(2):'',h?h.breaks:'','',sal]);
     });
   }
+  return rows;
+}
+function exportCSV(){
+  const mk=state.adminMonth;
+  const rows=buildExportRows(mk);
   const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
   const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8;'});
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);
-  a.download=`cham-cong-${mk}.csv`;
-  a.click();
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`cham-cong-${mk}.csv`;a.click();
   toast('📊 Đã xuất CSV');
+}
+function exportExcel(){
+  const mk=state.adminMonth;
+  const [y,m]=mk.split('-').map(Number);
+  const rows=buildExportRows(mk);
+  const wb=XLSX.utils.book_new();
+
+  // Sheet 1: Chi tiết chấm công
+  const ws=XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols']=[{wch:6},{wch:10},{wch:6},{wch:8},{wch:8},{wch:8},{wch:8},{wch:8},{wch:4},{wch:14}];
+  XLSX.utils.book_append_sheet(wb,ws,'Chi tiết');
+
+  // Sheet 2: Tổng hợp lương
+  const sum=[['Nhân viên','Loại','Ngày làm','Tổng giờ','Giờ đêm','Tiền ăn','Lương tháng','Tổng cộng']];
+  STAFF.forEach(s=>{
+    const r=calcMonthSalary(s,mk);
+    sum.push([s.name,s.type==='main'?'Chính thức':'PT',r.workDays,+r.totalH.toFixed(2),+r.totalNight.toFixed(2),r.meal,r.salary,r.total]);
+  });
+  const ws2=XLSX.utils.aoa_to_sheet(sum);
+  ws2['!cols']=[{wch:10},{wch:12},{wch:8},{wch:10},{wch:10},{wch:12},{wch:14},{wch:14}];
+  XLSX.utils.book_append_sheet(wb,ws2,'Tổng lương');
+
+  XLSX.writeFile(wb,`cham-cong-${mk}.xlsx`);
+  toast('📊 Đã xuất Excel');
+}
+
+// ══════════════════════════════════════════════════════
+// SALARY SETTINGS
+// ══════════════════════════════════════════════════════
+function renderSalarySettings(){
+  return `<div style="margin-top:16px;background:var(--w);border:1px solid var(--bdr);border-radius:var(--rr);overflow:hidden;">
+    <div style="padding:12px 16px;border-bottom:1px solid var(--bdr);font-weight:700;font-size:13px;">⚙ Điều chỉnh lương</div>
+    <div style="padding:12px 16px;display:flex;flex-direction:column;gap:10px;">
+      ${STAFF.map(s=>`
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="width:8px;height:8px;border-radius:50%;background:${s.hex};flex-shrink:0;"></div>
+          <span style="font-weight:600;font-size:13px;min-width:64px;">${s.name}</span>
+          <span style="font-size:11px;color:var(--ink4);flex:1;">${s.type==='main'?'LCB/tháng':'đ/giờ'}</span>
+          <input type="number" id="sal_${s.id}"
+            value="${s.type==='main'?s.base:s.rate}"
+            style="width:110px;padding:6px 8px;border:1px solid var(--bdr);border-radius:8px;font-size:13px;font-family:'JetBrains Mono',monospace;text-align:right;"
+            step="${s.type==='main'?500000:1000}">
+        </div>`).join('')}
+      <button onclick="saveSalarySettings()" style="margin-top:4px;padding:10px;background:var(--ink);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">💾 Lưu cài đặt lương</button>
+    </div>
+  </div>`;
+}
+function saveSalarySettings(){
+  STAFF.forEach(s=>{
+    const el=document.getElementById('sal_'+s.id);
+    if(!el) return;
+    const val=Number(el.value);
+    if(!val||val<=0) return;
+    if(!state.staffConfig[s.id]) state.staffConfig[s.id]={};
+    if(s.type==='main'){state.staffConfig[s.id].base=val;s.base=val;}
+    else{state.staffConfig[s.id].rate=val;s.rate=val;}
+  });
+  saveStateAndSync();
+  renderAdminPanel(document.getElementById('pg-admin'));
+  toast('✅ Đã lưu cài đặt lương');
 }
 
 // ══════════════════════════════════════════════════════
