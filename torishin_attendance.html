@@ -333,28 +333,21 @@ function saveStateAndSync(){
   saveToCloud();
 }
 
-// Merge records — Firebase là nguồn dữ liệu gốc, local chỉ thắng khi mới hơn (_ts)
-function mergeRecords(local, remote){
-  const merged={};
-  const dates=new Set([...Object.keys(local||{}),...Object.keys(remote||{})]);
-  dates.forEach(dk=>{
-    const l=local?.[dk]||{}, r=remote?.[dk]||{};
-    const sids=new Set([...Object.keys(l),...Object.keys(r)]);
-    merged[dk]={};
-    sids.forEach(sid=>{
-      const lr=l[sid], rr=r[sid];
-      if(!lr){merged[dk][sid]=rr;return;}
-      if(!rr){merged[dk][sid]=lr;return;}
-      // Local có clockOut nhưng remote chưa → giữ local (đang lưu lên Firebase)
-      if(lr.clockOut&&!rr.clockOut){merged[dk][sid]=lr;return;}
-      // Remote có clockOut → dùng remote
-      if(rr.clockOut){merged[dk][sid]=rr;return;}
-      // Cùng trạng thái → dùng cái mới hơn (_ts); nếu bằng nhau ưu tiên remote (Firebase)
-      const lt=lr._ts||lr.clockIn||0, rt=rr._ts||rr.clockIn||0;
-      merged[dk][sid]=lt>rt?lr:rr;
-    });
+// Chuẩn hoá record từ Firebase (breaks có thể trả về object thay vì array)
+function normalizeRecord(rec){
+  if(!rec) return rec;
+  if(rec.breaks && !Array.isArray(rec.breaks)) rec.breaks=Object.values(rec.breaks);
+  return rec;
+}
+// Chuẩn hoá toàn bộ records object từ Firebase
+function normalizeRecords(recs){
+  if(!recs) return {};
+  const out={};
+  Object.entries(recs).forEach(([dk,day])=>{
+    out[dk]={};
+    Object.entries(day||{}).forEach(([sid,rec])=>{ out[dk][sid]=normalizeRecord(rec); });
   });
-  return merged;
+  return out;
 }
 
 // ══════════════════════════════════════════════════════
@@ -380,7 +373,22 @@ function setSyncBadge(status){
 
 function applyRemote(remote){
   if(!remote) return;
-  if(remote.records) state.records=mergeRecords(state.records, remote.records);
+  // Firebase là nguồn sự thật tuyệt đối — dùng thẳng, không merge
+  // Chỉ merge khi đang có write in-flight để không mất dữ liệu vừa bấm
+  if(remote.records){
+    const fbRecs=normalizeRecords(remote.records);
+    if(_syncFlight){
+      // Đang lưu: giữ local cho record mình vừa ghi, còn lại dùng Firebase
+      const today=todayKey();
+      state.records=Object.assign({}, fbRecs);
+      if(_localWrites[today]){
+        if(!state.records[today]) state.records[today]={};
+        Object.assign(state.records[today], _localWrites[today]);
+      }
+    } else {
+      state.records=fbRecs;
+    }
+  }
   if(remote.staffConfig){
     Object.keys(remote.staffConfig).forEach(id=>{
       if(!state.staffConfig[id]) state.staffConfig[id]={};
@@ -399,21 +407,31 @@ function applyRemote(remote){
   else if(tab==='admin'&&state.adminUnlocked) renderAdminPanel(document.getElementById('pg-admin'));
 }
 
+// Track những record mình vừa ghi (chưa được Firebase xác nhận)
+let _localWrites={};
+
 async function saveToCloud(){
   if(_syncFlight){ _syncDirty=true; return; }
   _syncFlight=true; _syncDirty=false; setSyncBadge('syncing');
+  const updates={};
   try{
-    const updates={};
+    const today=todayKey();
+    _localWrites={};
     Object.entries(state.records||{}).forEach(([dk,day])=>{
       Object.entries(day||{}).forEach(([sid,rec])=>{
         updates[`records/${dk}/${sid}`]=rec;
+        if(dk===today){
+          if(!_localWrites[dk]) _localWrites[dk]={};
+          _localWrites[dk][sid]=rec;
+        }
       });
     });
     updates['staffConfig']=state.staffConfig;
     if(state.adminPass!=null) updates['adminPass']=state.adminPass;
     await _fbRef.update(updates);
-    setSyncBadge('ok'); setTimeout(()=>setSyncBadge(''),3000);
-  }catch(e){ setSyncBadge('err'); }
+    _localWrites={};
+    setSyncBadge('ok');
+  }catch(e){ _localWrites={}; setSyncBadge('err'); }
   finally{ _syncFlight=false; if(_syncDirty) setTimeout(saveToCloud,500); }
 }
 
