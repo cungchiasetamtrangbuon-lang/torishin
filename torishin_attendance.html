@@ -204,7 +204,7 @@ body{font-family:'Sora',sans-serif;background:var(--w2);color:var(--ink);min-hei
   <div style="background:#fff;border-radius:18px;padding:28px 24px;width:100%;max-width:320px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.3);">
     <div id="pinStaffName" style="font-size:18px;font-weight:700;margin-bottom:4px;"></div>
     <div style="font-size:12px;color:#888;margin-bottom:18px;">Nhập mã PIN để tiếp tục</div>
-    <input type="password" id="pinInput" inputmode="numeric" maxlength="6" placeholder="● ● ● ●"
+    <input type="password" id="pinInput" inputmode="numeric" maxlength="6" autocomplete="off" placeholder="● ● ● ●"
       style="width:100%;padding:14px;border:2px solid #ddd;border-radius:12px;font-size:28px;text-align:center;letter-spacing:8px;outline:none;font-family:monospace;"
       onkeydown="if(event.key==='Enter')confirmPin()">
     <div id="pinErr" style="color:#c94040;font-size:12px;margin-top:8px;height:18px;"></div>
@@ -345,7 +345,12 @@ async function loadFromCloud(){
     const remote=payload.data;
     // Luôn merge — không ghi đè hoàn toàn
     state.records=mergeRecords(state.records, remote.records);
-    if(remote.staffConfig) Object.assign(state.staffConfig, remote.staffConfig);
+    if(remote.staffConfig){
+      Object.keys(remote.staffConfig).forEach(id=>{
+        if(!state.staffConfig[id]) state.staffConfig[id]={};
+        Object.assign(state.staffConfig[id], remote.staffConfig[id]);
+      });
+    }
     applyStaffConfig();
     saveState();
     const tab=document.querySelector('.tab.on')?.dataset?.tab||'clock';
@@ -557,8 +562,8 @@ function selectStaff(sid){
   }
 }
 function confirmPin(){
-  const entered=document.getElementById('pinInput').value;
-  const pin=state.staffConfig[_pinTarget]?.pin;
+  const entered=document.getElementById('pinInput').value.trim();
+  const pin=String(state.staffConfig[_pinTarget]?.pin||'').trim();
   if(String(entered)===String(pin)){
     closePinModal();
     state.selectedStaff=_pinTarget;
@@ -963,10 +968,10 @@ function renderSalarySettings(){
               placeholder="Lương"
               style="flex:1;padding:7px 10px;border:1px solid var(--bdr);border-radius:8px;font-size:13px;font-family:'JetBrains Mono',monospace;text-align:right;"
               step="${s.type==='main'?500000:1000}">
-            <input type="password" id="pin_${s.id}"
+            <input type="text" id="pin_${s.id}"
               value="${pinVal}"
               placeholder="PIN (để trống = không cần)"
-              inputmode="numeric" maxlength="6"
+              inputmode="numeric" maxlength="6" autocomplete="new-password"
               style="width:130px;padding:7px 10px;border:1px solid var(--bdr);border-radius:8px;font-size:13px;font-family:'JetBrains Mono',monospace;letter-spacing:2px;">
           </div>
         </div>`;
