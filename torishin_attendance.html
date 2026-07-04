@@ -358,7 +358,7 @@ function mergeRecords(local, remote){
 firebase.initializeApp({ databaseURL: FIREBASE_URL });
 const _fbDb = firebase.database();
 const _fbRef = _fbDb.ref(FB_PATH);
-let _syncFlight=false, _syncDirty=false, _ignoreNext=false;
+let _syncFlight=false, _syncDirty=false;
 
 function setSyncBadge(status){
   const el=document.getElementById('syncBadge');
@@ -369,9 +369,9 @@ function setSyncBadge(status){
   el.style.background=col[status]||'transparent';
 }
 
-function mergeFromRemote(remote){
-  if(!remote||!remote.records) return;
-  state.records=mergeRecords(state.records, remote.records);
+function applyRemote(remote){
+  if(!remote) return;
+  if(remote.records) state.records=mergeRecords(state.records, remote.records);
   if(remote.staffConfig){
     Object.keys(remote.staffConfig).forEach(id=>{
       if(!state.staffConfig[id]) state.staffConfig[id]={};
@@ -391,9 +391,16 @@ async function saveToCloud(){
   if(_syncFlight){ _syncDirty=true; return; }
   _syncFlight=true; _syncDirty=false; setSyncBadge('syncing');
   try{
-    const payload={records:state.records,staffConfig:state.staffConfig,adminPass:state.adminPass,_lastUpdated:Date.now()};
-    _ignoreNext=true;
-    await _fbRef.set(payload);
+    // Transaction: đọc dữ liệu Firebase, merge với local, rồi ghi — không bao giờ ghi đè máy khác
+    await _fbRef.transaction(current=>{
+      const base=current||{};
+      return {
+        records: mergeRecords(base.records||{}, state.records),
+        staffConfig: Object.assign({}, base.staffConfig||{}, state.staffConfig),
+        adminPass: state.adminPass||base.adminPass||null,
+        _lastUpdated: Date.now()
+      };
+    });
     setSyncBadge('ok'); setTimeout(()=>setSyncBadge(''),3000);
   }catch(e){ setSyncBadge('err'); }
   finally{ _syncFlight=false; if(_syncDirty) setTimeout(saveToCloud,500); }
@@ -402,10 +409,8 @@ async function saveToCloud(){
 function startSync(){
   setSyncBadge('syncing');
   _fbRef.on('value', snap=>{
-    if(_ignoreNext){ _ignoreNext=false; return; }
     const remote=snap.val();
-    if(!remote) { setSyncBadge('ok'); return; }
-    mergeFromRemote(remote);
+    applyRemote(remote);
     setSyncBadge('ok'); setTimeout(()=>setSyncBadge(''),2000);
   }, ()=>setSyncBadge('err'));
 }
