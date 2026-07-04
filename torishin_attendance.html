@@ -382,7 +382,10 @@ function applyRemote(remote){
   applyStaffConfig();
   saveState();
   const tab=document.querySelector('.tab.on')?.dataset?.tab||'clock';
-  if(tab==='clock') renderClock();
+  if(tab==='clock'){
+    if(state.selectedStaff) renderStaffClock(state.selectedStaff);
+    else renderClock();
+  }
   else if(tab==='summary') renderSummary();
   else if(tab==='admin'&&state.adminUnlocked) renderAdminPanel(document.getElementById('pg-admin'));
 }
@@ -391,7 +394,6 @@ async function saveToCloud(){
   if(_syncFlight){ _syncDirty=true; return; }
   _syncFlight=true; _syncDirty=false; setSyncBadge('syncing');
   try{
-    // update() với path cụ thể: chỉ ghi đúng record đó, không đụng record của máy khác
     const updates={};
     Object.entries(state.records||{}).forEach(([dk,day])=>{
       Object.entries(day||{}).forEach(([sid,rec])=>{
@@ -406,19 +408,13 @@ async function saveToCloud(){
   finally{ _syncFlight=false; if(_syncDirty) setTimeout(saveToCloud,500); }
 }
 
-async function loadFromCloud(){
-  try{
-    const snap=await _fbRef.once('value');
+function startSync(){
+  setSyncBadge('syncing');
+  _fbRef.on('value', snap=>{
     const remote=snap.val();
     if(remote) applyRemote(remote);
     setSyncBadge('ok'); setTimeout(()=>setSyncBadge(''),2000);
-  }catch(e){ setSyncBadge('err'); }
-}
-
-function startSync(){
-  setSyncBadge('syncing');
-  loadFromCloud();
-  setInterval(loadFromCloud, 5000);
+  }, ()=>setSyncBadge('err'));
 }
 
 // ══════════════════════════════════════════════════════
