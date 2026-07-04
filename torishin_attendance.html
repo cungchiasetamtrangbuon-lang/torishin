@@ -639,31 +639,38 @@ function renderClock(){
   <div class="staff-grid">${staffHtml}</div>`;
 }
 
-let _pinTarget=null;
+let _pinTarget=null, _pinAction=null;
 function selectStaff(sid){
+  // Vào thẳng màn hình clock — PIN yêu cầu khi bấm Vào Ca / Ra Ca
+  state.selectedStaff=sid;
+  renderStaffClock(sid);
+}
+function openPinForAction(sid, action){
   const s=STAFF.find(x=>x.id===sid);
   const pin=state.staffConfig[sid]?.pin;
-  if(pin){
-    _pinTarget=sid;
-    document.getElementById('pinStaffName').textContent=s.name;
-    document.getElementById('pinInput').value='';
-    document.getElementById('pinErr').textContent='';
-    const m=document.getElementById('pinModal');
-    m.style.display='flex';
-    setTimeout(()=>document.getElementById('pinInput').focus(),100);
-  } else {
-    state.selectedStaff=sid;
-    renderStaffClock(sid);
-  }
+  if(!pin){ execPinAction(sid,action); return; }
+  _pinTarget=sid; _pinAction=action;
+  document.getElementById('pinStaffName').textContent=s.name;
+  document.getElementById('pinInput').value='';
+  document.getElementById('pinErr').textContent='';
+  const m=document.getElementById('pinModal');
+  m.style.display='flex';
+  setTimeout(()=>document.getElementById('pinInput').focus(),100);
+}
+function execPinAction(sid,action){
+  if(action==='in') clockIn(sid);
+  else if(action==='out') clockOut(sid);
+  else if(action==='break') startBreak(sid);
+  else if(action==='resume') endBreak(sid);
+  else if(action==='off') markOff(sid);
 }
 function confirmPin(){
   const entered=document.getElementById('pinInput').value.trim();
   const pin=String(state.staffConfig[_pinTarget]?.pin||'').trim();
   if(String(entered)===String(pin)){
-    const sid=_pinTarget;
+    const sid=_pinTarget, action=_pinAction;
     closePinModal();
-    state.selectedStaff=sid;
-    renderStaffClock(sid);
+    execPinAction(sid,action);
   } else {
     document.getElementById('pinErr').textContent='❌ Sai PIN, thử lại';
     document.getElementById('pinInput').value='';
@@ -672,7 +679,7 @@ function confirmPin(){
 }
 function closePinModal(){
   document.getElementById('pinModal').style.display='none';
-  _pinTarget=null;
+  _pinTarget=null; _pinAction=null;
 }
 function closeSalaryModal(){
   document.getElementById('salaryModal').style.display='none';
@@ -723,15 +730,15 @@ function renderStaffClock(sid){
   let actionsHtml='';
   if(status==='idle'){
     actionsHtml=`
-      <button class="act-btn btn-in" onclick="clockIn('${sid}')">🟢 Vào Ca / 出勤</button>
-      <button class="act-btn btn-off" onclick="markOff('${sid}')">📅 Đánh Dấu Nghỉ / 休日</button>
+      <button class="act-btn btn-in" onclick="openPinForAction('${sid}','in')">🟢 Vào Ca / 出勤</button>
+      <button class="act-btn btn-off" onclick="openPinForAction('${sid}','off')">📅 Đánh Dấu Nghỉ / 休日</button>
       <button class="act-btn" style="background:#5b30a0;color:#fff;font-size:13px" onclick="openEditTime('${today}','${sid}')">⌨ Nhập Giờ Thủ Công</button>`;
   } else if(status==='working'){
     actionsHtml=`
-      <button class="act-btn btn-break" onclick="startBreak('${sid}')">🟡 Bắt Đầu Giải Lao / 休憩</button>
-      <button class="act-btn btn-out" onclick="clockOut('${sid}')">🔴 Kết Thúc Ca / 退勤</button>`;
+      <button class="act-btn btn-break" onclick="openPinForAction('${sid}','break')">🟡 Bắt Đầu Giải Lao / 休憩</button>
+      <button class="act-btn btn-out" onclick="openPinForAction('${sid}','out')">🔴 Kết Thúc Ca / 退勤</button>`;
   } else if(status==='break'){
-    actionsHtml=`<button class="act-btn btn-resume" onclick="endBreak('${sid}')">🔵 Quay Lại Làm / 休憩終了</button>`;
+    actionsHtml=`<button class="act-btn btn-resume" onclick="openPinForAction('${sid}','resume')">🔵 Quay Lại Làm / 休憩終了</button>`;
   } else if(status==='done'||status==='off'){
     actionsHtml=`
       <button class="act-btn" style="background:#1840a0;color:#fff;font-size:13px" onclick="openEditTime('${today}','${sid}')">✏️ Sửa Giờ</button>
