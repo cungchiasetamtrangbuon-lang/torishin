@@ -333,7 +333,7 @@ function saveStateAndSync(){
   saveToCloud();
 }
 
-// Merge records từ 2 nguồn — không ghi đè, lấy record đầy đủ hơn
+// Merge records — Firebase là nguồn dữ liệu gốc, local chỉ thắng khi mới hơn (_ts)
 function mergeRecords(local, remote){
   const merged={};
   const dates=new Set([...Object.keys(local||{}),...Object.keys(remote||{})]);
@@ -345,8 +345,13 @@ function mergeRecords(local, remote){
       const lr=l[sid], rr=r[sid];
       if(!lr){merged[dk][sid]=rr;return;}
       if(!rr){merged[dk][sid]=lr;return;}
-      // Ưu tiên record có clockOut (đầy đủ hơn)
-      merged[dk][sid]=(rr.clockOut&&!lr.clockOut)?rr:lr;
+      // Local có clockOut nhưng remote chưa → giữ local (đang lưu lên Firebase)
+      if(lr.clockOut&&!rr.clockOut){merged[dk][sid]=lr;return;}
+      // Remote có clockOut → dùng remote
+      if(rr.clockOut){merged[dk][sid]=rr;return;}
+      // Cùng trạng thái → dùng cái mới hơn (_ts); nếu bằng nhau ưu tiên remote (Firebase)
+      const lt=lr._ts||lr.clockIn||0, rt=rr._ts||rr.clockIn||0;
+      merged[dk][sid]=lt>rt?lr:rr;
     });
   });
   return merged;
@@ -363,10 +368,14 @@ let _syncFlight=false, _syncDirty=false;
 function setSyncBadge(status){
   const el=document.getElementById('syncBadge');
   if(!el) return;
-  const map={ok:'☁ Đã lưu',err:'⚠ Mất kết nối',syncing:'↑ Đang lưu...','':''};
   const col={ok:'#1e7a48',err:'#c94040',syncing:'#8a5c08','':'transparent'};
-  el.textContent=map[status]||'';
-  el.style.background=col[status]||'transparent';
+  if(status==='ok'){
+    const d=new Date(); const t=String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')+':'+String(d.getSeconds()).padStart(2,'0');
+    el.textContent='☁ '+t; el.style.background=col.ok;
+  } else {
+    const map={err:'⚠ Mất kết nối',syncing:'↑ Đang lưu...','':''};
+    el.textContent=map[status]||''; el.style.background=col[status]||'transparent';
+  }
 }
 
 function applyRemote(remote){
@@ -410,11 +419,23 @@ async function saveToCloud(){
 
 function startSync(){
   setSyncBadge('syncing');
+  // Real-time listener
   _fbRef.on('value', snap=>{
-    const remote=snap.val();
-    if(remote) applyRemote(remote);
-    setSyncBadge('ok'); setTimeout(()=>setSyncBadge(''),2000);
+    if(snap.val()) applyRemote(snap.val());
+    setSyncBadge('ok');
   }, ()=>setSyncBadge('err'));
+  // Monitor kết nối Firebase
+  firebase.database().ref('.info/connected').on('value', snap=>{
+    if(snap.val()===false) setSyncBadge('err');
+  });
+  // Polling fallback mỗi 10s — đề phòng WebSocket bị ngắt trên mobile
+  setInterval(async()=>{
+    try{
+      const snap=await _fbRef.once('value');
+      if(snap.val()) applyRemote(snap.val());
+      setSyncBadge('ok');
+    }catch(e){ setSyncBadge('err'); }
+  }, 10000);
 }
 
 // ══════════════════════════════════════════════════════
@@ -445,7 +466,7 @@ function tsToHour(ts){
 // ══════════════════════════════════════════════════════
 function getDay(dateStr){ return state.records[dateStr]||(state.records[dateStr]={}); }
 function getRec(dateStr, sid){ return getDay(dateStr)[sid]||null; }
-function setRec(dateStr, sid, val){ getDay(dateStr)[sid]=val; saveStateAndSync(); }
+function setRec(dateStr, sid, val){ val._ts=Date.now(); getDay(dateStr)[sid]=val; saveStateAndSync(); }
 
 // ══════════════════════════════════════════════════════
 // CALCULATION
