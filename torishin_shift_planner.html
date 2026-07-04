@@ -309,6 +309,7 @@ body{font-family:'Sora',sans-serif;background:var(--w2);color:var(--ink);min-hei
     <button class="hm-btn" onclick="changeMonth(1)">›</button>
   </div>
   <div class="ha" id="haEl">
+    <button class="btn" id="syncCloudBtn" onclick="manualSync()" title="Đồng bộ lên cloud">☁ Đồng bộ</button>
     <button class="btn" onclick="autoSchedule()">⚡ Tự động</button>
     <button class="btn" onclick="doValidate()">✓ Kiểm tra</button>
     <button class="btn" onclick="openPrintView()">↗ In</button>
@@ -485,7 +486,6 @@ function saveState(){
     const ind=document.getElementById('saveInd');
     if(ind){ind.style.opacity='1';clearTimeout(ind._t);ind._t=setTimeout(()=>ind.style.opacity='0',1800);}
   }catch(e){console.warn('Lưu thất bại',e);}
-  saveToCloud();
 }
 
 // ════════════════════════════════════
@@ -502,12 +502,18 @@ async function saveToCloud(){
   if(_syncFlight)return;_syncFlight=true;setSyncBadge('syncing');
   try{
     const payload={v:1,curY,curM,OT_NIGHT,MAX,PASS,staff:STAFF,monthScheds,_lastUpdated:Date.now()};
+    localStorage.setItem(STORAGE_KEY,JSON.stringify(payload));
     const r=await fetch(BACKEND_URL,{method:'POST',mode:'cors',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({key:STORAGE_KEY,data:payload})});
     if(!r.ok)throw new Error();
     setSyncBadge('ok');setTimeout(()=>setSyncBadge(''),3000);
   }catch(e){setSyncBadge('err');}
   finally{_syncFlight=false;}
+}
+function manualSync(){
+  const btn=document.getElementById('syncCloudBtn');
+  if(btn)btn.textContent='↑ Đang lưu...';
+  saveToCloud().finally(()=>{if(btn)btn.textContent='☁ Đồng bộ';});
 }
 async function loadFromCloud(){
   try{
