@@ -199,6 +199,39 @@ body{font-family:'Sora',sans-serif;background:var(--w2);color:var(--ink);min-hei
 
 <div class="toast" id="toast"></div>
 
+<!-- PIN Modal -->
+<div id="pinModal" style="position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:300;display:none;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:#fff;border-radius:18px;padding:28px 24px;width:100%;max-width:320px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.3);">
+    <div id="pinStaffName" style="font-size:18px;font-weight:700;margin-bottom:4px;"></div>
+    <div style="font-size:12px;color:#888;margin-bottom:18px;">Nhập mã PIN để tiếp tục</div>
+    <input type="password" id="pinInput" inputmode="numeric" maxlength="6" placeholder="● ● ● ●"
+      style="width:100%;padding:14px;border:2px solid #ddd;border-radius:12px;font-size:28px;text-align:center;letter-spacing:8px;outline:none;font-family:monospace;"
+      onkeydown="if(event.key==='Enter')confirmPin()">
+    <div id="pinErr" style="color:#c94040;font-size:12px;margin-top:8px;height:18px;"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px;">
+      <button onclick="closePinModal()" style="padding:13px;border:1px solid #ddd;border-radius:10px;background:#f5f5f5;font-size:14px;cursor:pointer;">Hủy</button>
+      <button onclick="confirmPin()" style="padding:13px;border:none;border-radius:10px;background:#18150f;color:#fff;font-size:14px;font-weight:700;cursor:pointer;">Xác nhận</button>
+    </div>
+  </div>
+</div>
+
+<!-- Salary Result Modal (hiện sau khi ra ca) -->
+<div id="salaryModal" style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:300;display:none;align-items:center;justify-content:center;padding:20px;" onclick="closeSalaryModal()">
+  <div style="background:#fff;border-radius:18px;padding:28px 24px;width:100%;max-width:320px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.3);" onclick="event.stopPropagation()">
+    <div style="font-size:40px;margin-bottom:8px;">✅</div>
+    <div style="font-size:16px;font-weight:700;margin-bottom:4px;">Kết thúc ca / 退勤</div>
+    <div id="salModal_name" style="font-size:13px;color:#888;margin-bottom:20px;"></div>
+    <div style="background:#f0fdf4;border-radius:12px;padding:16px;margin-bottom:16px;">
+      <div id="salModal_rows" style="display:flex;flex-direction:column;gap:8px;text-align:left;font-size:13px;margin-bottom:12px;"></div>
+      <div style="border-top:1px solid #b8e0cc;padding-top:12px;display:flex;justify-content:space-between;align-items:center;">
+        <span style="font-size:13px;font-weight:700;color:#1e7a48;" id="salModal_lbl"></span>
+        <span style="font-size:24px;font-weight:700;color:#1e7a48;font-family:monospace;" id="salModal_val"></span>
+      </div>
+    </div>
+    <button onclick="closeSalaryModal()" style="width:100%;padding:14px;border:none;border-radius:10px;background:#18150f;color:#fff;font-size:15px;font-weight:700;cursor:pointer;">Đóng</button>
+  </div>
+</div>
+
 <script>
 // ══════════════════════════════════════════════════════
 // CONFIG
@@ -506,9 +539,42 @@ function renderClock(){
   <div class="staff-grid">${staffHtml}</div>`;
 }
 
+let _pinTarget=null;
 function selectStaff(sid){
-  state.selectedStaff=sid;
-  renderStaffClock(sid);
+  const s=STAFF.find(x=>x.id===sid);
+  const pin=state.staffConfig[sid]?.pin;
+  if(pin){
+    _pinTarget=sid;
+    document.getElementById('pinStaffName').textContent=s.name;
+    document.getElementById('pinInput').value='';
+    document.getElementById('pinErr').textContent='';
+    const m=document.getElementById('pinModal');
+    m.style.display='flex';
+    setTimeout(()=>document.getElementById('pinInput').focus(),100);
+  } else {
+    state.selectedStaff=sid;
+    renderStaffClock(sid);
+  }
+}
+function confirmPin(){
+  const entered=document.getElementById('pinInput').value;
+  const pin=state.staffConfig[_pinTarget]?.pin;
+  if(String(entered)===String(pin)){
+    closePinModal();
+    state.selectedStaff=_pinTarget;
+    renderStaffClock(_pinTarget);
+  } else {
+    document.getElementById('pinErr').textContent='❌ Sai PIN, thử lại';
+    document.getElementById('pinInput').value='';
+    document.getElementById('pinInput').focus();
+  }
+}
+function closePinModal(){
+  document.getElementById('pinModal').style.display='none';
+  _pinTarget=null;
+}
+function closeSalaryModal(){
+  document.getElementById('salaryModal').style.display='none';
 }
 
 function renderStaffClock(sid){
@@ -631,13 +697,37 @@ function endBreak(sid){
 function clockOut(sid){
   const today=todayKey(); const rec=getRec(today,sid);
   if(!rec?.clockIn){toast('Chưa vào ca!','e');return;}
-  // Close any open break
   const openBreak=rec?.breaks?.findLast(b=>!b.end);
   if(openBreak) openBreak.end=Date.now();
   rec.clockOut=Date.now();
   setRec(today,sid,rec);
   toast('🔴 Kết thúc ca!');
   renderStaffClock(sid);
+  // Show salary popup
+  const s=STAFF.find(x=>x.id===sid);
+  const hours=calcHours(rec);
+  if(hours && s){
+    const sal=calcDaySalary(s,hours);
+    const breakMin=hours.breaks||0;
+    const fmtTime=ts=>{if(!ts)return'--';const d=new Date(ts);return d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0');};
+    const inStr=fmtTime(rec.clockIn), outStr=fmtTime(rec.clockOut);
+    document.getElementById('salModal_name').textContent=s.name;
+    document.getElementById('salModal_rows').innerHTML=`
+      <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--bdr);">
+        <span>Vào ca</span><strong>${inStr}</strong></div>
+      <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--bdr);">
+        <span>Ra ca</span><strong>${outStr}</strong></div>
+      <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--bdr);">
+        <span>Nghỉ giữa ca</span><strong>${breakMin} phút</strong></div>
+      <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--bdr);">
+        <span>Thực làm</span><strong>${hours.total.toFixed(2)} giờ</strong></div>
+      ${hours.night>0?`<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--bdr);">
+        <span>Giờ ca đêm</span><strong>${hours.night.toFixed(2)} giờ</strong></div>`:''}
+    `;
+    document.getElementById('salModal_lbl').textContent=s.type==='pt'?'Lương ngày:':'Phụ cấp đêm + cơm:';
+    document.getElementById('salModal_val').textContent=sal.toLocaleString('vi-VN')+'đ';
+    document.getElementById('salaryModal').style.display='flex';
+  }
 }
 function markOff(sid){
   if(!confirm('Đánh dấu '+STAFF.find(s=>s.id===sid).name+' nghỉ hôm nay?')) return;
@@ -856,35 +946,56 @@ function exportExcel(){
 // ══════════════════════════════════════════════════════
 function renderSalarySettings(){
   return `<div style="margin-top:16px;background:var(--w);border:1px solid var(--bdr);border-radius:var(--rr);overflow:hidden;">
-    <div style="padding:12px 16px;border-bottom:1px solid var(--bdr);font-weight:700;font-size:13px;">⚙ Điều chỉnh lương</div>
-    <div style="padding:12px 16px;display:flex;flex-direction:column;gap:10px;">
-      ${STAFF.map(s=>`
-        <div style="display:flex;align-items:center;gap:10px;">
-          <div style="width:8px;height:8px;border-radius:50%;background:${s.hex};flex-shrink:0;"></div>
-          <span style="font-weight:600;font-size:13px;min-width:64px;">${s.name}</span>
-          <span style="font-size:11px;color:var(--ink4);flex:1;">${s.type==='main'?'LCB/tháng':'đ/giờ'}</span>
-          <input type="number" id="sal_${s.id}"
-            value="${s.type==='main'?s.base:s.rate}"
-            style="width:110px;padding:6px 8px;border:1px solid var(--bdr);border-radius:8px;font-size:13px;font-family:'JetBrains Mono',monospace;text-align:right;"
-            step="${s.type==='main'?500000:1000}">
-        </div>`).join('')}
-      <button onclick="saveSalarySettings()" style="margin-top:4px;padding:10px;background:var(--ink);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">💾 Lưu cài đặt lương</button>
+    <div style="padding:12px 16px;border-bottom:1px solid var(--bdr);font-weight:700;font-size:13px;">⚙ Điều chỉnh lương & PIN</div>
+    <div style="padding:12px 16px;display:flex;flex-direction:column;gap:12px;">
+      ${STAFF.map(s=>{
+        const pinVal=state.staffConfig[s.id]?.pin||'';
+        return `
+        <div style="background:var(--bg);border-radius:10px;padding:10px 12px;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+            <div style="width:8px;height:8px;border-radius:50%;background:${s.hex};flex-shrink:0;"></div>
+            <span style="font-weight:700;font-size:13px;">${s.name}</span>
+            <span style="font-size:11px;color:var(--ink4);margin-left:auto;">${s.type==='main'?'Lương cơ bản/tháng':'Lương/giờ'}</span>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <input type="number" id="sal_${s.id}"
+              value="${s.type==='main'?s.base:s.rate}"
+              placeholder="Lương"
+              style="flex:1;padding:7px 10px;border:1px solid var(--bdr);border-radius:8px;font-size:13px;font-family:'JetBrains Mono',monospace;text-align:right;"
+              step="${s.type==='main'?500000:1000}">
+            <input type="password" id="pin_${s.id}"
+              value="${pinVal}"
+              placeholder="PIN (để trống = không cần)"
+              inputmode="numeric" maxlength="6"
+              style="width:130px;padding:7px 10px;border:1px solid var(--bdr);border-radius:8px;font-size:13px;font-family:'JetBrains Mono',monospace;letter-spacing:2px;">
+          </div>
+        </div>`;
+      }).join('')}
+      <button onclick="saveSalarySettings()" style="padding:10px;background:var(--ink);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">💾 Lưu cài đặt</button>
     </div>
   </div>`;
 }
 function saveSalarySettings(){
   STAFF.forEach(s=>{
-    const el=document.getElementById('sal_'+s.id);
-    if(!el) return;
-    const val=Number(el.value);
-    if(!val||val<=0) return;
+    const salEl=document.getElementById('sal_'+s.id);
+    const pinEl=document.getElementById('pin_'+s.id);
     if(!state.staffConfig[s.id]) state.staffConfig[s.id]={};
-    if(s.type==='main'){state.staffConfig[s.id].base=val;s.base=val;}
-    else{state.staffConfig[s.id].rate=val;s.rate=val;}
+    if(salEl){
+      const val=Number(salEl.value);
+      if(val>0){
+        if(s.type==='main'){state.staffConfig[s.id].base=val;s.base=val;}
+        else{state.staffConfig[s.id].rate=val;s.rate=val;}
+      }
+    }
+    if(pinEl){
+      const pin=pinEl.value.trim();
+      if(pin) state.staffConfig[s.id].pin=pin;
+      else delete state.staffConfig[s.id].pin;
+    }
   });
   saveStateAndSync();
   renderAdminPanel(document.getElementById('pg-admin'));
-  toast('✅ Đã lưu cài đặt lương');
+  toast('✅ Đã lưu cài đặt');
 }
 
 // ══════════════════════════════════════════════════════
