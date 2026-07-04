@@ -406,13 +406,19 @@ async function saveToCloud(){
   finally{ _syncFlight=false; if(_syncDirty) setTimeout(saveToCloud,500); }
 }
 
+async function loadFromCloud(){
+  try{
+    const snap=await _fbRef.once('value');
+    const remote=snap.val();
+    if(remote) applyRemote(remote);
+    setSyncBadge('ok'); setTimeout(()=>setSyncBadge(''),2000);
+  }catch(e){ setSyncBadge('err'); }
+}
+
 function startSync(){
   setSyncBadge('syncing');
-  _fbRef.on('value', snap=>{
-    const remote=snap.val();
-    applyRemote(remote);
-    setSyncBadge('ok'); setTimeout(()=>setSyncBadge(''),2000);
-  }, ()=>setSyncBadge('err'));
+  loadFromCloud();
+  setInterval(loadFromCloud, 5000);
 }
 
 // ══════════════════════════════════════════════════════
