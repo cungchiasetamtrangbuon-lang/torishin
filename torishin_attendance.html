@@ -6,6 +6,8 @@
 <title>🍣 Torishin — Chấm Công / 打刻</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@300;400;500&family=Sora:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <style>
 :root{
   --w:#ffffff;--w2:#f8f6f2;--w3:#f0ece4;--w4:#e4dfd5;
@@ -351,9 +353,13 @@ function mergeRecords(local, remote){
 }
 
 // ══════════════════════════════════════════════════════
-// CLOUD SYNC — Firebase Realtime Database
+// CLOUD SYNC — Firebase SDK (WebSocket)
 // ══════════════════════════════════════════════════════
-let _syncFlight=false, _syncDirty=false, _fbEs=null;
+firebase.initializeApp({ databaseURL: FIREBASE_URL });
+const _fbDb = firebase.database();
+const _fbRef = _fbDb.ref(FB_PATH);
+let _syncFlight=false, _syncDirty=false, _ignoreNext=false;
+
 function setSyncBadge(status){
   const el=document.getElementById('syncBadge');
   if(!el) return;
@@ -386,36 +392,22 @@ async function saveToCloud(){
   _syncFlight=true; _syncDirty=false; setSyncBadge('syncing');
   try{
     const payload={records:state.records,staffConfig:state.staffConfig,adminPass:state.adminPass,_lastUpdated:Date.now()};
-    const r=await fetch(`${FIREBASE_URL}/${FB_PATH}.json`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-    if(!r.ok) throw new Error();
+    _ignoreNext=true;
+    await _fbRef.set(payload);
     setSyncBadge('ok'); setTimeout(()=>setSyncBadge(''),3000);
-  }catch(e){setSyncBadge('err');}
+  }catch(e){ setSyncBadge('err'); }
   finally{ _syncFlight=false; if(_syncDirty) setTimeout(saveToCloud,500); }
 }
 
 function startSync(){
-  if(_fbEs){ _fbEs.close(); _fbEs=null; }
   setSyncBadge('syncing');
-  _fbEs=new EventSource(`${FIREBASE_URL}/${FB_PATH}.json`);
-  _fbEs.addEventListener('put', e=>{
-    try{
-      const {data}=JSON.parse(e.data);
-      mergeFromRemote(data);
-      setSyncBadge('ok'); setTimeout(()=>setSyncBadge(''),2000);
-    }catch(err){}
-  });
-  _fbEs.addEventListener('patch', e=>{
-    try{
-      const {data}=JSON.parse(e.data);
-      mergeFromRemote(data);
-      setSyncBadge('ok'); setTimeout(()=>setSyncBadge(''),2000);
-    }catch(err){}
-  });
-  _fbEs.onerror=()=>{
-    setSyncBadge('err');
-    _fbEs.close(); _fbEs=null;
-    setTimeout(startSync, 8000);
-  };
+  _fbRef.on('value', snap=>{
+    if(_ignoreNext){ _ignoreNext=false; return; }
+    const remote=snap.val();
+    if(!remote) { setSyncBadge('ok'); return; }
+    mergeFromRemote(remote);
+    setSyncBadge('ok'); setTimeout(()=>setSyncBadge(''),2000);
+  }, ()=>setSyncBadge('err'));
 }
 
 // ══════════════════════════════════════════════════════
@@ -1256,9 +1248,6 @@ renderClock();
 setInterval(updateClock,1000);
 updateClock();
 startSync();
-document.addEventListener('visibilitychange',()=>{
-  if(document.visibilityState==='visible'&&!_fbEs) startSync();
-});
 </script>
 </body>
 </html>
