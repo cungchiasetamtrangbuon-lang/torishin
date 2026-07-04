@@ -639,7 +639,7 @@ function renderClock(){
   <div class="staff-grid">${staffHtml}</div>`;
 }
 
-let _pinTarget=null, _pinAction=null;
+let _pinTarget=null, _pinAction=null, _pinVerified=new Set();
 function selectStaff(sid){
   // Vào thẳng màn hình clock — PIN yêu cầu khi bấm Vào Ca / Ra Ca
   state.selectedStaff=sid;
@@ -670,6 +670,7 @@ function confirmPin(){
   if(String(entered)===String(pin)){
     const sid=_pinTarget, action=_pinAction;
     closePinModal();
+    _pinVerified.add(sid);
     execPinAction(sid,action);
   } else {
     document.getElementById('pinErr').textContent='❌ Sai PIN, thử lại';
@@ -704,6 +705,8 @@ function renderStaffClock(sid){
 
   const hours=status==='done'?calcHours(rec):null;
   const salary=hours?calcDaySalary(s,hours):null;
+  const hasPIN=!!state.staffConfig[sid]?.pin;
+  const pinOK=!hasPIN||_pinVerified.has(sid);
 
   // Break log
   const completedBreaks=(rec.breaks||[]).filter(b=>b.end);
@@ -712,8 +715,8 @@ function renderStaffClock(sid){
     ${completedBreaks.map((b,i)=>`<div class="break-item"><span>Lần ${i+1}</span><span>${fmtTime(b.start)} – ${fmtTime(b.end)} (${Math.round((b.end-b.start)/60000)}ph)</span></div>`).join('')}
   </div>`:'';
 
-  // Result card
-  const resultHtml=hours?`<div class="result-card">
+  // Result card — chỉ hiện lương sau khi xác thực PIN
+  const resultHtml=(hours&&pinOK)?`<div class="result-card">
     <div class="rc-title">✅ Tổng kết ca / 勤務集計</div>
     <div class="rc-row"><span class="rc-lbl">Vào ca / 出勤</span><span class="rc-val">${fmtTime(rec.clockIn)}</span></div>
     <div class="rc-row"><span class="rc-lbl">Ra ca / 退勤</span><span class="rc-val">${fmtTime(rec.clockOut)}</span></div>
@@ -731,18 +734,13 @@ function renderStaffClock(sid){
   if(status==='idle'){
     actionsHtml=`
       <button class="act-btn btn-in" onclick="openPinForAction('${sid}','in')">🟢 Vào Ca / 出勤</button>
-      <button class="act-btn btn-off" onclick="openPinForAction('${sid}','off')">📅 Đánh Dấu Nghỉ / 休日</button>
-      <button class="act-btn" style="background:#5b30a0;color:#fff;font-size:13px" onclick="openEditTime('${today}','${sid}')">⌨ Nhập Giờ Thủ Công</button>`;
+      <button class="act-btn btn-off" onclick="openPinForAction('${sid}','off')">📅 Đánh Dấu Nghỉ / 休日</button>`;
   } else if(status==='working'){
     actionsHtml=`
       <button class="act-btn btn-break" onclick="openPinForAction('${sid}','break')">🟡 Bắt Đầu Giải Lao / 休憩</button>
       <button class="act-btn btn-out" onclick="openPinForAction('${sid}','out')">🔴 Kết Thúc Ca / 退勤</button>`;
   } else if(status==='break'){
     actionsHtml=`<button class="act-btn btn-resume" onclick="openPinForAction('${sid}','resume')">🔵 Quay Lại Làm / 休憩終了</button>`;
-  } else if(status==='done'||status==='off'){
-    actionsHtml=`
-      <button class="act-btn" style="background:#1840a0;color:#fff;font-size:13px" onclick="openEditTime('${today}','${sid}')">✏️ Sửa Giờ</button>
-      <button class="act-btn btn-off" onclick="resetDay('${sid}')" style="font-size:12px;padding:10px">↩ Xóa & Nhập Lại</button>`;
   }
 
   // Info rows
@@ -752,7 +750,7 @@ function renderStaffClock(sid){
     infoHtml=`<div class="cp-info">
       <div class="cp-row"><span class="cp-lbl">Vào ca / 出勤</span><span class="cp-val">${fmtTime(rec.clockIn)}</span></div>
       <div class="cp-row"><span class="cp-lbl">Số lần giải lao</span><span class="cp-val">${completedBreaks.length} lần</span></div>
-      ${h?`<div class="cp-row"><span class="cp-lbl">Giờ làm (tạm tính)</span><span class="cp-val">${fmtH(h.total)}</span></div>`:''}
+      ${(h&&pinOK)?`<div class="cp-row"><span class="cp-lbl">Giờ làm (tạm tính)</span><span class="cp-val">${fmtH(h.total)}</span></div>`:''}
     </div>`;
   }
 
@@ -760,7 +758,7 @@ function renderStaffClock(sid){
     <div class="cp-hdr">
       <div class="cp-dot" style="background:${s.hex}"></div>
       <div><div class="cp-name">${s.name} ${s.jp?`<span style="font-size:11px;opacity:.5">${s.jp}</span>`:''}</div>
-      <div class="cp-type">${s.type==='pt'?`PT — ${s.rate.toLocaleString('vi-VN')}đ/h`:`LCB — ${(s.base/1e6).toFixed(0)}M/tháng`}</div></div>
+      <div class="cp-type">${pinOK?(s.type==='pt'?`PT — ${s.rate.toLocaleString('vi-VN')}đ/h`:`LCB — ${(s.base/1e6).toFixed(0)}M/tháng`):(s.type==='pt'?'PT':'LCB')}</div></div>
       <div class="cp-back" onclick="backToGrid()">← Quay lại</div>
     </div>
     <div class="cp-status">
@@ -883,6 +881,7 @@ function renderSummary(){
     const hours=rec.clockIn?calcHours({...rec,clockOut:rec.clockOut||Date.now()}):null;
     const sal=hours?calcDaySalary(s,hours):null;
     const breaks=(rec.breaks||[]).filter(b=>b.end);
+    const sPinOK=!state.staffConfig[s.id]?.pin||_pinVerified.has(s.id);
 
     return `<div class="sum-card">
       <div class="sc-h"><div class="sc-dot" style="background:${s.hex}"></div>
@@ -890,10 +889,10 @@ function renderSummary(){
       <div class="sc-body">
         ${rec.clockIn?`<div class="sc-row"><span class="sc-l">Vào ca</span><span class="sc-v">${fmtTime(rec.clockIn)}</span></div>`:''}
         ${rec.clockOut?`<div class="sc-row"><span class="sc-l">Ra ca</span><span class="sc-v">${fmtTime(rec.clockOut)}</span></div>`:''}
-        ${hours?`<div class="sc-row"><span class="sc-l">Tổng giờ${isWorking?' ⏱':''}</span><span class="sc-v">${fmtH(hours.total)}</span></div>`:''}
-        ${hours&&hours.night>0.05?`<div class="sc-row"><span class="sc-l">Giờ đêm (sau 22h)</span><span class="sc-v">${fmtH(hours.night)}</span></div>`:''}
+        ${(hours&&sPinOK)?`<div class="sc-row"><span class="sc-l">Tổng giờ${isWorking?' ⏱':''}</span><span class="sc-v">${fmtH(hours.total)}</span></div>`:''}
+        ${(hours&&hours.night>0.05&&sPinOK)?`<div class="sc-row"><span class="sc-l">Giờ đêm (sau 22h)</span><span class="sc-v">${fmtH(hours.night)}</span></div>`:''}
         ${breaks.length?`<div class="sc-row"><span class="sc-l">Nghỉ giải lao</span><span class="sc-v">${breaks.length} lần / ${fmtMin(breaks.reduce((a,b)=>a+Math.round((b.end-b.start)/60000),0))}</span></div>`:''}
-        ${sal!==null?`<div class="sc-sal"><span>${s.type==='pt'?'Lương ca':'Phụ cấp đêm'}${isWorking?' (~)':''}</span><span class="sc-v">${fmtNum(sal)}</span></div>`:''}
+        ${(sal!==null&&sPinOK)?`<div class="sc-sal"><span>${s.type==='pt'?'Lương ca':'Phụ cấp đêm'}${isWorking?' (~)':''}</span><span class="sc-v">${fmtNum(sal)}</span></div>`:(!sPinOK?`<div class="sc-sal" style="opacity:.45"><span>Lương</span><span>🔒 Nhập PIN</span></div>`:'')}
       </div>
     </div>`;
   }).join('');
