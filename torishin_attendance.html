@@ -215,6 +215,43 @@ body{font-family:'Sora',sans-serif;background:var(--w2);color:var(--ink);min-hei
   </div>
 </div>
 
+<!-- Edit Time Modal -->
+<div id="editTimeModal" style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:300;display:none;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:#fff;border-radius:18px;padding:24px;width:100%;max-width:340px;box-shadow:0 20px 60px rgba(0,0,0,.3);" onclick="event.stopPropagation()">
+    <div style="font-size:16px;font-weight:700;margin-bottom:4px;">✏️ Chỉnh thời gian</div>
+    <div id="etInfo" style="font-size:13px;color:#888;margin-bottom:18px;"></div>
+    <input type="hidden" id="etDk"><input type="hidden" id="etSid">
+    <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:18px;">
+      <div>
+        <div style="font-size:11px;color:#888;margin-bottom:4px;">Giờ VÀO CA</div>
+        <input type="time" id="etIn" style="width:100%;padding:10px;border:2px solid #ddd;border-radius:10px;font-size:18px;font-family:monospace;">
+      </div>
+      <div>
+        <div style="font-size:11px;color:#888;margin-bottom:4px;">Giờ RA CA (để trống nếu chưa ra)</div>
+        <input type="time" id="etOut" style="width:100%;padding:10px;border:2px solid #ddd;border-radius:10px;font-size:18px;font-family:monospace;">
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <button onclick="closeEditTime()" style="padding:12px;border:1px solid #ddd;border-radius:10px;background:#f5f5f5;font-size:14px;cursor:pointer;">Hủy</button>
+      <button onclick="saveEditTime()" style="padding:12px;border:none;border-radius:10px;background:#18150f;color:#fff;font-size:14px;font-weight:700;cursor:pointer;">Lưu</button>
+    </div>
+  </div>
+</div>
+
+<!-- Salary Slip Modal -->
+<div id="salarySlipModal" style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:300;display:none;align-items:center;justify-content:center;padding:16px;" onclick="closeSalarySlip()">
+  <div style="background:#fff;border-radius:18px;width:100%;max-width:400px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3);" onclick="event.stopPropagation()">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #eee;position:sticky;top:0;background:#fff;border-radius:18px 18px 0 0;">
+      <div style="font-weight:700;font-size:15px;">🧾 Phiếu lương</div>
+      <div style="display:flex;gap:8px;">
+        <button onclick="printSalarySlip()" style="padding:8px 14px;border:none;border-radius:8px;background:#1e7a48;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">🖨 In</button>
+        <button onclick="closeSalarySlip()" style="padding:8px 14px;border:1px solid #ddd;border-radius:8px;background:#f5f5f5;font-size:13px;cursor:pointer;">Đóng</button>
+      </div>
+    </div>
+    <div id="slipContent" style="padding:20px;"></div>
+  </div>
+</div>
+
 <!-- Salary Result Modal (hiện sau khi ra ca) -->
 <div id="salaryModal" style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:300;display:none;align-items:center;justify-content:center;padding:20px;" onclick="closeSalaryModal()">
   <div style="background:#fff;border-radius:18px;padding:28px 24px;width:100%;max-width:320px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.3);" onclick="event.stopPropagation()">
@@ -259,12 +296,13 @@ const BACKEND_URL = (window.location.hostname==='localhost'||window.location.hos
 // STATE
 // ══════════════════════════════════════════════════════
 let state = {
-  records: {},   // {"YYYY-MM-DD": {"staffId": {clockIn,clockOut,breaks,status,isOff}}}
+  records: {},
   adminUnlocked: false,
   adminMonth: null,
   sumDateOffset: 0,
   selectedStaff: null,
-  staffConfig: {}, // {id: {base|rate}} — salary overrides
+  staffConfig: {},
+  adminPass: null,
 };
 
 function applyStaffConfig(){
@@ -287,7 +325,7 @@ function loadState(){
   state.adminMonth = state.adminMonth || (now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0'));
 }
 function saveState(){
-  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify({records:state.records,adminMonth:state.adminMonth,staffConfig:state.staffConfig,_lastUpdated:Date.now()})); }catch(e){}
+  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify({records:state.records,adminMonth:state.adminMonth,staffConfig:state.staffConfig,adminPass:state.adminPass,_lastUpdated:Date.now()})); }catch(e){}
 }
 function saveStateAndSync(){
   saveState();
@@ -329,7 +367,7 @@ async function saveToCloud(){
   if(_syncFlight){ _syncDirty=true; return; }
   _syncFlight=true; _syncDirty=false; setSyncBadge('syncing');
   try{
-    const payload={records:state.records,staffConfig:state.staffConfig,_lastUpdated:Date.now()};
+    const payload={records:state.records,staffConfig:state.staffConfig,adminPass:state.adminPass,_lastUpdated:Date.now()};
     const r=await fetch(BACKEND_URL,{method:'POST',mode:'cors',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:STORAGE_KEY,data:payload})});
     if(!r.ok) throw new Error('save failed');
     setSyncBadge('ok'); setTimeout(()=>setSyncBadge(''),3000);
@@ -354,6 +392,7 @@ async function loadFromCloud(){
         Object.assign(state.staffConfig[id], remote.staffConfig[id]);
       });
     }
+    if(remote.adminPass) state.adminPass=remote.adminPass;
     applyStaffConfig();
     saveState();
     const tab=document.querySelector('.tab.on')?.dataset?.tab||'clock';
@@ -825,7 +864,7 @@ function renderAdminLock(el){
 }
 function adminLogin(){
   const pass=document.getElementById('adminPass')?.value||'';
-  if(pass===ADMIN_PASS){ state.adminUnlocked=true; renderAdminPanel(document.getElementById('pg-admin')); }
+  if(pass===(state.adminPass||ADMIN_PASS)){ state.adminUnlocked=true; renderAdminPanel(document.getElementById('pg-admin')); }
   else { document.getElementById('adminErr').textContent='❌ Sai mật khẩu'; }
 }
 
@@ -853,16 +892,21 @@ function renderAdminPanel(el){
 
   const staffCards=summaries.map(({s,sum})=>{
     const dayRowsHtml=sum.dayDetails.map(dd=>{
-      if(dd.isOff) return `<div class="day-row"><span class="dr-d">Ngày ${String(dd.d).padStart(2,'0')}</span><span><span class="kyuu-badge">休</span></span><span class="dr-s">—</span></div>`;
+      const dk=`${sy}-${String(sm).padStart(2,'0')}-${String(dd.d).padStart(2,'0')}`;
+      const editBtn=`<button onclick="openEditTime('${dk}','${s.id}')" style="margin-left:auto;padding:2px 7px;font-size:11px;border:1px solid var(--bdr);border-radius:6px;background:var(--bg);cursor:pointer;">✏️</button>`;
+      if(dd.isOff) return `<div class="day-row"><span class="dr-d">Ngày ${String(dd.d).padStart(2,'0')}</span><span><span class="kyuu-badge">休</span></span><span class="dr-s">—</span>${editBtn}</div>`;
       const daySal=calcDaySalary(s,dd.h);
-      return `<div class="day-row"><span class="dr-d">Ngày ${String(dd.d).padStart(2,'0')}</span><span class="dr-v">${fmtH(dd.h.total)}</span><span class="dr-s">${fmtNum(daySal)}</span></div>`;
+      return `<div class="day-row"><span class="dr-d">Ngày ${String(dd.d).padStart(2,'0')}</span><span class="dr-v">${fmtH(dd.h.total)}</span><span class="dr-s">${fmtNum(daySal)}</span>${editBtn}</div>`;
     }).join('');
 
     return `<div class="staff-salary-card">
       <div class="ssc-hdr">
         <div class="ssc-color" style="background:${s.hex}"></div>
-        <div class="ssc-name">${s.name}${s.jp?' — '+s.jp:''}<br><span style="font-size:10px;color:var(--ink4);font-weight:400">${s.type==='pt'?s.rate.toLocaleString('vi-VN')+'đ/h':'LCB '+( s.base/1e6).toFixed(0)+'M'}</span></div>
-        <div class="ssc-total">${fmtNum(sum.total)}</div>
+        <div class="ssc-name">${s.name}${s.jp?' — '+s.jp:''}<br><span style="font-size:10px;color:var(--ink4);font-weight:400">${s.type==='pt'?s.rate.toLocaleString('vi-VN')+'đ/h':'LCB '+(s.base/1e6).toFixed(0)+'M'}</span></div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+          <div class="ssc-total">${fmtNum(sum.total)}</div>
+          <button onclick="showSalarySlip('${s.id}','${selMk}')" style="font-size:11px;padding:3px 8px;border:1px solid var(--bdr);border-radius:6px;background:var(--bg);cursor:pointer;white-space:nowrap;">🧾 Phiếu lương</button>
+        </div>
       </div>
       <div class="ssc-body">
         <div class="ssc-row"><span class="ssc-l">Số ngày làm</span><span class="ssc-v">${sum.workDays} ngày</span></div>
@@ -891,6 +935,7 @@ function renderAdminPanel(el){
     ${kpiHtml}
     ${staffCards}
     ${renderSalarySettings()}
+    ${renderAdminPassSection()}
     <button class="export-btn btn-off" style="width:100%;margin-top:6px;color:var(--r)" onclick="adminLogout()">🔒 Đăng Xuất</button>
   </div>`;
 }
@@ -951,6 +996,144 @@ function exportExcel(){
 }
 
 // ══════════════════════════════════════════════════════
+// ADMIN PASSWORD
+// ══════════════════════════════════════════════════════
+function renderAdminPassSection(){
+  return `<div style="margin-top:16px;background:var(--w);border:1px solid var(--bdr);border-radius:var(--rr);overflow:hidden;">
+    <div style="padding:12px 16px;border-bottom:1px solid var(--bdr);font-weight:700;font-size:13px;">🔑 Đổi mật khẩu quản lý</div>
+    <div style="padding:12px 16px;display:flex;flex-direction:column;gap:8px;">
+      <input type="password" id="currPassInput" placeholder="Mật khẩu hiện tại" autocomplete="current-password"
+        style="padding:9px 12px;border:1px solid var(--bdr);border-radius:8px;font-size:13px;">
+      <input type="password" id="newPassInput1" placeholder="Mật khẩu mới (tối thiểu 4 ký tự)" autocomplete="new-password"
+        style="padding:9px 12px;border:1px solid var(--bdr);border-radius:8px;font-size:13px;">
+      <input type="password" id="newPassInput2" placeholder="Nhập lại mật khẩu mới" autocomplete="new-password"
+        style="padding:9px 12px;border:1px solid var(--bdr);border-radius:8px;font-size:13px;"
+        onkeydown="if(event.key==='Enter')changeAdminPass()">
+      <button onclick="changeAdminPass()" style="padding:10px;background:var(--ink);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">🔑 Đổi mật khẩu</button>
+    </div>
+  </div>`;
+}
+function changeAdminPass(){
+  const curr=document.getElementById('currPassInput')?.value||'';
+  const p1=document.getElementById('newPassInput1')?.value||'';
+  const p2=document.getElementById('newPassInput2')?.value||'';
+  if(curr!==(state.adminPass||ADMIN_PASS)){toast('❌ Sai mật khẩu hiện tại','e');return;}
+  if(p1.length<4){toast('Mật khẩu tối thiểu 4 ký tự','e');return;}
+  if(p1!==p2){toast('❌ Mật khẩu xác nhận không khớp','e');return;}
+  state.adminPass=p1;
+  saveStateAndSync();
+  toast('✅ Đã đổi mật khẩu quản lý');
+  renderAdminPanel(document.getElementById('pg-admin'));
+}
+
+// EDIT TIME
+// ══════════════════════════════════════════════════════
+function openEditTime(dk,sid){
+  const s=STAFF.find(x=>x.id===sid);
+  const rec=getRec(dk,sid);
+  const [y,m,d]=dk.split('-');
+  document.getElementById('etInfo').textContent=`${s.name} — Ngày ${d}/${m}/${y}`;
+  document.getElementById('etDk').value=dk;
+  document.getElementById('etSid').value=sid;
+  document.getElementById('etIn').value=rec?.clockIn?fmtTime(rec.clockIn):'';
+  document.getElementById('etOut').value=rec?.clockOut?fmtTime(rec.clockOut):'';
+  document.getElementById('editTimeModal').style.display='flex';
+}
+function saveEditTime(){
+  const dk=document.getElementById('etDk').value;
+  const sid=document.getElementById('etSid').value;
+  const inStr=document.getElementById('etIn').value;
+  const outStr=document.getElementById('etOut').value;
+  if(!inStr){toast('Cần nhập giờ vào ca','e');return;}
+  const [y,m,d]=dk.split('-').map(Number);
+  const [inH,inM]=inStr.split(':').map(Number);
+  let rec=getRec(dk,sid)||{};
+  delete rec.isOff;
+  const inTs=new Date(y,m-1,d,inH,inM,0,0).getTime();
+  rec.clockIn=inTs;
+  if(outStr){
+    const [outH,outM]=outStr.split(':').map(Number);
+    let outTs=new Date(y,m-1,d,outH,outM,0,0).getTime();
+    if(outTs<=inTs) outTs=new Date(y,m-1,d+1,outH,outM,0,0).getTime();
+    rec.clockOut=outTs;
+  } else {
+    delete rec.clockOut;
+  }
+  setRec(dk,sid,rec);
+  closeEditTime();
+  renderAdminPanel(document.getElementById('pg-admin'));
+  toast('✅ Đã cập nhật giờ');
+}
+function closeEditTime(){
+  document.getElementById('editTimeModal').style.display='none';
+}
+
+// SALARY SLIP
+// ══════════════════════════════════════════════════════
+function showSalarySlip(sid,mk){
+  const s=STAFF.find(x=>x.id===sid);
+  const sum=calcMonthSalary(s,mk);
+  const [y,m]=mk.split('-').map(Number);
+  const rows=sum.dayDetails.map(dd=>{
+    if(dd.isOff) return `<tr style="color:#888"><td style="padding:5px 4px">Ngày ${String(dd.d).padStart(2,'0')}</td><td colspan="4" style="text-align:center;padding:5px 4px">休 Nghỉ</td></tr>`;
+    const dk=`${y}-${String(m).padStart(2,'0')}-${String(dd.d).padStart(2,'0')}`;
+    const rec=getRec(dk,sid);
+    const daySal=calcDaySalary(s,dd.h);
+    return `<tr>
+      <td style="padding:5px 4px">Ngày ${String(dd.d).padStart(2,'0')}</td>
+      <td style="padding:5px 4px;text-align:center">${fmtTime(rec?.clockIn)}</td>
+      <td style="padding:5px 4px;text-align:center">${fmtTime(rec?.clockOut)}</td>
+      <td style="padding:5px 4px;text-align:center">${fmtH(dd.h.total)}</td>
+      <td style="padding:5px 4px;text-align:right">${fmtNum(daySal)}</td>
+    </tr>`;
+  }).join('');
+  document.getElementById('slipContent').innerHTML=`
+    <div style="text-align:center;padding-bottom:16px;border-bottom:2px dashed #ddd;margin-bottom:16px">
+      <div style="font-size:20px;font-weight:700;letter-spacing:1px">🍗 Torishin / 鳥心</div>
+      <div style="font-size:12px;color:#888;margin-top:2px">PHIẾU LƯƠNG THÁNG ${String(m).padStart(2,'0')}/${y}</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;padding:10px;background:#f8f8f8;border-radius:10px">
+      <div style="width:12px;height:12px;border-radius:50%;background:${s.hex};flex-shrink:0"></div>
+      <div style="font-weight:700;font-size:15px">${s.name}${s.jp?' / '+s.jp:''}</div>
+      <div style="margin-left:auto;font-size:11px;color:#888">${s.type==='pt'?s.rate.toLocaleString('vi-VN')+'đ/h':'LCB '+(s.base/1e6).toFixed(1)+'M'}</div>
+    </div>
+    <table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:16px">
+      <thead><tr style="background:#f0f0f0;font-size:11px">
+        <th style="padding:6px 4px;text-align:left">Ngày</th>
+        <th style="padding:6px 4px">Vào</th>
+        <th style="padding:6px 4px">Ra</th>
+        <th style="padding:6px 4px">Giờ</th>
+        <th style="padding:6px 4px;text-align:right">Lương</th>
+      </tr></thead>
+      <tbody>${rows||'<tr><td colspan="5" style="text-align:center;padding:12px;color:#888">Chưa có dữ liệu</td></tr>'}</tbody>
+    </table>
+    <div style="background:#f0fdf4;border-radius:12px;padding:14px">
+      <div style="display:flex;justify-content:space-between;padding:5px 0;font-size:13px;border-bottom:1px solid #c8ebd8"><span>Số ngày làm</span><strong>${sum.workDays} ngày</strong></div>
+      <div style="display:flex;justify-content:space-between;padding:5px 0;font-size:13px;border-bottom:1px solid #c8ebd8"><span>Tổng giờ làm</span><strong>${fmtH(sum.totalH)}</strong></div>
+      <div style="display:flex;justify-content:space-between;padding:5px 0;font-size:13px;border-bottom:1px solid #c8ebd8"><span>Giờ đêm (≥22h)</span><strong>${fmtH(sum.totalNight)}</strong></div>
+      <div style="display:flex;justify-content:space-between;padding:5px 0;font-size:13px;border-bottom:1px solid #c8ebd8"><span>Tiền ăn (${sum.mealDays} ngày)</span><strong>${fmtNum(sum.meal)}</strong></div>
+      ${s.type==='main'?`<div style="display:flex;justify-content:space-between;padding:5px 0;font-size:13px;border-bottom:1px solid #c8ebd8"><span>Lương cơ bản</span><strong>${fmtNum(s.base)}</strong></div>`:''}
+      <div style="display:flex;justify-content:space-between;padding:10px 0 4px;font-size:17px;font-weight:700;color:#1e7a48"><span>TỔNG LƯƠNG</span><span>${fmtNum(sum.total)}</span></div>
+    </div>
+    <div style="text-align:center;margin-top:14px;font-size:11px;color:#bbb">Ngày in: ${new Date().toLocaleDateString('vi-VN')}</div>`;
+  document.getElementById('salarySlipModal').style.display='flex';
+}
+function closeSalarySlip(){
+  document.getElementById('salarySlipModal').style.display='none';
+}
+function printSalarySlip(){
+  const content=document.getElementById('slipContent').innerHTML;
+  const win=window.open('','_blank','width=420,height=750');
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Phiếu lương</title>
+  <style>body{font-family:sans-serif;padding:20px;max-width:400px;margin:0 auto}table{width:100%;border-collapse:collapse}
+  th,td{padding:6px 4px;border-bottom:1px solid #eee}@media print{.no-print{display:none}}</style>
+  </head><body>${content}
+  <div class="no-print" style="margin-top:20px;text-align:center">
+    <button onclick="window.print()" style="padding:12px 24px;background:#1e7a48;color:#fff;border:none;border-radius:8px;font-size:15px;cursor:pointer">🖨 In phiếu lương</button>
+  </div></body></html>`);
+  win.document.close();
+}
+
 // SALARY SETTINGS
 // ══════════════════════════════════════════════════════
 function renderSalarySettings(){
