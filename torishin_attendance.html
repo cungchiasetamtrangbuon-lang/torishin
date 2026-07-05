@@ -938,9 +938,9 @@ function adminLogin(){
 
 function renderAdminPanel(el){
   const now=new Date();
-  // Generate month options (last 6 months + next 1)
+  // Generate month options (last 24 months + next 1)
   const months=[];
-  for(let i=-5;i<=1;i++){
+  for(let i=-23;i<=1;i++){
     const d=new Date(now.getFullYear(),now.getMonth()+i,1);
     const k=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
     months.push({k,label:'Tháng '+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear()});
