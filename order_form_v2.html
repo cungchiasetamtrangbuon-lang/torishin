@@ -1,0 +1,196 @@
+<h2 class="sr-only">Form đặt hàng theo nhóm nhà cung cấp</h2>
+<style>
+*{box-sizing:border-box}
+.oa{font-family:var(--font-sans);padding:.75rem 0}
+.oh{display:flex;align-items:center;gap:10px;margin-bottom:1rem;flex-wrap:wrap}
+.oh-title{font-size:16px;font-weight:500;color:var(--text-primary)}
+.otabs{display:flex;gap:2px;border-bottom:.5px solid var(--border);margin-bottom:1rem;overflow-x:auto}
+.otab{padding:7px 13px;border:none;background:none;cursor:pointer;font-size:13px;color:var(--text-secondary);border-bottom:2px solid transparent;margin-bottom:-.5px;white-space:nowrap}
+.otab.active{color:var(--text-accent);border-bottom-color:var(--border-accent);font-weight:500}
+.opanel{display:none}.opanel.active{display:block}
+.oi{display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:.5px solid var(--border)}
+.oi:last-child{border-bottom:none}
+.oi-name{flex:1;font-size:13px;color:var(--text-primary)}
+.oi input[type=text]{width:100px;font-size:13px;text-align:center;padding:4px 8px;border-radius:var(--radius);border:.5px solid var(--border);background:var(--surface-1);color:var(--text-primary)}
+.oi input[type=text]:focus{outline:none;border-color:var(--border-accent)}
+.oi input[type=text].has-val{border-color:var(--border-accent);background:var(--bg-accent);color:var(--text-accent);font-weight:500}
+.ofoot{display:flex;align-items:center;justify-content:space-between;margin-top:1rem;padding-top:.75rem;border-top:.5px solid var(--border);flex-wrap:wrap;gap:8px}
+.ocount{font-size:12px;color:var(--text-muted)}
+.ocount span{color:var(--text-accent);font-weight:500}
+.obtn-send{background:var(--fill-accent);color:var(--on-accent);border:none;padding:8px 18px;border-radius:var(--radius);font-size:13px;cursor:pointer;font-weight:500}
+.obtn-send:hover{opacity:.88}
+.obtn-clr{padding:6px 12px;font-size:12px;cursor:pointer;color:var(--text-danger);border-color:var(--border-danger);border-radius:var(--radius)}
+.obtn-def{padding:6px 12px;font-size:12px;cursor:pointer;border-radius:var(--radius)}
+.otop{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+</style>
+
+<div class="oa">
+  <div class="oh">
+    <span class="oh-title">Phiếu đặt hàng</span>
+    <input type="date" id="odate" style="font-size:13px;padding:4px 8px;border-radius:var(--radius);border:.5px solid var(--border);background:var(--surface-1);color:var(--text-primary)"/>
+    <input type="text" id="onote" placeholder="Ghi chú..." style="flex:1;min-width:100px;font-size:13px;padding:4px 8px;border-radius:var(--radius);border:.5px solid var(--border);background:var(--surface-1);color:var(--text-primary)"/>
+  </div>
+  <div class="otabs" id="otabs"></div>
+  <div id="opanels"></div>
+</div>
+
+<script>
+const S=[
+  {id:'ga',label:'GÀ',items:[
+    {n:'Đùi gà lóc xương',d:''},{n:'Ức phile',d:''},
+    {n:'Tim',d:'0.5 kg'},{n:'Mề',d:'0.5 kg'},{n:'Gan',d:'0.5 kg'},
+    {n:'Sụn ức',d:'0.5 kg'},{n:'Cánh giữa',d:'1 kg'},{n:'Cánh nguyên',d:''}
+  ]},
+  {id:'rau',label:'RAU',items:[
+    {n:'Bắp cải',d:'1'},{n:'Xà lách',d:'1'},{n:'Đậu bắp',d:'0.5'},
+    {n:'Cà tím',d:'0.5'},{n:'Paro',d:'0.5'},{n:'Hành tây',d:'1'},
+    {n:'Khoai tây',d:'0.5'},{n:'Cà chua bi',d:'0.5'},{n:'Cà chua',d:''},
+    {n:'Củ cải',d:'1 củ'},{n:'Cà rốt',d:'1 củ'},{n:'Dưa leo',d:'2 trái'},
+    {n:'Nấm đùi gà',d:'0.5 kg'},{n:'Nấm kim châm',d:'3 gói'},{n:'Nấm đông cô',d:'0.5 gói'},
+    {n:'Tỏi',d:'0.5'},{n:'Gừng',d:''},{n:'Ớt chuông vàng',d:'1 trái'},
+    {n:'Ớt chuông đỏ',d:'1 trái'},{n:'Ớt trái',d:''},{n:'Chanh',d:'3 trái'},
+    {n:'Ngò rí',d:''},{n:'Giá',d:'10k'},{n:'Hẹ',d:'10k'},
+    {n:'Cần tây',d:'0.1 kg'},{n:'Hành lá',d:'0.1 kg'},{n:'Đậu hủ non',d:'3 hộp'},
+    {n:'Kim chi',d:'0.5'},{n:'Súp lơ',d:''},{n:'Trứng cút',d:''},
+    {n:'Trứng gà',d:''},{n:'Chả cá chikawa',d:'5 pc'},{n:'Bắp trái',d:'1'}
+  ]},
+  {id:'giavi',label:'GIA VỊ',items:[
+    {n:'Shouyu',d:'2'},{n:'Mirin',d:'1'},{n:'Rượu sake',d:'1'},
+    {n:'Mazone',d:'2'},{n:'Ponzu',d:'1'},{n:'Tương ớt',d:''},
+    {n:'Teriyaki',d:'0.5'},{n:'Sốt Tonkatsu',d:'0.5'},{n:'Sốt Cercar',d:'1'},
+    {n:'Sốt goma',d:'1'},{n:'Đường',d:'2'},{n:'Muối',d:'0.5'},
+    {n:'Mì chính',d:'0.5'},{n:'Dầu mè',d:'0.5'},{n:'Miso đỏ',d:'1'},
+    {n:'Mè',d:'0.1'},{n:'Dầu chiên',d:''},{n:'Dầu oliu',d:''},
+    {n:'Cá bào katsuo',d:''},{n:'Kombu lâu',d:''},{n:'Kombu muối(trộn)',d:''},
+    {n:'Yuzu (muối tắc)',d:''},{n:'Gừng xay nhuyễn',d:''},{n:'Shiro dashi',d:''},
+    {n:'Muối Tiêu',d:''},{n:'Bột chiên gà',d:'2 gói'},{n:'Bột tem',d:'1 gói'},
+    {n:'Bột nori',d:''},{n:'Bánh mì',d:'0.5'},{n:'Tương cà',d:'0.3'}
+  ]},
+  {id:'heo',label:'HEO',items:[
+    {n:'3 chỉ cắt lát',d:'1.5 kg'},{n:'3 chỉ xườn',d:'1-2 kg'},{n:'Heo xay',d:'200 g'}
+  ]},
+  {id:'haisan',label:'HẢI SẢN',items:[
+    {n:'Tôm',d:''},{n:'Mực',d:''},{n:'Bạch tuột',d:''},{n:'Nghêu',d:''}
+  ]}
+];
+
+const tabsEl=document.getElementById('otabs');
+const panelsEl=document.getElementById('opanels');
+
+document.getElementById('odate').value=new Date().toISOString().split('T')[0];
+
+function fmtDate(){
+  const v=document.getElementById('odate').value;
+  if(!v)return'';
+  const d=new Date(v+'T00:00:00');
+  const days=['Chủ nhật','Thứ 2','Thứ 3','Thứ 4','Thứ 5','Thứ 6','Thứ 7'];
+  return days[d.getDay()]+' '+d.toLocaleDateString('vi-VN');
+}
+
+function buildMsg(s){
+  const note=document.getElementById('onote').value.trim();
+  const lines=s.items.map((_,j)=>{
+    const q=document.getElementById('qty-'+s.id+'-'+j).value.trim();
+    return q?'• '+s.items[j].n+': '+q:null;
+  }).filter(Boolean);
+  if(!lines.length)return null;
+  let msg='ORDER – '+fmtDate()+'\n'+'━━━━━━━━━━━━━━\n'+lines.join('\n');
+  if(note)msg+='\n\n📝 '+note;
+  return msg;
+}
+
+function updateCount(sid){
+  const s=S.find(x=>x.id===sid);
+  const n=s.items.filter((_,j)=>{
+    const q=document.getElementById('qty-'+sid+'-'+j);
+    return q&&q.value.trim();
+  }).length;
+  const el=document.getElementById('cnt-'+sid);
+  if(el)el.textContent=n;
+  const tab=document.getElementById('tab-'+sid);
+  if(tab){
+    const badge=tab.querySelector('.tbadge');
+    if(badge){badge.style.display=n>0?'inline':'none';badge.textContent=n;}
+  }
+}
+
+S.forEach((s,i)=>{
+  // Tab
+  const tab=document.createElement('button');
+  tab.className='otab'+(i===0?' active':'');
+  tab.id='tab-'+s.id;
+  tab.innerHTML=s.label+'<span class="tbadge" style="display:none;margin-left:5px;background:var(--bg-accent);color:var(--text-accent);font-size:10px;font-weight:500;border-radius:10px;padding:1px 6px;"></span>';
+  tab.onclick=()=>{
+    document.querySelectorAll('.otab').forEach(t=>t.classList.remove('active'));
+    document.querySelectorAll('.opanel').forEach(p=>p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('panel-'+s.id).classList.add('active');
+  };
+  tabsEl.appendChild(tab);
+
+  // Panel
+  const panel=document.createElement('div');
+  panel.className='opanel'+(i===0?' active':'');
+  panel.id='panel-'+s.id;
+
+  // Controls row
+  const top=document.createElement('div');
+  top.className='otop';
+  top.innerHTML=`
+    <button class="obtn-def" onclick="setDefaults('${s.id}')">Mặc định</button>
+    <button class="obtn-clr" onclick="clearAll('${s.id}')">Xoá trắng</button>`;
+  panel.appendChild(top);
+
+  // Items
+  s.items.forEach((item,j)=>{
+    const row=document.createElement('div');
+    row.className='oi';
+    row.innerHTML=`<span class="oi-name">${item.n}</span>
+      <input type="text" id="qty-${s.id}-${j}" value="${item.d}" placeholder="— trống = bỏ qua">`;
+    panel.appendChild(row);
+    setTimeout(()=>{
+      const inp=document.getElementById('qty-'+s.id+'-'+j);
+      if(inp){
+        if(inp.value.trim())inp.classList.add('has-val');
+        inp.addEventListener('input',()=>{
+          inp.classList.toggle('has-val',!!inp.value.trim());
+          updateCount(s.id);
+        });
+      }
+    },0);
+  });
+
+  // Footer
+  const foot=document.createElement('div');
+  foot.className='ofoot';
+  foot.innerHTML=`<span class="ocount"><span id="cnt-${s.id}">0</span> mặt hàng</span>
+    <button class="obtn-send" onclick="sendGroup('${s.id}')">Gửi nhóm ${s.label} ↗</button>`;
+  panel.appendChild(foot);
+
+  panelsEl.appendChild(panel);
+  setTimeout(()=>updateCount(s.id),30);
+});
+
+function setDefaults(sid){
+  S.find(s=>s.id===sid).items.forEach((item,j)=>{
+    const inp=document.getElementById('qty-'+sid+'-'+j);
+    if(inp){inp.value=item.d;inp.classList.toggle('has-val',!!item.d);}
+  });
+  updateCount(sid);
+}
+
+function clearAll(sid){
+  S.find(s=>s.id===sid).items.forEach((_,j)=>{
+    const inp=document.getElementById('qty-'+sid+'-'+j);
+    if(inp){inp.value='';inp.classList.remove('has-val');}
+  });
+  updateCount(sid);
+}
+
+function sendGroup(sid){
+  const s=S.find(x=>x.id===sid);
+  const msg=buildMsg(s);
+  if(!msg){alert('Chưa nhập số lượng cho mặt hàng nào.');return;}
+  sendPrompt('Copy tin nhắn sau vào clipboard rồi mở Zalo Desktop để tôi tự chọn nhóm và gửi:\n\n'+msg);
+}
+</script>
