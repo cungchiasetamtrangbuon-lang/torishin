@@ -486,7 +486,11 @@ async function loadShiftFromCloud(){
       const remote=res.data;
       const localRaw=localStorage.getItem(SHIFT_STORAGE_KEY);
       const localTs=localRaw?JSON.parse(localRaw)._lastUpdated||0:0;
-      if((remote._lastUpdated||0)>=localTs){ _shiftData=remote; renderClock(); }
+      if((remote._lastUpdated||0)>=localTs){
+        _shiftData=remote;
+        const _tab=document.querySelector('.tab.on')?.dataset?.tab;
+        if(!_tab||_tab==='clock') renderClock();
+      }
     }
   }catch(e){
     // Render đang ngủ → thử lại sau 45 giây khi server đã khởi động xong
@@ -768,9 +772,10 @@ function renderStaffClock(sid){
 
   // Shift plan hint
   const todayShift=getShiftForDay(today,sid);
+  const _shiftBreak=todayShift?.breakMin?'<span style="font-size:11px;font-weight:400;opacity:.7"> · giải lao '+todayShift.breakMin+'ph</span>':'';
   const shiftHintHtml=(todayShift&&status==='idle')?`<div style="margin:0 18px 4px;padding:10px 14px;background:var(--bb);border:1px solid var(--bbd);border-radius:8px;">
     <div style="font-size:9.5px;letter-spacing:.15em;font-weight:700;text-transform:uppercase;color:var(--b);margin-bottom:4px;">📅 Lịch hôm nay</div>
-    <div style="font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:600;color:var(--b)">${fmtShiftH(todayShift.start)} – ${fmtShiftH(todayShift.end)}${todayShift.breakMin?`<span style="font-size:11px;font-weight:400;opacity:.7"> · giải lao ${todayShift.breakMin}ph</span>`:''}</div>
+    <div style="font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:600;color:var(--b)">${fmtShiftH(todayShift.start)} – ${fmtShiftH(todayShift.end)}${_shiftBreak}</div>
   </div>`:'';
 
   // Break log
