@@ -687,13 +687,14 @@ function renderClock(){
     else if(rec?.clockOut){statusClass='done';dot='done';statusTxt='Đã xong';timeTxt=fmtTime(rec.clockIn)+' – '+fmtTime(rec.clockOut);}
     else if(rec?.clockIn&&rec?.breaks?.some(b=>!b.end)){statusClass='on-break';dot='on-break';statusTxt='Nghỉ giải lao';timeTxt='Vào: '+fmtTime(rec.clockIn);}
     else if(rec?.clockIn){statusClass='working';dot='working';statusTxt='Đang làm';timeTxt='Vào: '+fmtTime(rec.clockIn);}
-    const todayShiftGrid=!rec?getShiftForDay(today,s.id):null;
-    const shiftGridTxt=todayShiftGrid?`<div class="sb-time" style="color:var(--b)">📅 ${fmtShiftH(todayShiftGrid.start)}–${fmtShiftH(todayShiftGrid.end)}</div>`:'';
+    const todayShiftGrid=getShiftForDay(today,s.id);
+    const shiftGridTxt=todayShiftGrid?`<div class="sb-time" style="color:var(--b);opacity:.85">📅 ${fmtShiftH(todayShiftGrid.start)}–${fmtShiftH(todayShiftGrid.end)}</div>`:'';
     return `<div class="staff-btn ${statusClass}" onclick="selectStaff('${s.id}')">
       <div class="sb-dot ${dot}"></div>
       <div class="sb-name">${s.name}${s.jp?' <span style="font-size:10px;opacity:.5">'+s.jp+'</span>':''}</div>
       <div class="sb-status">${statusTxt||'Chưa vào ca'}</div>
-      ${timeTxt?`<div class="sb-time">${timeTxt}</div>`:shiftGridTxt}
+      ${timeTxt?`<div class="sb-time">${timeTxt}</div>`:''}
+      ${shiftGridTxt}
     </div>`;
   }).join('');
 
@@ -773,7 +774,7 @@ function renderStaffClock(sid){
   // Shift plan hint
   const todayShift=getShiftForDay(today,sid);
   const _shiftBreak=todayShift?.breakMin?'<span style="font-size:11px;font-weight:400;opacity:.7"> · giải lao '+todayShift.breakMin+'ph</span>':'';
-  const shiftHintHtml=(todayShift&&status==='idle')?`<div style="margin:0 18px 4px;padding:10px 14px;background:var(--bb);border:1px solid var(--bbd);border-radius:8px;">
+  const shiftHintHtml=todayShift?`<div style="margin:0 18px 4px;padding:10px 14px;background:var(--bb);border:1px solid var(--bbd);border-radius:8px;">
     <div style="font-size:9.5px;letter-spacing:.15em;font-weight:700;text-transform:uppercase;color:var(--b);margin-bottom:4px;">📅 Lịch hôm nay</div>
     <div style="font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:600;color:var(--b)">${fmtShiftH(todayShift.start)} – ${fmtShiftH(todayShift.end)}${_shiftBreak}</div>
   </div>`:'';
