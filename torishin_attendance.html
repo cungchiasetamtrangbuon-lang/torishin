@@ -476,16 +476,22 @@ function loadShiftData(){
 }
 async function loadShiftFromCloud(){
   try{
-    const r=await fetch(`${SHIFT_BACKEND_URL}?key=${encodeURIComponent(SHIFT_STORAGE_KEY)}`,{mode:'cors'});
-    if(!r.ok) return;
+    const ctrl=new AbortController();
+    const t=setTimeout(()=>ctrl.abort(),9000);
+    const r=await fetch(`${SHIFT_BACKEND_URL}?key=${encodeURIComponent(SHIFT_STORAGE_KEY)}`,{mode:'cors',signal:ctrl.signal});
+    clearTimeout(t);
+    if(!r.ok) throw new Error();
     const res=await r.json();
     if(res?.data){
       const remote=res.data;
       const localRaw=localStorage.getItem(SHIFT_STORAGE_KEY);
       const localTs=localRaw?JSON.parse(localRaw)._lastUpdated||0:0;
-      if((remote._lastUpdated||0)>=localTs) _shiftData=remote;
+      if((remote._lastUpdated||0)>=localTs){ _shiftData=remote; renderClock(); }
     }
-  }catch(e){}
+  }catch(e){
+    // Render đang ngủ → thử lại sau 45 giây khi server đã khởi động xong
+    setTimeout(()=>loadShiftFromCloud(),45000);
+  }
 }
 function getShiftForDay(dateStr,staffId){
   if(!_shiftData?.monthScheds) return null;
@@ -1402,7 +1408,7 @@ renderClock();
 setInterval(updateClock,1000);
 updateClock();
 startSync();
-loadShiftFromCloud().then(()=>renderClock());
+loadShiftFromCloud();
 </script>
 </body>
 </html>
