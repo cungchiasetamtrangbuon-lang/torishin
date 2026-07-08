@@ -499,10 +499,16 @@ async function loadShiftFromCloud(){
   }
 }
 function getShiftForDay(dateStr,staffId){
-  if(!_shiftData?.monthScheds) return null;
+  // Luôn đọc thẳng từ localStorage để tránh stale cache
+  let ms=null;
+  try{
+    const raw=localStorage.getItem(SHIFT_STORAGE_KEY);
+    if(raw) ms=JSON.parse(raw)?.monthScheds;
+  }catch(e){}
+  if(!ms) return null;
   const [y,m,d]=dateStr.split('-').map(Number);
-  const mk=y+'-'+m; // shift planner dùng "2026-7" không pad
-  const dayShifts=(_shiftData.monthScheds[mk]||{})[d];
+  const mk=y+'-'+m;
+  const dayShifts=(ms[mk]||{})[d];
   if(!Array.isArray(dayShifts)) return null;
   return dayShifts.find(sh=>sh.staffId===staffId&&sh.staffId!=='__help__')||null;
 }
