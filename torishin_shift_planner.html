@@ -6,6 +6,8 @@
 <title>Torishin — Shift Planner Pro</title>
 <link rel="icon" type="image/jpeg" href="./torishin.jpg">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@300;400;500&family=Sora:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <style>
 :root{
   --w:#ffffff;--w2:#f8f6f2;--w3:#f0ece4;--w4:#e4dfd5;
@@ -473,8 +475,9 @@ let sched={};
 // LOCAL STORAGE — tự lưu vào PC
 // ════════════════════════════════════
 const STORAGE_KEY='torishin_shift_planner_v1';
-const BACKEND_URL=(window.location.hostname==='localhost'||window.location.hostname==='127.0.0.1')
-  ?'http://127.0.0.1:3000':'https://torishin.onrender.com';
+const FB_URL='https://torishin-ace11-default-rtdb.asia-southeast1.firebasedatabase.app';
+firebase.initializeApp({databaseURL:FB_URL});
+const _spRef=firebase.database().ref('torishin_shifts');
 let monthScheds={};
 
 function monthKey(){return curY+'-'+curM;}
@@ -504,9 +507,7 @@ async function saveToCloud(){
   try{
     const payload={v:1,curY,curM,OT_NIGHT,MAX,PASS,staff:STAFF,monthScheds,_lastUpdated:Date.now()};
     localStorage.setItem(STORAGE_KEY,JSON.stringify(payload));
-    const r=await fetch(BACKEND_URL,{method:'POST',mode:'cors',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({key:STORAGE_KEY,data:payload})});
-    if(!r.ok)throw new Error();
+    await _spRef.set(payload);
     setSyncBadge('ok');setTimeout(()=>setSyncBadge(''),3000);
   }catch(e){setSyncBadge('err');}
   finally{_syncFlight=false;}
@@ -518,11 +519,9 @@ function manualSync(){
 }
 async function loadFromCloud(){
   try{
-    const r=await fetch(`${BACKEND_URL}?key=${encodeURIComponent(STORAGE_KEY)}`,{mode:'cors'});
-    if(!r.ok)throw new Error();
-    const res=await r.json();
-    if(!res?.data)return;
-    const remote=res.data;
+    const snap=await _spRef.once('value');
+    const remote=snap.val();
+    if(!remote)return;
     const localRaw=localStorage.getItem(STORAGE_KEY);
     const localTs=localRaw?JSON.parse(localRaw)._lastUpdated||0:0;
     const remoteTs=remote._lastUpdated||0;
