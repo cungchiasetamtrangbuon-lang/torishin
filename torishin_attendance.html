@@ -1416,6 +1416,15 @@ setInterval(updateClock,1000);
 updateClock();
 startSync();
 loadShiftFromCloud();
+
+// Tự cập nhật khi tab lịch làm lưu dữ liệu (cùng trình duyệt, khác tab)
+window.addEventListener('storage',e=>{
+  if(e.key===SHIFT_STORAGE_KEY){ loadShiftData(); renderClock(); }
+});
+// Tự đọc lại khi quay về tab chấm công
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='visible'){ loadShiftData(); renderClock(); }
+});
 </script>
 </body>
 </html>
