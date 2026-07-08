@@ -486,15 +486,12 @@ function saveState(){
     const ind=document.getElementById('saveInd');
     if(ind){ind.style.opacity='1';clearTimeout(ind._t);ind._t=setTimeout(()=>ind.style.opacity='0',1800);}
   }catch(e){console.warn('Lưu thất bại',e);}
-  clearTimeout(_autoSyncTimer);
-  _autoSyncTimer=setTimeout(saveToCloud,3000);
 }
 
 // ════════════════════════════════════
 // CLOUD SYNC
 // ════════════════════════════════════
 let _syncFlight=false;
-let _autoSyncTimer=null;
 function setSyncBadge(s){
   const el=document.getElementById('syncBadge');if(!el)return;
   const txt={ok:'☁ Đã lưu',err:'⚠ Offline',syncing:'↑ Đang lưu...','':''};
