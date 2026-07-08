@@ -499,12 +499,14 @@ async function loadShiftFromCloud(){
   }
 }
 function getShiftForDay(dateStr,staffId){
-  // Luôn đọc thẳng từ localStorage để tránh stale cache
-  let ms=null;
-  try{
-    const raw=localStorage.getItem(SHIFT_STORAGE_KEY);
-    if(raw) ms=JSON.parse(raw)?.monthScheds;
-  }catch(e){}
+  // Ưu tiên _shiftData (từ cloud hoặc localStorage), fallback sang localStorage
+  let ms=_shiftData?.monthScheds;
+  if(!ms){
+    try{
+      const raw=localStorage.getItem(SHIFT_STORAGE_KEY);
+      if(raw) ms=JSON.parse(raw)?.monthScheds;
+    }catch(e){}
+  }
   if(!ms) return null;
   const [y,m,d]=dateStr.split('-').map(Number);
   const mk=y+'-'+m;
@@ -706,23 +708,7 @@ function renderClock(){
     </div>`;
   }).join('');
 
-  // Debug: kiểm tra localStorage có data tháng hiện tại không
-  let _dbg='';
-  try{
-    const _r=localStorage.getItem(SHIFT_STORAGE_KEY);
-    if(!_r){_dbg='⚠️ localStorage trống';}
-    else{
-      const _d=JSON.parse(_r);
-      const [_y,_m]=today.split('-').map(Number);
-      const _mk=_y+'-'+_m;
-      const _days=_d?.monthScheds?.[_mk];
-      if(!_days){_dbg='⚠️ Không có lịch tháng '+_m+'/'+_y+' (có: '+Object.keys(_d?.monthScheds||{}).join(', ')+')';}
-      else{_dbg='✅ Lịch tháng '+_m+'/'+_y+': '+Object.keys(_days).length+' ngày';}
-    }
-  }catch(e){_dbg='❌ Lỗi đọc localStorage: '+e.message;}
-
-  el.innerHTML=`<div style="font-size:10px;padding:4px 12px;opacity:.6;color:var(--ink3)">${_dbg}</div>
-  <div class="sec-h" style="margin-top:2px">Chọn nhân viên / 従業員を選択</div>
+  el.innerHTML=`<div class="sec-h" style="margin-top:2px">Chọn nhân viên / 従業員を選択</div>
   <div class="staff-grid">${staffHtml}</div>`;
 }
 
