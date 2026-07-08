@@ -676,6 +676,7 @@ function showTab(tab){
 // CLOCK TAB
 // ══════════════════════════════════════════════════════
 function renderClock(){
+  loadShiftData();
   const el=document.getElementById('pg-clock');
   if(state.selectedStaff) return renderStaffClock(state.selectedStaff);
 
