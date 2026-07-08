@@ -484,9 +484,9 @@ async function loadShiftFromCloud(){
     const res=await r.json();
     if(res?.data){
       const remote=res.data;
-      const localRaw=localStorage.getItem(SHIFT_STORAGE_KEY);
-      const localTs=localRaw?JSON.parse(localRaw)._lastUpdated||0:0;
-      if((remote._lastUpdated||0)>=localTs){
+      // Chỉ dùng data cloud nếu có lịch tháng hiện tại (tránh data cũ ghi đè)
+      const _t=todayKey(),_p=_t.split('-').map(Number),_mk=_p[0]+'-'+_p[1];
+      if(remote.monthScheds?.[_mk]&&!_shiftData?.monthScheds?.[_mk]){
         _shiftData=remote;
         const _tab=document.querySelector('.tab.on')?.dataset?.tab;
         if(!_tab||_tab==='clock') renderClock();
@@ -1414,6 +1414,7 @@ renderClock();
 setInterval(updateClock,1000);
 updateClock();
 startSync();
+loadShiftFromCloud();
 </script>
 </body>
 </html>
