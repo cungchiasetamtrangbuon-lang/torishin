@@ -70,6 +70,8 @@
     .hint-note{margin-top:14px;font-size:13px;color:var(--muted)}
     @media (max-width:720px){.report-head{flex-direction:column}.report-total{width:100%;text-align:left}.report-summary{grid-template-columns:1fr}}
   </style>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 </head>
 <body>
   <div class="page">
@@ -461,24 +463,14 @@
       fillFormFromDate(today);
     }
 
-    /* Render backend sync (recommended)
-       1) Deploy the backend with server.js on Render.
-       2) Set backend URL below to the Render app URL.
-       3) Save and reload the page.
-    */
-    const BACKEND_CONFIG = {
-      url: (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-        ? 'http://127.0.0.1:3000/api/sync'
-        : 'https://torishin.onrender.com'
-    };
-    let cloudEnabled = false;
-    let cloudSyncInFlight = false;
+    firebase.initializeApp({databaseURL:'https://torishin-ace11-default-rtdb.asia-southeast1.firebasedatabase.app'});
+    const _revRef=firebase.database().ref('torishin_rev');
+    let _cloudFlight=false;
 
     function initCloudSync(){
-      cloudEnabled = Boolean(BACKEND_CONFIG.url);
       loadFromCloud();
-      document.addEventListener('visibilitychange', ()=>{
-        if(document.visibilityState === 'visible') loadFromCloud();
+      document.addEventListener('visibilitychange',()=>{
+        if(document.visibilityState==='visible') loadFromCloud();
       });
     }
 
@@ -493,36 +485,30 @@
     }
 
     async function saveToCloud(){
-      if(!cloudEnabled || !BACKEND_CONFIG.url) return;
-      if(cloudSyncInFlight) return;
+      if(_cloudFlight)return;
       setSyncBadge('syncing');
       try{
-        cloudSyncInFlight = true;
-        const response = await fetch(BACKEND_CONFIG.url, {
-          method: 'POST',
-          mode: 'cors',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({ key: STORAGE_KEY, data: S })
-        });
-        if(!response.ok) throw new Error('save failed');
+        _cloudFlight=true;
+        await _revRef.set(S);
         setSyncBadge('ok');
-      }catch(e){ setSyncBadge('err'); console.warn('saveToCloud failed', e); }
-      finally { cloudSyncInFlight = false; }
+      }catch(e){ setSyncBadge('err'); }
+      finally{ _cloudFlight=false; }
     }
 
     async function loadFromCloud(){
-      if(!cloudEnabled || !BACKEND_CONFIG.url) return;
       try{
-        const response = await fetch(`${BACKEND_CONFIG.url}?key=${encodeURIComponent(STORAGE_KEY)}`, { mode: 'cors' });
-        if(!response.ok) throw new Error('load failed');
-        const payload = await response.json();
-        if(payload && payload.data){
-          const remote = payload.data;
-          const localTs = S._lastUpdated || 0;
-          const remoteTs = remote._lastUpdated || 0;
-          if(remoteTs > localTs){ Object.assign(S, remote); fillFormFromDate($('date')?.value); try{localStorage.setItem(STORAGE_KEY,JSON.stringify(S));}catch(e){} setSyncBadge('ok'); }
+        const snap=await _revRef.once('value');
+        const remote=snap.val();
+        if(!remote)return;
+        const localTs=S._lastUpdated||0;
+        const remoteTs=remote._lastUpdated||0;
+        if(remoteTs>localTs){
+          Object.assign(S,remote);
+          fillFormFromDate($('date')?.value);
+          try{localStorage.setItem(STORAGE_KEY,JSON.stringify(S));}catch(e){}
+          setSyncBadge('ok');
         }
-      }catch(e){ console.warn('loadFromCloud failed', e); }
+      }catch(e){}
     }
 
     init();
