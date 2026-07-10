@@ -367,6 +367,7 @@ firebase.initializeApp({ databaseURL: FIREBASE_URL });
 const _fbDb = firebase.database();
 const _fbRef = _fbDb.ref(FB_PATH);
 let _syncFlight=false, _syncDirty=false;
+const _pendingDeletes={}; // {dk: {sid: true}} — ngăn applyRemote restore record đang xóa
 
 function setSyncBadge(status){
   const el=document.getElementById('syncBadge');
@@ -387,6 +388,10 @@ function applyRemote(remote){
   // Chỉ merge khi đang có write in-flight để không mất dữ liệu vừa bấm
   if(remote.records){
     const fbRecs=normalizeRecords(remote.records);
+    // Xóa các record đang trong quá trình delete khỏi fbRecs trước khi apply
+    Object.entries(_pendingDeletes).forEach(([dk,sids])=>{
+      Object.keys(sids).forEach(sid=>{ if(fbRecs[dk]) delete fbRecs[dk][sid]; });
+    });
     if(_syncFlight){
       // Đang lưu: giữ local cho record mình vừa ghi, còn lại dùng Firebase
       const today=todayKey();
@@ -930,13 +935,17 @@ function deleteDayRecord(dk, sid){
   const s=STAFF.find(x=>x.id===sid);
   const [y,m,d]=dk.split('-');
   if(!confirm(`Xóa ngày ${d}/${m}/${y} của ${s.name}?`)) return;
+  // Đánh dấu pending delete — ngăn applyRemote restore lại
+  if(!_pendingDeletes[dk]) _pendingDeletes[dk]={};
+  _pendingDeletes[dk][sid]=true;
+  // Xóa local
   if(state.records[dk]) delete state.records[dk][sid];
   if(state.records[dk]&&Object.keys(state.records[dk]).length===0) delete state.records[dk];
   saveState();
-  // Xóa thẳng trên Firebase — không dùng update() vì update chỉ ghi, không xóa
+  // Xóa Firebase — dùng .remove() chứ không phải update()
   _fbRef.child(`records/${dk}/${sid}`).remove()
-    .then(()=>setSyncBadge('ok'))
-    .catch(()=>setSyncBadge('err'));
+    .then(()=>{ if(_pendingDeletes[dk]) delete _pendingDeletes[dk][sid]; setSyncBadge('ok'); })
+    .catch(()=>{ if(_pendingDeletes[dk]) delete _pendingDeletes[dk][sid]; setSyncBadge('err'); });
   toast('🗑 Đã xóa ngày '+d+'/'+m);
   renderAdminPanel(document.getElementById('pg-admin'));
 }
