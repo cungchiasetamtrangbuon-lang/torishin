@@ -932,7 +932,11 @@ function deleteDayRecord(dk, sid){
   if(!confirm(`Xóa ngày ${d}/${m}/${y} của ${s.name}?`)) return;
   if(state.records[dk]) delete state.records[dk][sid];
   if(state.records[dk]&&Object.keys(state.records[dk]).length===0) delete state.records[dk];
-  saveStateAndSync();
+  saveState();
+  // Xóa thẳng trên Firebase — không dùng update() vì update chỉ ghi, không xóa
+  _fbRef.child(`records/${dk}/${sid}`).remove()
+    .then(()=>setSyncBadge('ok'))
+    .catch(()=>setSyncBadge('err'));
   toast('🗑 Đã xóa ngày '+d+'/'+m);
   renderAdminPanel(document.getElementById('pg-admin'));
 }
