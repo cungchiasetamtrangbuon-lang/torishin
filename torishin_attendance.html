@@ -926,6 +926,16 @@ function resetDay(sid){
   toast('↩ Đã xóa, có thể nhập lại');
   renderStaffClock(sid);
 }
+function deleteDayRecord(dk, sid){
+  const s=STAFF.find(x=>x.id===sid);
+  const [y,m,d]=dk.split('-');
+  if(!confirm(`Xóa ngày ${d}/${m}/${y} của ${s.name}?`)) return;
+  if(state.records[dk]) delete state.records[dk][sid];
+  if(state.records[dk]&&Object.keys(state.records[dk]).length===0) delete state.records[dk];
+  saveStateAndSync();
+  toast('🗑 Đã xóa ngày '+d+'/'+m);
+  renderAdminPanel(document.getElementById('pg-admin'));
+}
 
 // ══════════════════════════════════════════════════════
 // SUMMARY TAB
@@ -1034,9 +1044,11 @@ function renderAdminPanel(el){
     const dayRowsHtml=sum.dayDetails.map(dd=>{
       const dk=`${sy}-${String(sm).padStart(2,'0')}-${String(dd.d).padStart(2,'0')}`;
       const editBtn=`<button onclick="openEditTime('${dk}','${s.id}')" style="margin-left:auto;padding:2px 7px;font-size:11px;border:1px solid var(--bdr);border-radius:6px;background:var(--bg);cursor:pointer;">✏️</button>`;
-      if(dd.isOff) return `<div class="day-row"><span class="dr-d">Ngày ${String(dd.d).padStart(2,'0')}</span><span><span class="kyuu-badge">休</span></span><span class="dr-s">—</span>${editBtn}</div>`;
+      const delBtn=`<button onclick="deleteDayRecord('${dk}','${s.id}')" style="padding:2px 7px;font-size:11px;border:1px solid var(--r,#ef4444);border-radius:6px;background:var(--bg);color:var(--r,#ef4444);cursor:pointer;">🗑</button>`;
+      if(dd.isOff) return `<div class="day-row"><span class="dr-d">Ngày ${String(dd.d).padStart(2,'0')}</span><span><span class="kyuu-badge">休</span></span><span class="dr-s">—</span>${editBtn}${delBtn}</div>`;
       const daySal=calcDaySalary(s,dd.h);
-      return `<div class="day-row"><span class="dr-d">Ngày ${String(dd.d).padStart(2,'0')}</span><span class="dr-v">${fmtH(dd.h.total)}</span><span class="dr-s">${fmtNum(daySal)}</span>${editBtn}</div>`;
+      const brkInfo=(()=>{const rec=getRec(dk,s.id);const brks=(rec?.breaks||[]).filter(b=>b.start&&b.end);return brks.length?`<span style="font-size:10px;color:var(--ink4)">☕ ${brks.map(b=>fmtTime(b.start)+'–'+fmtTime(b.end)).join(' ')}</span>`:'';})();
+      return `<div class="day-row"><span class="dr-d">Ngày ${String(dd.d).padStart(2,'0')}</span><span class="dr-v">${fmtTime(dd.clockIn)}–${fmtTime(dd.clockOut)} (${fmtH(dd.h.total)})</span><span class="dr-s">${fmtNum(daySal)}</span>${editBtn}${delBtn}</div>${brkInfo?`<div style="padding:0 10px 4px 10px">${brkInfo}</div>`:''}`;
     }).join('');
 
     return `<div class="staff-salary-card">
@@ -1089,20 +1101,26 @@ function adminLogout(){ state.adminUnlocked=false; renderAdmin(); }
 function buildExportRows(mk){
   const [y,m]=mk.split('-').map(Number);
   const daysInMonth=new Date(y,m,0).getDate();
-  const rows=[['Ngày','Nhân viên','Loại','Vào ca','Ra ca','Giờ làm','Giờ đêm','Nghỉ (ph)','休','Lương ngày']];
-  for(let d=1;d<=daysInMonth;d++){
-    const dk=y+'-'+String(m).padStart(2,'0')+'-'+String(d).padStart(2,'0');
-    STAFF.forEach(s=>{
+  const rows=[['Nhân viên','Ngày','Loại','Vào ca','Ra ca','Giờ làm','Giờ đêm','Nghỉ (ph)','Vào giải lao','Ra giải lao','休','Lương ngày']];
+  const sorted=[...STAFF].sort((a,b)=>a.name.localeCompare(b.name,'vi'));
+  sorted.forEach(s=>{
+    for(let d=1;d<=daysInMonth;d++){
+      const dk=y+'-'+String(m).padStart(2,'0')+'-'+String(d).padStart(2,'0');
       const rec=getRec(dk,s.id);
-      if(!rec) return;
-      if(rec.isOff){rows.push([d,s.name,s.type,'','','','','','休',0]);return;}
+      if(!rec) continue;
+      const loai=s.type==='main'?'Chính thức':'PT';
+      if(rec.isOff){rows.push([s.name,d,loai,'','','','','','','','休',0]);return;}
       const h=calcHours(rec);
       const sal=h?calcDaySalary(s,h):0;
-      rows.push([d,s.name,s.type,fmtTime(rec.clockIn),fmtTime(rec.clockOut),h?+h.total.toFixed(2):'',h?+h.night.toFixed(2):'',h?h.breaks:'','',sal]);
-    });
-  }
+      const brks=(rec.breaks||[]).filter(b=>b.start&&b.end);
+      const brkIn=brks.map(b=>fmtTime(b.start)).join(', ')||'';
+      const brkOut=brks.map(b=>fmtTime(b.end)).join(', ')||'';
+      rows.push([s.name,d,loai,fmtTime(rec.clockIn),fmtTime(rec.clockOut),h?+h.total.toFixed(2):'',h?+h.night.toFixed(2):'',h?h.breaks:'',brkIn,brkOut,'',sal]);
+    }
+  });
   return rows;
 }
+
 function exportCSV(){
   const mk=state.adminMonth;
   const rows=buildExportRows(mk);
@@ -1119,7 +1137,7 @@ function exportExcel(){
 
   // Sheet 1: Chi tiết chấm công
   const ws=XLSX.utils.aoa_to_sheet(rows);
-  ws['!cols']=[{wch:6},{wch:10},{wch:6},{wch:8},{wch:8},{wch:8},{wch:8},{wch:8},{wch:4},{wch:14}];
+  ws['!cols']=[{wch:10},{wch:6},{wch:11},{wch:8},{wch:8},{wch:8},{wch:8},{wch:8},{wch:10},{wch:10},{wch:4},{wch:14}];
   XLSX.utils.book_append_sheet(wb,ws,'Chi tiết');
 
   // Sheet 2: Tổng hợp lương
