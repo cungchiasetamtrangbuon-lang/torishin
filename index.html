@@ -389,7 +389,7 @@ function loadState(){
 }
 
 function saveState(){
-  try{ localStorage.setItem('torishin_rev_v3', JSON.stringify(S)); }catch(e){}
+  try{ S._lastUpdated=Date.now(); localStorage.setItem('torishin_rev_v3', JSON.stringify(S)); }catch(e){}
 }
 
 let _syncFlight=false;
