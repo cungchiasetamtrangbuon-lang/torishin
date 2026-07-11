@@ -393,6 +393,12 @@ function saveState(){
 }
 
 let _syncFlight=false;
+let _autoSaveTimer=null;
+function scheduleAutoSave(){
+  clearTimeout(_autoSaveTimer);
+  _autoSaveTimer=setTimeout(saveToCloud,3000);
+}
+
 async function saveToCloud(){
   if(_syncFlight)return;
   const btn=document.getElementById('syncCloudBtn');
@@ -674,6 +680,7 @@ function bkSave(){
   if(Object.keys(bills).length) dt.bills=bills;
   md.doanhThu[idx]=dt;
   saveState();
+  scheduleAutoSave();
   const btn=document.querySelector('.bk-save-btn');
   if(btn){btn.textContent='✓ Đã lưu thành công!';btn.style.background='var(--good)';
     setTimeout(()=>{btn.textContent='💾 Lưu Bảng Kê / 保存';btn.style.background='';},2000);}
@@ -1362,6 +1369,7 @@ function saveCell(el){
   }
   el.textContent=val||'';
   saveState();
+  scheduleAutoSave();
   updateRowTotals(el, r, m, +i);
 }
 
@@ -1404,6 +1412,7 @@ function shiftSave(inp){
   if(!md.bangLuong.shifts[sid]) md.bangLuong.shifts[sid]=Array(monthCfg(mid).days).fill(null);
   md.bangLuong.shifts[sid][+i]=val;
   saveState();
+  scheduleAutoSave();
   // Refresh summary row if possible
 }
 function navShift(e,inp){
@@ -1494,7 +1503,8 @@ function importJSON(){
         const d=JSON.parse(ev.target.result);
         Object.assign(S,d);
         saveState(); renderShell(); renderContent();
-        alert('Nhập dữ liệu thành công!');
+        saveToCloud();
+        alert('Nhập dữ liệu thành công! Đang đồng bộ lên cloud...');
       }catch(e){ alert('Lỗi: file không hợp lệ'); }
     };
     r.readAsText(f);
