@@ -379,7 +379,7 @@ function seedMonthData(mid,days){
 }
 
 // ═══ FIREBASE-ONLY STORAGE ═══
-let _saveFlight=false, _saveQueued=false, _saveTimer=null;
+let _saveFlight=false, _saveQueued=false, _saveTimer=null, _lastWriteTs=0, _fbReady=false;
 
 function saveData(){
   clearTimeout(_saveTimer);
@@ -395,6 +395,7 @@ async function _doSave(force){
   if(btn){btn.textContent='↑ Đang lưu...';btn.style.opacity='.7';}
   try{
     S._lastUpdated=Date.now();
+    _lastWriteTs=S._lastUpdated;
     await _revRef.set(S);
     if(btn){btn.textContent='☁ Đã lưu';btn.style.opacity='1';btn.style.color='#6ee7b7';
       setTimeout(()=>{btn.textContent='☁ Cloud';btn.style.color='';},2000);}
@@ -451,26 +452,37 @@ function normalizeS(s){
   });
 }
 
-async function loadFromCloud(){
+function applyRemote(remote){
+  if(!remote) return;
+  Object.assign(S,remote);
+  normalizeS(S);
+  S.months.forEach(m=>{if(!S.data[m.id])S.data[m.id]=seedMonthData(m.id,m.days);});
+}
+
+function loadFromCloud(){
   const main=document.getElementById('main');
   if(main) main.innerHTML='<div style="padding:80px;text-align:center;font-size:1.1rem;color:var(--muted)">⏳ Đang tải dữ liệu...</div>';
-  try{
-    const snap=await _revRef.once('value');
+  _revRef.on('value',snap=>{
     const remote=snap.val();
-    if(remote){
-      Object.assign(S,remote);
-      normalizeS(S);
-      S.months.forEach(m=>{if(!S.data[m.id])S.data[m.id]=seedMonthData(m.id,m.days);});
+    if(!_fbReady){
+      // Lần đầu: load xong thì render
+      _fbReady=true;
+      applyRemote(remote);
+      try{
+        const nav=JSON.parse(localStorage.getItem('torishin_nav')||'{}');
+        if(nav.curMonth&&S.months.find(m=>m.id===nav.curMonth)) S.curMonth=nav.curMonth;
+        if(nav.curTab) S.curTab=nav.curTab;
+      }catch(e){}
+      renderShell(); renderContent();
+      return;
     }
-  }catch(e){}
-  // Khôi phục tab/tháng đang xem từ localStorage (navigation state only)
-  try{
-    const nav=JSON.parse(localStorage.getItem('torishin_nav')||'{}');
-    if(nav.curMonth&&S.months.find(m=>m.id===nav.curMonth)) S.curMonth=nav.curMonth;
-    if(nav.curTab) S.curTab=nav.curTab;
-  }catch(e){}
-  renderShell();
-  renderContent();
+    // Cập nhật real-time từ thiết bị khác
+    if(!remote) return;
+    if(remote._lastUpdated===_lastWriteTs) return; // echo từ write của mình, bỏ qua
+    if(_saveTimer) return;                          // đang có thay đổi chưa lưu, bỏ qua
+    applyRemote(remote);
+    renderContent();
+  });
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1539,6 +1551,7 @@ loadFromCloud();
 window.addEventListener('beforeunload',()=>{
   clearTimeout(_saveTimer);
   S._lastUpdated=Date.now();
+  _lastWriteTs=S._lastUpdated;
   try{
     fetch('https://torishin-ace11-default-rtdb.asia-southeast1.firebasedatabase.app/torishin_rev.json',{
       method:'PUT',body:JSON.stringify(S),keepalive:true,
