@@ -1029,6 +1029,7 @@ function renderDoanhThu(){
 // ═══════════════════════════════════════════════════════════════
 function renderThucPham(){
   const mid=S.curMonth, cfg=monthCfg(mid), md=monthData(mid);
+  if(!md.thucPham||!Array.isArray(md.thucPham)) md.thucPham=Array.from({length:cfg.days},()=>Array(TP_COLS.length).fill(null));
   const colTotals=Array(TP_COLS.length).fill(0);
   const rows=Array.from({length:cfg.days},(_,i)=>{
     const d=dayDate(mid,i), dow=d.getDay();
@@ -1076,6 +1077,7 @@ function renderThucPham(){
 // ═══════════════════════════════════════════════════════════════
 function renderRuou(){
   const mid=S.curMonth, cfg=monthCfg(mid), md=monthData(mid);
+  if(!md.ruou||!Array.isArray(md.ruou)) md.ruou=Array.from({length:cfg.days},()=>Array(RU_COLS.length).fill(null));
   const colTotals=Array(RU_COLS.length).fill(0);
   const rows=Array.from({length:cfg.days},(_,i)=>{
     const d=dayDate(mid,i), dow=d.getDay();
@@ -1357,8 +1359,14 @@ function saveCell(el){
   const val=parseNum(el.textContent);
   const md=monthData(m);
   if(r==='doanhthu') md.doanhThu[+i].rev=val;
-  else if(r==='thucpham') md.thucPham[+i][+c]=val;
-  else if(r==='ruou') md.ruou[+i][+c]=val;
+  else if(r==='thucpham'){
+    if(!md.thucPham) md.thucPham=Array.from({length:monthCfg(m).days},()=>Array(TP_COLS.length).fill(null));
+    md.thucPham[+i][+c]=val;
+  }
+  else if(r==='ruou'){
+    if(!md.ruou) md.ruou=Array.from({length:monthCfg(m).days},()=>Array(RU_COLS.length).fill(null));
+    md.ruou[+i][+c]=val;
+  }
   else if(r==='chikhac'){
     if(!md.chiKhac) md.chiKhac=Array.from({length:monthCfg(m).days},()=>Array(OTHER_COLS.length).fill(null));
     md.chiKhac[+i][+c]=val;
