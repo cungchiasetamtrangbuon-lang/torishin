@@ -378,43 +378,35 @@ function seedMonthData(mid,days){
   return d;
 }
 
-function loadState(){
-  try{
-    const saved = localStorage.getItem('torishin_rev_v3');
-    if(saved){ const p=JSON.parse(saved); Object.assign(S,p); }
-  }catch(e){}
-  S.months.forEach(m=>{
-    if(!S.data[m.id]) S.data[m.id]=seedMonthData(m.id,m.days);
-  });
-}
+// ═══ FIREBASE-ONLY STORAGE ═══
+let _saveFlight=false, _saveQueued=false, _saveTimer=null;
 
-function saveState(){
-  try{ S._lastUpdated=Date.now(); localStorage.setItem('torishin_rev_v3', JSON.stringify(S)); }catch(e){}
+function saveData(){
+  clearTimeout(_saveTimer);
+  _saveTimer=setTimeout(_doSave, 800);
 }
-
-let _syncFlight=false;
-let _autoSaveTimer=null;
-function scheduleAutoSave(){
-  clearTimeout(_autoSaveTimer);
-  _autoSaveTimer=setTimeout(saveToCloud,3000);
+function saveNav(){
+  try{localStorage.setItem('torishin_nav',JSON.stringify({curMonth:S.curMonth,curTab:S.curTab}));}catch(e){}
 }
-
-async function saveToCloud(){
-  if(_syncFlight)return;
+async function _doSave(force){
+  if(_saveFlight){_saveQueued=true;return;}
+  _saveFlight=true; _saveQueued=false;
   const btn=document.getElementById('syncCloudBtn');
   if(btn){btn.textContent='↑ Đang lưu...';btn.style.opacity='.7';}
   try{
-    _syncFlight=true;
     S._lastUpdated=Date.now();
-    localStorage.setItem('torishin_rev_v3',JSON.stringify(S));
     await _revRef.set(S);
     if(btn){btn.textContent='☁ Đã lưu';btn.style.opacity='1';btn.style.color='#6ee7b7';
-      setTimeout(()=>{btn.textContent='☁ Đồng bộ';btn.style.color='';},2500);}
+      setTimeout(()=>{btn.textContent='☁ Cloud';btn.style.color='';},2000);}
   }catch(e){
     if(btn){btn.textContent='⚠ Lỗi';btn.style.opacity='1';btn.style.color='#fca5a5';
-      setTimeout(()=>{btn.textContent='☁ Đồng bộ';btn.style.color='';},2500);}
-  }finally{_syncFlight=false;}
+      setTimeout(()=>{btn.textContent='☁ Cloud';btn.style.color='';},3000);}
+  }finally{
+    _saveFlight=false;
+    if(_saveQueued) _doSave();
+  }
 }
+function saveToCloud(){ clearTimeout(_saveTimer); _doSave(); }
 
 // Firebase trả arrays về dạng object {0:v,1:v,...} — cần convert lại
 function fbObjToArr(v){
@@ -446,20 +438,25 @@ function normalizeS(s){
 }
 
 async function loadFromCloud(){
+  const main=document.getElementById('main');
+  if(main) main.innerHTML='<div style="padding:80px;text-align:center;font-size:1.1rem;color:var(--muted)">⏳ Đang tải dữ liệu...</div>';
   try{
     const snap=await _revRef.once('value');
     const remote=snap.val();
-    if(!remote)return;
-    const localTs=S._lastUpdated||0;
-    const remoteTs=remote._lastUpdated||0;
-    if(remoteTs>localTs){
+    if(remote){
       Object.assign(S,remote);
       normalizeS(S);
       S.months.forEach(m=>{if(!S.data[m.id])S.data[m.id]=seedMonthData(m.id,m.days);});
-      try{localStorage.setItem('torishin_rev_v3',JSON.stringify(S));}catch(e){}
-      renderContent();
     }
   }catch(e){}
+  // Khôi phục tab/tháng đang xem từ localStorage (navigation state only)
+  try{
+    const nav=JSON.parse(localStorage.getItem('torishin_nav')||'{}');
+    if(nav.curMonth&&S.months.find(m=>m.id===nav.curMonth)) S.curMonth=nav.curMonth;
+    if(nav.curTab) S.curTab=nav.curTab;
+  }catch(e){}
+  renderShell();
+  renderContent();
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -582,10 +579,10 @@ function renderShell(){
 }
 
 function setMonth(id){
-  S.curMonth=id; saveState(); renderShell(); renderContent();
+  S.curMonth=id; saveNav(); renderShell(); renderContent();
 }
 function setTab(id){
-  S.curTab=id; saveState(); renderShell(); renderContent();
+  S.curTab=id; saveNav(); renderShell(); renderContent();
 }
 
 function renderContent(){
@@ -679,8 +676,7 @@ function bkSave(){
   if(tf!==null) dt.transfer=tf; if(cap!==null) dt.capichi=cap; if(grb!==null) dt.grab=grb;
   if(Object.keys(bills).length) dt.bills=bills;
   md.doanhThu[idx]=dt;
-  saveState();
-  scheduleAutoSave();
+  saveData();
   const btn=document.querySelector('.bk-save-btn');
   if(btn){btn.textContent='✓ Đã lưu thành công!';btn.style.background='var(--good)';
     setTimeout(()=>{btn.textContent='💾 Lưu Bảng Kê / 保存';btn.style.background='';},2000);}
@@ -1368,8 +1364,7 @@ function saveCell(el){
     md.chiKhac[+i][+c]=val;
   }
   el.textContent=val||'';
-  saveState();
-  scheduleAutoSave();
+  saveData();
   updateRowTotals(el, r, m, +i);
 }
 
@@ -1411,8 +1406,7 @@ function shiftSave(inp){
   const md=monthData(mid);
   if(!md.bangLuong.shifts[sid]) md.bangLuong.shifts[sid]=Array(monthCfg(mid).days).fill(null);
   md.bangLuong.shifts[sid][+i]=val;
-  saveState();
-  scheduleAutoSave();
+  saveData();
   // Refresh summary row if possible
 }
 function navShift(e,inp){
@@ -1475,7 +1469,7 @@ function confirmAddMonth(){
     S.months.push({id:uid,num,year,days});
     S.data[uid]=initMonthData(days);
     S.curMonth=uid;
-    saveState();
+    saveData();
   }
   closeModal();
   renderShell();
@@ -1502,7 +1496,8 @@ function importJSON(){
       try{
         const d=JSON.parse(ev.target.result);
         Object.assign(S,d);
-        saveState(); renderShell(); renderContent();
+        normalizeS(S);
+        renderShell(); renderContent();
         saveToCloud();
         alert('Nhập dữ liệu thành công! Đang đồng bộ lên cloud...');
       }catch(e){ alert('Lỗi: file không hợp lệ'); }
@@ -1515,15 +1510,8 @@ function importJSON(){
 // ═══════════════════════════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════════════════════════
-loadState();
-normalizeS(S);
 renderShell();
-renderContent();
 loadFromCloud();
-
-document.addEventListener('visibilitychange',()=>{
-  if(!document.hidden){loadFromCloud();if(S.curTab==='dashboard')renderDashboard();}
-});
 </script>
 </body>
 </html>
