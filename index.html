@@ -471,7 +471,7 @@ function dayDOW(m,i){ return dayDate(m,i).getDay(); } // 0=Sun,6=Sat
 function dayFoodCost(md,i){ return (md.thucPham[i]||[]).reduce((s,v)=>s+(v||0),0); }
 function dayDrinkCost(md,i){ return (md.ruou[i]||[]).reduce((s,v)=>s+(v||0),0); }
 function dayOtherCost(md,i){ return (md.chiKhac?.[i]||[]).reduce((s,v)=>s+(v||0),0); }
-function dayCost(md,i){ return dayFoodCost(md,i)+dayDrinkCost(md,i)+dayOtherCost(md,i); }
+function dayCost(md,i){ return dayFoodCost(md,i)+dayDrinkCost(md,i); }
 function dayRev(md,i){ return md.doanhThu[i]?.rev||0; }
 function dayRatio(md,i){ const r=dayRev(md,i); return r?dayCost(md,i)/r:null; }
 
@@ -910,7 +910,7 @@ function renderDashboard(){
     ${worstRev?mini('📉','Ngày Thấp Nhất',mn(worstRev.r),'Ngày '+worstRev.d,'var(--warn)'):''}
     ${bestRatio?mini('✅','Tỉ Lệ Tốt Nhất',pct(bestRatio.ratio),'Ngày '+bestRatio.d,'var(--good)'):''}
     ${worstRatio?mini('⚠️','Tỉ Lệ Cao Nhất',pct(worstRatio.ratio),'Ngày '+worstRatio.d,'var(--bad)'):''}
-    ${mini('💰','Lợi Nhuận Gộp',mn(T.rev-T.cost),'Sau NVL + vận hành',T.rev-T.cost>=0?'var(--good)':'var(--bad)')}
+    ${mini('💰','Lợi Nhuận Gộp',mn(T.rev-T.cost),'Chưa trừ chi phí khác',T.rev-T.cost>=0?'var(--good)':'var(--bad)')}
     ${T.other?mini('⚡','Chi Phí Khác',mn(T.other),T.rev?pct(T.other/T.rev)+' DT':'','var(--warn)'):''}
   </div>
 
@@ -968,7 +968,7 @@ function renderDoanhThu(){
     const d=dayDate(mid,i), dow=d.getDay();
     const rev=dayRev(md,i);
     const food=dayFoodCost(md,i), drink=dayDrinkCost(md,i), other=dayOtherCost(md,i);
-    const cost=food+drink+other;
+    const cost=food+drink;
     const ratio=rev?cost/rev:null;
     const profit=rev?rev-cost:null;
     totRev+=rev; totFood+=food; totDrink+=drink; totOther+=other;
@@ -986,13 +986,13 @@ function renderDoanhThu(){
       <td style="color:${profit!=null?(profit>=0?'var(--good)':'var(--bad)'):'var(--muted)'}">${profit!=null?num(Math.abs(profit))+(profit<0?' ↓':' ↑'):'—'}</td>
     </tr>`;
   }).join('');
-  const totCost=totFood+totDrink+totOther;
+  const totCost=totFood+totDrink;
   const totRatio=totRev?totCost/totRev:null;
 
   document.getElementById('main').innerHTML=`
   <div class="page-hdr">
     <div><div class="page-title">💰 Doanh Thu — ${cfg.id}/${cfg.year}</div>
-    <div class="page-sub">Chi phí tự tính từ Thực Phẩm + Rượu + Chi Phí Khác. Nhập doanh thu vào cột ✎.</div></div>
+    <div class="page-sub">Genka (原価) = Thực Phẩm + Rượu. Chi Phí Khác hiển thị riêng, không tính vào tỉ lệ. Nhập doanh thu vào cột ✎.</div></div>
   </div>
   <div class="card">
     <div class="card-body"><table>
@@ -1001,7 +1001,7 @@ function renderDoanhThu(){
         <th>Chi TP 🍱</th>
         <th>Chi Uống 🍺</th>
         <th>Chi Khác ⚡</th>
-        <th>Tổng Chi</th>
+        <th>Chi GC 原価</th>
         <th>Doanh Thu ✎</th>
         <th>Tỉ Lệ</th>
         <th>Lợi Nhuận GC</th>
