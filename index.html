@@ -383,7 +383,7 @@ let _saveFlight=false, _saveQueued=false, _saveTimer=null;
 
 function saveData(){
   clearTimeout(_saveTimer);
-  _saveTimer=setTimeout(_doSave, 800);
+  _saveTimer=setTimeout(_doSave, 300);
 }
 function saveNav(){
   try{localStorage.setItem('torishin_nav',JSON.stringify({curMonth:S.curMonth,curTab:S.curTab}));}catch(e){}
@@ -1512,6 +1512,18 @@ function importJSON(){
 // ═══════════════════════════════════════════════════════════════
 renderShell();
 loadFromCloud();
+
+// Lưu ngay trước khi trang tải lại/đóng — fetch keepalive đảm bảo hoàn thành kể cả khi F5
+window.addEventListener('beforeunload',()=>{
+  clearTimeout(_saveTimer);
+  S._lastUpdated=Date.now();
+  try{
+    fetch('https://torishin-ace11-default-rtdb.asia-southeast1.firebasedatabase.app/torishin_rev.json',{
+      method:'PUT',body:JSON.stringify(S),keepalive:true,
+      headers:{'Content-Type':'application/json'}
+    });
+  }catch(e){}
+});
 </script>
 </body>
 </html>
