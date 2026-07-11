@@ -410,6 +410,35 @@ async function saveToCloud(){
   }finally{_syncFlight=false;}
 }
 
+// Firebase trả arrays về dạng object {0:v,1:v,...} — cần convert lại
+function fbObjToArr(v){
+  if(!v) return [];
+  if(Array.isArray(v)) return v;
+  const keys=Object.keys(v).map(Number).filter(k=>!isNaN(k));
+  if(!keys.length) return [];
+  const len=Math.max(...keys)+1;
+  return Array.from({length:len},(_,i)=>v[i]!==undefined?v[i]:null);
+}
+function normalizeS(s){
+  if(!s?.data) return;
+  Object.entries(s.data).forEach(([mid,md])=>{
+    if(!md) return;
+    if(md.doanhThu&&!Array.isArray(md.doanhThu)) md.doanhThu=fbObjToArr(md.doanhThu);
+    if(md.thucPham){ const a=fbObjToArr(md.thucPham); md.thucPham=a.map(r=>fbObjToArr(r)); }
+    if(md.ruou){ const a=fbObjToArr(md.ruou); md.ruou=a.map(r=>fbObjToArr(r)); }
+    if(md.chiKhac){ const a=fbObjToArr(md.chiKhac); md.chiKhac=a.map(r=>fbObjToArr(r)); }
+    // Đảm bảo bangLuong luôn tồn tại
+    if(!md.bangLuong) md.bangLuong={shifts:{}};
+    if(!md.bangLuong.shifts) md.bangLuong.shifts={};
+    const days=monthCfg(mid)?.days||31;
+    STAFF.forEach(st=>{
+      if(!md.bangLuong.shifts[st.id]) md.bangLuong.shifts[st.id]=Array(days).fill(null);
+      else if(!Array.isArray(md.bangLuong.shifts[st.id]))
+        md.bangLuong.shifts[st.id]=fbObjToArr(md.bangLuong.shifts[st.id]);
+    });
+  });
+}
+
 async function loadFromCloud(){
   try{
     const snap=await _revRef.once('value');
@@ -419,6 +448,7 @@ async function loadFromCloud(){
     const remoteTs=remote._lastUpdated||0;
     if(remoteTs>localTs){
       Object.assign(S,remote);
+      normalizeS(S);
       S.months.forEach(m=>{if(!S.data[m.id])S.data[m.id]=seedMonthData(m.id,m.days);});
       try{localStorage.setItem('torishin_rev_v3',JSON.stringify(S));}catch(e){}
       renderContent();
@@ -1476,6 +1506,7 @@ function importJSON(){
 // INIT
 // ═══════════════════════════════════════════════════════════════
 loadState();
+normalizeS(S);
 renderShell();
 renderContent();
 loadFromCloud();
