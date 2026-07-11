@@ -417,22 +417,36 @@ function fbObjToArr(v){
   const len=Math.max(...keys)+1;
   return Array.from({length:len},(_,i)=>v[i]!==undefined?v[i]:null);
 }
+function pad(arr,len,empty){ while(arr.length<len) arr.push(empty()); return arr; }
 function normalizeS(s){
   if(!s?.data) return;
   Object.entries(s.data).forEach(([mid,md])=>{
     if(!md) return;
+    const days=(s.months||[]).find(m=>m.id===mid)?.days||31;
+    // doanhThu
     if(md.doanhThu&&!Array.isArray(md.doanhThu)) md.doanhThu=fbObjToArr(md.doanhThu);
+    if(!md.doanhThu) md.doanhThu=[];
+    pad(md.doanhThu,days,()=>({rev:null}));
+    // thucPham — Firebase xoa trailing null rows nen phai pad lai
     if(md.thucPham){ const a=fbObjToArr(md.thucPham); md.thucPham=a.map(r=>fbObjToArr(r)); }
+    if(!md.thucPham) md.thucPham=[];
+    pad(md.thucPham,days,()=>Array(TP_COLS.length).fill(null));
+    // ruou
     if(md.ruou){ const a=fbObjToArr(md.ruou); md.ruou=a.map(r=>fbObjToArr(r)); }
+    if(!md.ruou) md.ruou=[];
+    pad(md.ruou,days,()=>Array(RU_COLS.length).fill(null));
+    // chiKhac
     if(md.chiKhac){ const a=fbObjToArr(md.chiKhac); md.chiKhac=a.map(r=>fbObjToArr(r)); }
-    // Đảm bảo bangLuong luôn tồn tại
+    if(!md.chiKhac) md.chiKhac=[];
+    pad(md.chiKhac,days,()=>Array(OTHER_COLS.length).fill(null));
+    // bangLuong
     if(!md.bangLuong) md.bangLuong={shifts:{}};
     if(!md.bangLuong.shifts) md.bangLuong.shifts={};
-    const days=monthCfg(mid)?.days||31;
     STAFF.forEach(st=>{
-      if(!md.bangLuong.shifts[st.id]) md.bangLuong.shifts[st.id]=Array(days).fill(null);
+      if(!md.bangLuong.shifts[st.id]) md.bangLuong.shifts[st.id]=[];
       else if(!Array.isArray(md.bangLuong.shifts[st.id]))
         md.bangLuong.shifts[st.id]=fbObjToArr(md.bangLuong.shifts[st.id]);
+      pad(md.bangLuong.shifts[st.id],days,()=>null);
     });
   });
 }
