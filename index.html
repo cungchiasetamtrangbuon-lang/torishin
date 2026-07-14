@@ -269,13 +269,13 @@ const SHIFT_TABLE = {
 const DOW_VN  = ['T2','T3','T4','T5','T6','T7','CN'];
 const DOW_CLS = ['dow-week','dow-week','dow-week','dow-week','dow-week','dow-sat','dow-sun'];
 const SECTIONS = [
-  {id:'dashboard', icon:'📊', label:'Dashboard'},
-  {id:'baoke',     icon:'📝', label:'Bảng Kê Ngày'},
-  {id:'doanhthu',  icon:'💰', label:'Doanh Thu'},
-  {id:'thucpham',  icon:'🍱', label:'Thực Phẩm'},
-  {id:'ruou',      icon:'🍺', label:'Rượu / ĐU'},
-  {id:'chikhac',   icon:'⚡', label:'Chi Phí Khác'},
-  {id:'bangluong', icon:'👥', label:'Bảng Lương'},
+  {id:'dashboard', icon:'📊', label:'Dashboard',    jp:'ダッシュボード'},
+  {id:'baoke',     icon:'📝', label:'Bảng Kê Ngày', jp:'日報'},
+  {id:'doanhthu',  icon:'💰', label:'Doanh Thu',    jp:'売上管理'},
+  {id:'thucpham',  icon:'🍱', label:'Thực Phẩm',   jp:'食材費'},
+  {id:'ruou',      icon:'🍺', label:'Rượu / ĐU',   jp:'酒類費'},
+  {id:'chikhac',   icon:'⚡', label:'Chi Phí Khác', jp:'その他経費'},
+  {id:'bangluong', icon:'👥', label:'Bảng Lương',  jp:'給与管理'},
 ];
 const BILLS=[500000,200000,100000,50000,20000,10000,5000,2000,1000];
 const DOW_FULL_VN=['Chủ Nhật','Thứ Hai','Thứ Ba','Thứ Tư','Thứ Năm','Thứ Sáu','Thứ Bảy'];
@@ -600,8 +600,8 @@ function renderShell(){
 
   // Sidebar
   document.getElementById('sidebar').innerHTML=
-    `<div class="nav-section">Tháng ${monthCfg(S.curMonth).id}</div>`+
-    SECTIONS.map(s=>`<div class="nav-item${s.id===S.curTab?' active':''}" onclick="setTab('${s.id}')"><span class="nav-icon">${s.icon}</span>${s.label}</div>`).join('');
+    `<div class="nav-section">Tháng ${monthCfg(S.curMonth).id} · ${monthCfg(S.curMonth).year}年${monthCfg(S.curMonth).num}月</div>`+
+    SECTIONS.map(s=>`<div class="nav-item${s.id===S.curTab?' active':''}" onclick="setTab('${s.id}')"><span class="nav-icon">${s.icon}</span><span><span style="display:block;line-height:1.3">${s.label}</span><span style="display:block;font-size:9.5px;opacity:.5;font-weight:400;line-height:1.1">${s.jp}</span></span></div>`).join('');
 }
 
 function setMonth(id){
@@ -753,7 +753,7 @@ function renderBaoKe(){
   document.getElementById('main').innerHTML=`
   <div class="page-hdr">
     <div><div class="page-title">📝 Bảng Kê Ngày / 日報</div>
-    <div class="page-sub">Nhập doanh thu và đếm tiền mặt cuối ngày — ${mid}/${cfg.year}</div></div>
+    <div class="page-sub">日次売上と現金入力 / Nhập doanh thu và đếm tiền mặt cuối ngày — ${mid}/${cfg.year}</div></div>
   </div>
 
   <div class="bk-date-nav">
@@ -856,22 +856,22 @@ function renderDashboard(){
 
   // Month comparison rows
   const compDefs=[
-    {label:'💴 Doanh Thu',      fn:s=>mn(s.T.rev)},
-    {label:'📅 TB/Ngày',        fn:s=>mn(s.avg)},
-    {label:'📈 Tỉ Lệ Chi',      fn:s=>pct(s.T.ratio)},
-    {label:'🍱 Chi Thực Phẩm',  fn:s=>mn(s.T.food)},
-    {label:'🍺 Chi Đồ Uống',    fn:s=>mn(s.T.drink)},
-    {label:'⚡ Chi Phí Khác',   fn:s=>mn(s.T.other)},
-    {label:'👥 Tổng Lương NS',  fn:s=>mn(s.pay.total)},
-    {label:'⚖️ % Lương/DT',     fn:s=>pct(s.payRatio)},
-    {label:'📆 Ngày có DT',     fn:s=>s.dwd+'/'+s.m.days},
+    {label:'💴 Doanh Thu',      jp:'月間売上',    fn:s=>mn(s.T.rev)},
+    {label:'📅 TB/Ngày',        jp:'日平均',      fn:s=>mn(s.avg)},
+    {label:'📈 Tỉ Lệ Chi',      jp:'原価率',      fn:s=>pct(s.T.ratio)},
+    {label:'🍱 Chi Thực Phẩm',  jp:'食材費',      fn:s=>mn(s.T.food)},
+    {label:'🍺 Chi Đồ Uống',    jp:'酒類費',      fn:s=>mn(s.T.drink)},
+    {label:'⚡ Chi Phí Khác',   jp:'その他経費',  fn:s=>mn(s.T.other)},
+    {label:'👥 Tổng Lương NS',  jp:'人件費合計',  fn:s=>mn(s.pay.total)},
+    {label:'⚖️ % Lương/DT',     jp:'人件費率',    fn:s=>pct(s.payRatio)},
+    {label:'📆 Ngày có DT',     jp:'売上日数',    fn:s=>s.dwd+'/'+s.m.days},
   ];
-  const compRows=compDefs.map(({label,fn})=>{
+  const compRows=compDefs.map(({label,jp,fn})=>{
     const cells=allStats.map(s=>{
       const isCur=s.m.id===mid;
       return `<td style="text-align:center;${isCur?'background:#eff6ff;font-weight:700;color:var(--accent)':''}">${fn(s)}</td>`;
     }).join('');
-    return `<tr><td class="left" style="font-size:12px;white-space:nowrap;padding:8px 12px;background:#f8fafc;border-right:2px solid var(--border)">${label}</td>${cells}</tr>`;
+    return `<tr><td class="left" style="font-size:12px;white-space:nowrap;padding:8px 12px;background:#f8fafc;border-right:2px solid var(--border)">${label}<br><span style="font-size:9.5px;color:var(--muted);font-weight:400">${jp}</span></td>${cells}</tr>`;
   }).join('');
 
   // Monthly revenue trend bars
@@ -910,44 +910,44 @@ function renderDashboard(){
   document.getElementById('main').innerHTML=`
   <div class="page-hdr">
     <div><div class="page-title">📊 Dashboard — ${cfg.id}/${cfg.year}</div>
-    <div class="page-sub">Phân tích kinh doanh tháng ${cfg.num}/${cfg.year}</div></div>
+    <div class="page-sub">経営分析 / Phân tích kinh doanh tháng ${cfg.num}/${cfg.year}</div></div>
   </div>
 
   <div class="kpi-grid">
-    <div class="kpi"><div class="kpi-icon">💴</div><div class="kpi-label">Doanh Thu Tháng</div>
+    <div class="kpi"><div class="kpi-icon">💴</div><div class="kpi-label">Doanh Thu Tháng<br><span style="font-size:9px;font-weight:400;opacity:.7">月間売上</span></div>
       <div class="kpi-value big">${mn(T.rev)}</div>
       <div class="kpi-sub">${num(T.rev)}${prev?arrow(T.rev,prev.T.rev)+' so với '+prev.m.id:''}</div></div>
-    <div class="kpi"><div class="kpi-icon">📅</div><div class="kpi-label">Trung Bình / Ngày</div>
+    <div class="kpi"><div class="kpi-icon">📅</div><div class="kpi-label">Trung Bình / Ngày<br><span style="font-size:9px;font-weight:400;opacity:.7">日平均売上</span></div>
       <div class="kpi-value big">${cur?.avg?mn(cur.avg):'—'}</div>
       <div class="kpi-sub">${cur?.dwd||0} ngày có doanh thu${prev?.avg?arrow(cur?.avg,prev.avg)+'':''}</div></div>
     <div class="kpi"><div class="kpi-icon">📈</div><div class="kpi-label">Tỉ Lệ Chi / 原価率</div>
       <div class="kpi-value ${ratioClass(T.ratio)}">${pct(T.ratio)}</div>
       <span class="kpi-badge ${ratioBadge(T.ratio)}">${ratioLabel(T.ratio)}</span></div>
-    <div class="kpi"><div class="kpi-icon">🍱</div><div class="kpi-label">Chi Thực Phẩm</div>
+    <div class="kpi"><div class="kpi-icon">🍱</div><div class="kpi-label">Chi Thực Phẩm<br><span style="font-size:9px;font-weight:400;opacity:.7">食材費</span></div>
       <div class="kpi-value big">${mn(T.food)}</div>
       <div class="kpi-sub">${T.rev?pct(T.food/T.rev)+' DT':''}</div></div>
-    <div class="kpi"><div class="kpi-icon">🍺</div><div class="kpi-label">Chi Đồ Uống</div>
+    <div class="kpi"><div class="kpi-icon">🍺</div><div class="kpi-label">Chi Đồ Uống<br><span style="font-size:9px;font-weight:400;opacity:.7">酒類費</span></div>
       <div class="kpi-value big">${mn(T.drink)}</div>
       <div class="kpi-sub">${T.rev?pct(T.drink/T.rev)+' DT':''}</div></div>
-    <div class="kpi"><div class="kpi-icon">👥</div><div class="kpi-label">Lương NS / FL Cost</div>
+    <div class="kpi"><div class="kpi-icon">👥</div><div class="kpi-label">Lương NS / 人件費</div>
       <div class="kpi-value big">${mn(pay.total)}</div>
       <div class="kpi-sub">${payRatio?pct(payRatio)+' DT':''}</div></div>
   </div>
 
   <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:10px;margin-bottom:18px">
-    ${bestRev?mini('🏆','Ngày Cao Nhất',mn(bestRev.r),'Ngày '+bestRev.d,'var(--good)'):''}
-    ${worstRev?mini('📉','Ngày Thấp Nhất',mn(worstRev.r),'Ngày '+worstRev.d,'var(--warn)'):''}
-    ${bestRatio?mini('✅','Tỉ Lệ Tốt Nhất',pct(bestRatio.ratio),'Ngày '+bestRatio.d,'var(--good)'):''}
-    ${worstRatio?mini('⚠️','Tỉ Lệ Cao Nhất',pct(worstRatio.ratio),'Ngày '+worstRatio.d,'var(--bad)'):''}
-    ${mini('💰','Lợi Nhuận Gộp',mn(T.rev-T.cost),'Chưa trừ chi phí khác',T.rev-T.cost>=0?'var(--good)':'var(--bad)')}
-    ${T.other?mini('⚡','Chi Phí Khác',mn(T.other),T.rev?pct(T.other/T.rev)+' DT':'','var(--warn)'):''}
+    ${bestRev?mini('🏆','Ngày Cao Nhất / 最高売上日',mn(bestRev.r),'Ngày '+bestRev.d,'var(--good)'):''}
+    ${worstRev?mini('📉','Ngày Thấp Nhất / 最低売上日',mn(worstRev.r),'Ngày '+worstRev.d,'var(--warn)'):''}
+    ${bestRatio?mini('✅','Tỉ Lệ Tốt Nhất / 最低原価率',pct(bestRatio.ratio),'Ngày '+bestRatio.d,'var(--good)'):''}
+    ${worstRatio?mini('⚠️','Tỉ Lệ Cao Nhất / 最高原価率',pct(worstRatio.ratio),'Ngày '+worstRatio.d,'var(--bad)'):''}
+    ${mini('💰','Lợi Nhuận Gộp / 粗利益',mn(T.rev-T.cost),'Chưa trừ chi phí khác',T.rev-T.cost>=0?'var(--good)':'var(--bad)')}
+    ${T.other?mini('⚡','Chi Phí Khác / その他経費',mn(T.other),T.rev?pct(T.other/T.rev)+' DT':'','var(--warn)'):''}
   </div>
 
   <div class="card" style="margin-bottom:18px">
-    <div class="card-hdr"><span class="card-title">📊 So Sánh Các Tháng</span></div>
+    <div class="card-hdr"><span class="card-title">📊 So Sánh Các Tháng <span style="font-size:11px;font-weight:400;color:var(--muted)">/ 月別比較</span></span></div>
     <div class="card-body"><table>
       <thead><tr>
-        <th style="text-align:left;min-width:150px;background:#f8fafc">Chỉ Số</th>
+        <th style="text-align:left;min-width:150px;background:#f8fafc">Chỉ Số / 項目</th>
         ${allStats.map(s=>`<th style="text-align:center;min-width:90px;${s.m.id===mid?'background:#eff6ff;color:var(--accent);':''}">${s.m.id}<br><span style="font-size:10px;font-weight:400;opacity:.7">${s.m.year}</span></th>`).join('')}
       </tr></thead>
       <tbody>${compRows}</tbody>
@@ -957,15 +957,15 @@ function renderDashboard(){
   <div class="dash-grid">
     <div style="display:flex;flex-direction:column;gap:18px">
       <div class="card">
-        <div class="card-hdr"><span class="card-title">📈 Xu Hướng Doanh Thu Các Tháng</span></div>
+        <div class="card-hdr"><span class="card-title">📈 Xu Hướng Doanh Thu <span style="font-size:11px;font-weight:400;color:var(--muted)">/ 月別売上トレンド</span></span></div>
         <div class="bar-wrap">${mTrend||'<div class="empty"><p>Chưa có dữ liệu</p></div>'}</div>
       </div>
       <div class="card">
         <div class="card-hdr">
-          <span class="card-title">📅 Doanh Thu Từng Ngày — ${cfg.id}</span>
+          <span class="card-title">📅 Doanh Thu Từng Ngày / 日別売上 — ${cfg.id}</span>
           <div class="legend">
-            <div class="legend-item"><div class="legend-dot" style="background:#2563eb"></div>Doanh thu</div>
-            <div class="legend-item"><div class="legend-dot" style="background:rgba(220,38,38,.5)"></div>Chi phí</div>
+            <div class="legend-item"><div class="legend-dot" style="background:#2563eb"></div>Doanh thu / 売上</div>
+            <div class="legend-item"><div class="legend-dot" style="background:rgba(220,38,38,.5)"></div>Chi phí / 原価</div>
           </div>
         </div>
         <div class="bar-wrap">${dBars||'<div class="empty"><p>Chưa có dữ liệu doanh thu</p></div>'}</div>
@@ -973,13 +973,13 @@ function renderDashboard(){
     </div>
     <div style="display:flex;flex-direction:column;gap:18px">
       <div class="card">
-        <div class="card-hdr"><span class="card-title">🥇 Top Thực Phẩm</span></div>
-        <table class="sup-table"><thead><tr><th style="text-align:left">Nhà CC</th><th>Số tiền</th><th>%</th></tr></thead>
+        <div class="card-hdr"><span class="card-title">🥇 Top Thực Phẩm <span style="font-size:11px;font-weight:400;color:var(--muted)">/ 食材仕入れランキング</span></span></div>
+        <table class="sup-table"><thead><tr><th style="text-align:left">Nhà CC / 仕入先</th><th>Số tiền / 金額</th><th>%</th></tr></thead>
         <tbody>${supFood||'<tr><td colspan="3" class="r-muted" style="text-align:center;padding:16px">Chưa có dữ liệu</td></tr>'}</tbody>
       </table></div>
       <div class="card">
-        <div class="card-hdr"><span class="card-title">🥇 Top Đồ Uống</span></div>
-        <table class="sup-table"><thead><tr><th style="text-align:left">Nhà CC</th><th>Số tiền</th><th>%</th></tr></thead>
+        <div class="card-hdr"><span class="card-title">🥇 Top Đồ Uống <span style="font-size:11px;font-weight:400;color:var(--muted)">/ 酒類仕入れランキング</span></span></div>
+        <table class="sup-table"><thead><tr><th style="text-align:left">Nhà CC / 仕入先</th><th>Số tiền / 金額</th><th>%</th></tr></thead>
         <tbody>${supDrink||'<tr><td colspan="3" class="r-muted" style="text-align:center;padding:16px">Chưa có dữ liệu</td></tr>'}</tbody>
       </table></div>
     </div>
@@ -1020,24 +1020,24 @@ function renderDoanhThu(){
 
   document.getElementById('main').innerHTML=`
   <div class="page-hdr">
-    <div><div class="page-title">💰 Doanh Thu — ${cfg.id}/${cfg.year}</div>
-    <div class="page-sub">Genka (原価) = Thực Phẩm + Rượu. Chi Phí Khác hiển thị riêng, không tính vào tỉ lệ. Nhập doanh thu vào cột ✎.</div></div>
+    <div><div class="page-title">💰 Doanh Thu / 売上管理 — ${cfg.id}/${cfg.year}</div>
+    <div class="page-sub">原価 (Genka) = 食材費 + 酒類費。その他経費は別表示、原価率に含まず。売上は ✎ 列に入力。</div></div>
   </div>
   <div class="card">
     <div class="card-body"><table>
       <thead><tr>
-        <th style="text-align:left;width:110px">Ngày</th>
-        <th>Chi TP 🍱</th>
-        <th>Chi Uống 🍺</th>
-        <th>Chi Khác ⚡</th>
+        <th style="text-align:left;width:110px">Ngày<br><span style="font-weight:400;opacity:.65">日付</span></th>
+        <th>Chi TP 🍱<br><span style="font-weight:400;opacity:.65">食材費</span></th>
+        <th>Chi Uống 🍺<br><span style="font-weight:400;opacity:.65">酒類費</span></th>
+        <th>Chi Khác ⚡<br><span style="font-weight:400;opacity:.65">その他</span></th>
         <th>Chi GC 原価</th>
-        <th>Doanh Thu ✎</th>
-        <th>Tỉ Lệ</th>
-        <th>Lợi Nhuận GC</th>
+        <th>Doanh Thu ✎<br><span style="font-weight:400;opacity:.65">売上</span></th>
+        <th>Tỉ Lệ<br><span style="font-weight:400;opacity:.65">原価率</span></th>
+        <th>Lợi Nhuận GC<br><span style="font-weight:400;opacity:.65">粗利益</span></th>
       </tr></thead>
       <tbody>${rows}</tbody>
       <tfoot><tr class="sum-row">
-        <td class="left"><strong>TỔNG</strong></td>
+        <td class="left"><strong>TỔNG / 合計</strong></td>
         <td>${num(totFood)}</td>
         <td>${num(totDrink)}</td>
         <td>${num(totOther)}</td>
@@ -1079,19 +1079,19 @@ function renderThucPham(){
 
   document.getElementById('main').innerHTML=`
   <div class="page-hdr">
-    <div><div class="page-title">🍱 Chi Thực Phẩm — ${cfg.id}/${cfg.year}</div>
-    <div class="page-sub">Nhập chi phí từng nhà cung cấp mỗi ngày.</div></div>
+    <div><div class="page-title">🍱 Chi Thực Phẩm / 食材費 — ${cfg.id}/${cfg.year}</div>
+    <div class="page-sub">仕入先ごとの食材費を日別入力 / Nhập chi phí từng nhà cung cấp mỗi ngày.</div></div>
   </div>
   <div class="card">
     <div class="card-body"><table>
       <thead><tr>
-        <th style="text-align:left;min-width:80px">Ngày</th>
+        <th style="text-align:left;min-width:80px">Ngày<br><span style="font-weight:400;opacity:.65">日付</span></th>
         ${TP_COLS.map(c=>`<th>${c}</th>`).join('')}
-        <th style="color:var(--info)">Tổng ngày</th>
+        <th style="color:var(--info)">Tổng ngày<br><span style="font-weight:400;opacity:.65">日計</span></th>
       </tr></thead>
       <tbody>${rows}</tbody>
       <tfoot><tr class="sum-row">
-        <td class="left">TỔNG</td>${totRow}
+        <td class="left">TỔNG / 合計</td>${totRow}
         <td style="font-weight:800;color:var(--info)">${num(grandTotal)}</td>
       </tr></tfoot>
     </table></div>
@@ -1127,19 +1127,19 @@ function renderRuou(){
 
   document.getElementById('main').innerHTML=`
   <div class="page-hdr">
-    <div><div class="page-title">🍺 Chi Đồ Uống — ${cfg.id}/${cfg.year}</div>
-    <div class="page-sub">Nhập chi phí đồ uống từng nhà cung cấp.</div></div>
+    <div><div class="page-title">🍺 Chi Đồ Uống / 酒類費 — ${cfg.id}/${cfg.year}</div>
+    <div class="page-sub">仕入先ごとの酒類費を日別入力 / Nhập chi phí đồ uống từng nhà cung cấp.</div></div>
   </div>
   <div class="card">
     <div class="card-body"><table>
       <thead><tr>
-        <th style="text-align:left;min-width:80px">Ngày</th>
+        <th style="text-align:left;min-width:80px">Ngày<br><span style="font-weight:400;opacity:.65">日付</span></th>
         ${RU_COLS.map(c=>`<th>${c}</th>`).join('')}
-        <th style="color:var(--info)">Tổng ngày</th>
+        <th style="color:var(--info)">Tổng ngày<br><span style="font-weight:400;opacity:.65">日計</span></th>
       </tr></thead>
       <tbody>${rows}</tbody>
       <tfoot><tr class="sum-row">
-        <td class="left">TỔNG</td>${totRow}
+        <td class="left">TỔNG / 合計</td>${totRow}
         <td style="font-weight:800;color:var(--info)">${num(grandTotal)}</td>
       </tr></tfoot>
     </table></div>
@@ -1172,21 +1172,22 @@ function renderChiKhac(){
   const totRow=colTotals.map(v=>`<td style="font-weight:700">${v?num(v):'—'}</td>`).join('');
   const grandTotal=colTotals.reduce((a,b)=>a+b,0);
 
+  const OTHER_JP=['電気代','水道代','通信費','備品費','修繕費','雑費'];
   document.getElementById('main').innerHTML=`
   <div class="page-hdr">
-    <div><div class="page-title">⚡ Chi Phí Khác — ${cfg.id}/${cfg.year}</div>
-    <div class="page-sub">Điện, nước, internet và các chi phí vận hành. Tự cộng vào tổng chi phí trong Doanh Thu.</div></div>
+    <div><div class="page-title">⚡ Chi Phí Khác / その他経費 — ${cfg.id}/${cfg.year}</div>
+    <div class="page-sub">電気・水道・通信など運営経費 / Điện, nước, internet và các chi phí vận hành.</div></div>
   </div>
   <div class="card">
     <div class="card-body"><table>
       <thead><tr>
-        <th style="text-align:left;min-width:80px">Ngày</th>
-        ${OTHER_COLS.map(c=>`<th>${c}</th>`).join('')}
-        <th style="color:var(--info)">Tổng ngày</th>
+        <th style="text-align:left;min-width:80px">Ngày<br><span style="font-weight:400;opacity:.65">日付</span></th>
+        ${OTHER_COLS.map((c,i)=>`<th>${c}<br><span style="font-weight:400;opacity:.65">${OTHER_JP[i]||''}</span></th>`).join('')}
+        <th style="color:var(--info)">Tổng ngày<br><span style="font-weight:400;opacity:.65">日計</span></th>
       </tr></thead>
       <tbody>${rows}</tbody>
       <tfoot><tr class="sum-row">
-        <td class="left">TỔNG</td>${totRow}
+        <td class="left">TỔNG / 合計</td>${totRow}
         <td style="font-weight:800;color:var(--info)">${num(grandTotal)}</td>
       </tr></tfoot>
     </table></div>
@@ -1301,17 +1302,17 @@ function renderBangLuong(){
 
   document.getElementById('main').innerHTML=`
   <div class="page-hdr">
-    <div><div class="page-title">👥 Bảng Lương — ${cfg.id}/${cfg.year}</div>
-    <div class="page-sub">Từ dữ liệu chấm công thực tế · <a href="https://cungchiasetamtrangbuon-lang.github.io/torishin/torishin_attendance.html" target="_blank" style="color:var(--accent);text-decoration:none">📱 Mở Chấm Công ↗</a></div></div>
+    <div><div class="page-title">👥 Bảng Lương / 給与管理 — ${cfg.id}/${cfg.year}</div>
+    <div class="page-sub">実績データから自動計算 / Từ dữ liệu chấm công thực tế · <a href="https://cungchiasetamtrangbuon-lang.github.io/torishin/torishin_attendance.html" target="_blank" style="color:var(--accent);text-decoration:none">📱 Mở Chấm Công ↗</a></div></div>
     <button class="hdr-btn" onclick="_attData=null;renderBangLuong()" style="font-size:12px">🔄 Tải lại</button>
   </div>
 
   <div class="kpi-grid" style="margin-bottom:16px">
-    <div class="kpi"><div class="kpi-icon">💵</div><div class="kpi-label">Tổng Lương</div>
+    <div class="kpi"><div class="kpi-icon">💵</div><div class="kpi-label">Tổng Lương<br><span style="font-size:9px;font-weight:400;opacity:.7">基本給合計</span></div>
       <div class="kpi-value big">${mn(totals.salary)}</div></div>
-    <div class="kpi"><div class="kpi-icon">🍚</div><div class="kpi-label">Tiền Ăn</div>
+    <div class="kpi"><div class="kpi-icon">🍚</div><div class="kpi-label">Tiền Ăn<br><span style="font-size:9px;font-weight:400;opacity:.7">食事手当</span></div>
       <div class="kpi-value big">${mn(totals.meal)}</div></div>
-    <div class="kpi"><div class="kpi-icon">💰</div><div class="kpi-label">Tổng Chi NS</div>
+    <div class="kpi"><div class="kpi-icon">💰</div><div class="kpi-label">Tổng Chi NS<br><span style="font-size:9px;font-weight:400;opacity:.7">人件費合計</span></div>
       <div class="kpi-value big" style="color:var(--accent)">${mn(totals.total)}</div></div>
   </div>
 
@@ -1319,30 +1320,40 @@ function renderBangLuong(){
 
   <div class="card" style="margin-top:18px">
     <div class="card-hdr">
-      <span class="card-title">📱 Chấm Công Thực Tế — ${cfg.id}/${cfg.year}</span>
-      <span style="font-size:11px;color:var(--muted)">Tự động từ app chấm công</span>
+      <span class="card-title">📱 Chấm Công Thực Tế / 出勤実績 — ${cfg.id}/${cfg.year}</span>
+      <span style="font-size:11px;color:var(--muted)">勤怠アプリから自動取得 / Tự động từ app chấm công</span>
     </div>
     <div class="card-body"><div style="overflow-x:auto"><table class="shift-table">
       <thead><tr>
-        <th style="text-align:left;position:sticky;left:0;background:var(--w2);z-index:3;min-width:80px">Nhân viên</th>
+        <th style="text-align:left;position:sticky;left:0;background:var(--w2);z-index:3;min-width:80px">Nhân viên<br><span style="font-weight:400;opacity:.65">スタッフ</span></th>
         ${dowHdrs}
-        <th style="min-width:88px">Lương</th><th>Ngày·H</th>
+        <th style="min-width:88px">Lương / 給与</th><th>Ngày·H</th>
       </tr></thead>
       <tbody>${attRows}</tbody>
     </table></div></div>
     <div style="padding:8px 14px;font-size:11px;color:var(--muted)">
-      🟢 ≥6H &nbsp;🟡 &lt;6H &nbsp;休 Nghỉ &nbsp;↻ Đang làm
+      🟢 ≥6H &nbsp;🟡 &lt;6H &nbsp;休 Nghỉ / お休み &nbsp;↻ Đang làm / 勤務中
     </div>
   </div>
 
   <div style="display:grid;grid-template-columns:1fr auto;gap:18px;margin-top:18px;align-items:start">
     <div class="card">
-      <div class="card-hdr"><span class="card-title">📊 Tổng Hợp Lương</span></div>
+      <div class="card-hdr"><span class="card-title">📊 Tổng Hợp Lương <span style="font-size:11px;font-weight:400;color:var(--muted)">/ 給与明細</span></span></div>
       <table>
-        <thead><tr><th style="text-align:left">Nhân viên</th><th>Loại</th><th>Ngày LV</th><th>Ngày ăn</th><th>Giờ TT</th><th>Giờ đêm</th><th>Lương</th><th>Tiền ăn</th><th>Tổng</th></tr></thead>
+        <thead><tr>
+          <th style="text-align:left">Nhân viên<br><span style="font-weight:400;opacity:.65">氏名</span></th>
+          <th>Loại<br><span style="font-weight:400;opacity:.65">区分</span></th>
+          <th>Ngày LV<br><span style="font-weight:400;opacity:.65">出勤日</span></th>
+          <th>Ngày ăn<br><span style="font-weight:400;opacity:.65">食事</span></th>
+          <th>Giờ TT<br><span style="font-weight:400;opacity:.65">通常H</span></th>
+          <th>Giờ đêm<br><span style="font-weight:400;opacity:.65">深夜H</span></th>
+          <th>Lương<br><span style="font-weight:400;opacity:.65">基本給</span></th>
+          <th>Tiền ăn<br><span style="font-weight:400;opacity:.65">食事手当</span></th>
+          <th>Tổng<br><span style="font-weight:400;opacity:.65">合計</span></th>
+        </tr></thead>
         <tbody>${detailRows}</tbody>
         <tfoot><tr class="sum-row">
-          <td class="left" colspan="6"><strong>TỔNG CỘNG</strong></td>
+          <td class="left" colspan="6"><strong>TỔNG CỘNG / 合計</strong></td>
           <td>${num(Math.round(totals.salary))}</td>
           <td>${num(totals.meal)}</td>
           <td style="color:var(--accent);font-weight:800">${num(totals.total)}</td>
@@ -1350,27 +1361,27 @@ function renderBangLuong(){
       </table>
     </div>
     <div class="card" style="min-width:280px">
-      <div class="card-hdr"><span class="card-title">📋 Bảng Quy Đổi Ca</span></div>
+      <div class="card-hdr"><span class="card-title">📋 Bảng Quy Đổi Ca <span style="font-size:11px;font-weight:400;color:var(--muted)">/ シフト換算表</span></span></div>
       <table>
-        <thead><tr><th>Mã</th><th style="text-align:left">Khung giờ</th><th>TT</th><th>Đêm</th></tr></thead>
+        <thead><tr><th>Mã / コード</th><th style="text-align:left">Khung giờ / 時間帯</th><th>TT / 通常</th><th>Đêm / 深夜</th></tr></thead>
         <tbody>${refRows}</tbody>
       </table>
       <div style="padding:10px 14px;font-size:11px;color:var(--muted)">
-        ⚡ Sau 22H +25% | Sau 208H/tháng +25%<br>🍚 Tiền ăn 25,000đ/ca ≥ 6H
+        ⚡ Sau 22H +25% / 深夜割増 | Sau 208H/tháng +25% / 超過割増<br>🍚 Tiền ăn 25,000đ/ca ≥ 6H / 食事手当
       </div>
     </div>
   </div>
 
   <div class="card" style="margin-top:18px">
     <div class="card-hdr">
-      <span class="card-title">📅 Bảng Ca Thủ Công</span>
-      <span style="font-size:12px;color:var(--muted)">Nhập mã ca hoặc 休 (nghỉ) — dùng khi chưa có chấm công</span>
+      <span class="card-title">📅 Bảng Ca Thủ Công <span style="font-size:11px;font-weight:400;color:var(--muted)">/ 手動シフト入力</span></span>
+      <span style="font-size:12px;color:var(--muted)">Nhập mã ca hoặc 休 — dùng khi chưa có chấm công / 勤怠データがない場合</span>
     </div>
     <div class="card-body"><div style="overflow-x:auto"><table class="shift-table">
       <thead><tr>
-        <th style="text-align:left;position:sticky;left:0;background:#f8fafc;z-index:3;min-width:90px">Nhân viên</th>
+        <th style="text-align:left;position:sticky;left:0;background:#f8fafc;z-index:3;min-width:90px">Nhân viên<br><span style="font-weight:400;opacity:.65">スタッフ</span></th>
         ${shiftDowHdrs}
-        <th>Tổng lương</th><th>Ngày</th>
+        <th>Tổng lương<br><span style="font-weight:400;opacity:.65">給与</span></th><th>Ngày<br><span style="font-weight:400;opacity:.65">日数</span></th>
       </tr></thead>
       <tbody>${shiftRows}</tbody>
     </table></div></div>

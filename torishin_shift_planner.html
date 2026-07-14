@@ -259,6 +259,27 @@ body{font-family:'Sora',sans-serif;background:var(--w2);color:var(--ink);min-hei
 .mbtn.ok{background:var(--ink);color:#fff;border-color:var(--ink);}
 .mbtn.ok:hover{background:var(--ink2);}
 .mbtn.dl{background:var(--rb);color:var(--r);border-color:var(--rbd);}
+/* ── ATT CALENDAR ── */
+.att-nav-btn{width:30px;height:30px;border:1px solid var(--bdr);background:var(--w);border-radius:7px;cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;transition:background .12s;}
+.att-nav-btn:hover{background:var(--w3);}
+.att-cal-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:var(--rr);border:1px solid var(--bdr);background:var(--w);}
+.att-cal-table{border-collapse:collapse;white-space:nowrap;font-family:'JetBrains Mono',monospace;}
+.att-cal-table th,.att-cal-table td{border-right:1px solid var(--bdr);border-bottom:1px solid var(--bdr);padding:0;}
+.att-name-h{position:sticky;left:0;z-index:3;background:var(--w2);padding:6px 8px;font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink4);font-weight:700;min-width:62px;border-right:2px solid var(--bdr2)!important;}
+.att-name-cell{position:sticky;left:0;z-index:2;background:var(--w);padding:4px 7px;font-size:12px;font-weight:700;min-width:62px;max-width:62px;border-right:2px solid var(--bdr2)!important;overflow:hidden;text-overflow:ellipsis;}
+.att-name-cell.sum{background:var(--w2);font-size:10px;color:var(--ink4);font-weight:500;}
+.att-day-h{width:44px;min-width:44px;text-align:center;padding:4px 2px;background:var(--w2);}
+.att-day-h .adn{font-size:11px;font-weight:700;color:var(--ink2);}
+.att-day-h .adw{font-size:9px;color:var(--ink4);}
+.att-day-h.sun .adn,.att-day-h.sun .adw{color:var(--r);}
+.att-day-h.sat .adn,.att-day-h.sat .adw{color:var(--b);}
+.att-cell{width:44px;min-width:44px;text-align:center;padding:3px 1px;vertical-align:middle;height:40px;}
+.att-cell.sun{background:#fff8f8;}.att-cell.sat{background:#f5f8ff;}
+.att-cell.off{background:var(--rb);}.att-cell.wkg{background:var(--gb);}
+.att-t{font-size:9.5px;line-height:1.5;font-family:'JetBrains Mono',monospace;}
+.att-ti{color:var(--g);}.att-to{color:var(--r);}
+.att-kyuu{color:var(--r);font-weight:700;font-size:12px;}
+.att-sum-cell{text-align:center;padding:3px 1px;font-size:9px;font-family:'JetBrains Mono',monospace;color:var(--ink3);background:var(--w2);height:26px;vertical-align:middle;}
 /* ── TOAST ── */
 .toast{position:fixed;bottom:18px;right:18px;z-index:200;background:var(--w);border:1px solid var(--bdr);border-radius:var(--rr);padding:8px 13px;font-size:12px;font-weight:500;box-shadow:var(--sh2);display:none;}
 .toast.show{display:block;animation:up .13s ease;}
@@ -329,6 +350,7 @@ body{font-family:'Sora',sans-serif;background:var(--w2);color:var(--ink);min-hei
   <button class="tab" onclick="goTab(event,'tl')">⏱ Timeline</button>
   <button class="tab" id="rTab" onclick="handleRTab(event)">📊 Báo cáo 🔒</button>
   <button class="tab" onclick="goTab(event,'settings')">⚙ Cài đặt</button>
+  <button class="tab" onclick="goTab(event,'attcal')">📋 Thực Tế</button>
 </div>
 <div class="pg">
   <!-- LỊCH -->
@@ -386,6 +408,10 @@ body{font-family:'Sora',sans-serif;background:var(--w2);color:var(--ink);min-hei
   <!-- CÀI ĐẶT -->
   <div id="settings" class="sec">
     <div id="settingsContent"></div>
+  </div>
+  <!-- CHẤM CÔNG THỰC TẾ -->
+  <div id="attcal" class="sec">
+    <div id="attCalContent"></div>
   </div>
 </div>
 <!-- MODAL: xếp ca ngày -->
@@ -478,6 +504,7 @@ const STORAGE_KEY='torishin_shift_planner_v1';
 const FB_URL='https://torishin-ace11-default-rtdb.asia-southeast1.firebasedatabase.app';
 firebase.initializeApp({databaseURL:FB_URL});
 const _spRef=firebase.database().ref('torishin_shifts');
+const _attRef=firebase.database().ref('torishin_attendance');
 let monthScheds={};
 
 function monthKey(){return curY+'-'+curM;}
@@ -1464,6 +1491,123 @@ function goTab(e,id){
   if(id==='tl')renderTl();
   if(id==='rpt'&&rptOpen)renderReport();
   if(id==='settings')renderSettings();
+  if(id==='attcal')renderAttCal();
+}
+
+// ════════════════════════════════════
+// CHẤM CÔNG THỰC TẾ — lịch tháng
+// ════════════════════════════════════
+let _attCalMonth=null;
+let _attRecords={};
+
+function _fmtTime(ts){
+  if(!ts)return'--';
+  const d=new Date(ts);
+  return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+}
+
+function renderAttCal(){
+  const el=document.getElementById('attCalContent');
+  if(!_attCalMonth){
+    const n=new Date();
+    _attCalMonth=n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0');
+  }
+  el.innerHTML='<div style="padding:40px;text-align:center;color:var(--ink4)">⏳ Đang tải dữ liệu chấm công...</div>';
+  _attRef.once('value').then(snap=>{
+    _attRecords=snap.val()||{};
+    _renderAttCalGrid(el);
+  }).catch(()=>{
+    el.innerHTML='<div style="padding:40px;text-align:center;color:var(--r)">❌ Không tải được dữ liệu</div>';
+  });
+}
+
+function _renderAttCalGrid(el){
+  const [yr,mo]=_attCalMonth.split('-').map(Number);
+  const days=new Date(yr,mo,0).getDate();
+  const DOW=['CN','T2','T3','T4','T5','T6','T7'];
+
+  function prevMo(){const d=new Date(yr,mo-2,1);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');}
+  function nextMo(){const d=new Date(yr,mo,1);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');}
+
+  const dayHdrs=Array.from({length:days},(_,i)=>{
+    const dow=new Date(yr,mo-1,i+1).getDay();
+    const cls=dow===0?'sun':dow===6?'sat':'';
+    return `<th class="att-day-h ${cls}"><div class="adn">${i+1}</div><div class="adw">${DOW[dow]}</div></th>`;
+  }).join('');
+
+  const staffRows=STAFF.map(s=>{
+    const cells=Array.from({length:days},(_,i)=>{
+      const dk=yr+'-'+String(mo).padStart(2,'0')+'-'+String(i+1).padStart(2,'0');
+      const rec=(_attRecords[dk]||{})[s.id]||null;
+      const dow=new Date(yr,mo-1,i+1).getDay();
+      let cls='att-cell'+(dow===0?' sun':dow===6?' sat':'');
+      let inner='';
+      if(rec?.isOff){
+        cls+=' off';inner='<div class="att-kyuu">休</div>';
+      } else if(rec?.clockIn&&rec?.clockOut){
+        inner=`<div class="att-t att-ti">${_fmtTime(rec.clockIn)}</div><div class="att-t att-to">${_fmtTime(rec.clockOut)}</div>`;
+      } else if(rec?.clockIn){
+        cls+=' wkg';inner=`<div class="att-t att-ti">${_fmtTime(rec.clockIn)}</div><div class="att-t" style="color:var(--o)">▷</div>`;
+      }
+      return `<td class="${cls}">${inner}</td>`;
+    }).join('');
+    return `<tr><td class="att-name-cell" style="color:${s.hex||'var(--ink)'}">${s.name}</td>${cells}</tr>`;
+  }).join('');
+
+  const sumCells=Array.from({length:days},(_,i)=>{
+    const dk=yr+'-'+String(mo).padStart(2,'0')+'-'+String(i+1).padStart(2,'0');
+    let tot=0;
+    STAFF.forEach(s=>{
+      const rec=(_attRecords[dk]||{})[s.id];
+      if(rec?.clockIn&&rec?.clockOut){
+        const brk=(rec.breaks||[]).reduce((a,b)=>a+(b.end&&b.start?b.end-b.start:0),0);
+        tot+=(rec.clockOut-rec.clockIn-brk)/3600000;
+      }
+    });
+    const h=Math.floor(tot),m=Math.round((tot-h)*60);
+    const txt=tot>0?(h+(m?'h'+String(m).padStart(2,'0'):'h')):'';
+    return `<td class="att-sum-cell">${txt}</td>`;
+  }).join('');
+
+  const staffTotals=STAFF.map(s=>{
+    let tot=0,wd=0;
+    for(let i=1;i<=days;i++){
+      const dk=yr+'-'+String(mo).padStart(2,'0')+'-'+String(i).padStart(2,'0');
+      const rec=(_attRecords[dk]||{})[s.id];
+      if(rec?.clockIn&&rec?.clockOut){
+        const brk=(rec.breaks||[]).reduce((a,b)=>a+(b.end&&b.start?b.end-b.start:0),0);
+        tot+=(rec.clockOut-rec.clockIn-brk)/3600000; wd++;
+      }
+    }
+    const hh=Math.floor(tot),mm=Math.round((tot-hh)*60);
+    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 14px;border-bottom:1px solid var(--bdr);font-size:12.5px;">
+      <span style="font-weight:700;color:${s.hex||'var(--ink)'}">${s.name}</span>
+      <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--ink2)">${wd} ngày làm</span>
+      <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--ink3)">${hh}h${String(mm).padStart(2,'0')}p</span>
+    </div>`;
+  }).join('');
+
+  const moLabel=new Date(yr,mo-1,1).toLocaleDateString('vi-VN',{month:'long',year:'numeric'});
+
+  el.innerHTML=`
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;background:var(--w);border-radius:var(--rr);padding:11px 14px;border:1px solid var(--bdr);">
+    <button class="att-nav-btn" onclick="_attCalMonth='${prevMo()}';_renderAttCalGrid(document.getElementById('attCalContent'))">‹</button>
+    <div style="flex:1;text-align:center;font-size:14px;font-weight:700;">${moLabel}</div>
+    <button class="att-nav-btn" onclick="_attCalMonth='${nextMo()}';renderAttCal()">›</button>
+  </div>
+  <div class="att-cal-wrap">
+    <table class="att-cal-table">
+      <thead><tr><th class="att-name-h">Tên</th>${dayHdrs}</tr></thead>
+      <tbody>
+        ${staffRows}
+        <tr><td class="att-name-cell sum">Tổng (h)</td>${sumCells}</tr>
+      </tbody>
+    </table>
+  </div>
+  <div style="background:var(--w);border:1px solid var(--bdr);border-radius:var(--rr);margin-top:12px;overflow:hidden;">
+    <div style="padding:10px 14px;border-bottom:1px solid var(--bdr);font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--ink4);font-weight:700;">Tổng tháng</div>
+    ${staffTotals}
+  </div>`;
 }
 function toast(msg,type){
   const t=document.getElementById('toast');t.textContent=msg;
