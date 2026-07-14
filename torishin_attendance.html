@@ -33,8 +33,8 @@ body{font-family:'Sora',sans-serif;background:var(--w2);color:var(--ink);min-hei
 .hdr-date{font-size:11.5px;opacity:.65;margin-top:4px;letter-spacing:.03em;}
 
 /* TABS */
-.tabs{display:grid;grid-template-columns:1fr 1fr 1fr;border-bottom:1px solid var(--bdr);background:var(--w);}
-.tab{padding:11px 4px;text-align:center;font-size:11.5px;font-weight:600;color:var(--ink4);cursor:pointer;border-bottom:2px solid transparent;transition:.13s;letter-spacing:.02em;}
+.tabs{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;border-bottom:1px solid var(--bdr);background:var(--w);}
+.tab{padding:10px 2px;text-align:center;font-size:10.5px;font-weight:600;color:var(--ink4);cursor:pointer;border-bottom:2px solid transparent;transition:.13s;letter-spacing:.01em;}
 .tab.on{color:var(--ink);border-bottom-color:var(--ink);}
 
 /* PAGE */
@@ -179,6 +179,29 @@ body{font-family:'Sora',sans-serif;background:var(--w2);color:var(--ink);min-hei
 
 /* 休 marker */
 .kyuu-badge{display:inline-block;padding:1px 7px;border-radius:4px;font-size:11px;font-weight:700;background:var(--rb);color:var(--r);}
+
+/* CALENDAR TABLE */
+.cal-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:var(--rr);border:1px solid var(--bdr);background:var(--w);}
+.cal-table{border-collapse:collapse;white-space:nowrap;font-family:'JetBrains Mono',monospace;}
+.cal-table th,.cal-table td{border-right:1px solid var(--bdr);border-bottom:1px solid var(--bdr);padding:0;}
+.cal-name-h{position:sticky;left:0;z-index:3;background:var(--w2);padding:6px 8px;font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink4);font-weight:700;min-width:58px;border-right:2px solid var(--bdr2)!important;}
+.cal-name-cell{position:sticky;left:0;z-index:2;background:var(--w);padding:4px 7px;font-size:12px;font-weight:700;min-width:58px;max-width:58px;border-right:2px solid var(--bdr2)!important;overflow:hidden;text-overflow:ellipsis;}
+.cal-name-cell.sum{background:var(--w2);font-size:10px;color:var(--ink4);font-weight:500;}
+.cal-day-h{width:42px;min-width:42px;text-align:center;padding:4px 2px;background:var(--w2);}
+.cal-day-h .dn{font-size:11px;font-weight:700;}
+.cal-day-h .dw{font-size:9px;opacity:.65;}
+.cal-day-h.sun .dn,.cal-day-h.sun .dw{color:var(--r);}
+.cal-day-h.sat .dn,.cal-day-h.sat .dw{color:var(--b);}
+.cal-cell{width:42px;min-width:42px;text-align:center;padding:3px 1px;vertical-align:middle;height:38px;}
+.cal-cell.sun{background:#fff8f8;}
+.cal-cell.sat{background:#f5f8ff;}
+.cal-cell.off{background:var(--rb);}
+.cal-cell.wkg{background:var(--gb);}
+.cal-t{font-size:9.5px;line-height:1.5;font-family:'JetBrains Mono',monospace;}
+.cal-ti{color:var(--g);}
+.cal-to{color:var(--r);}
+.cal-kyuu{color:var(--r);font-weight:700;font-size:12px;}
+.cal-sum-cell{text-align:center;padding:3px 1px;font-size:9px;font-family:'JetBrains Mono',monospace;color:var(--ink3);background:var(--w2);height:26px;vertical-align:middle;}
 </style>
 </head>
 <body>
@@ -193,11 +216,13 @@ body{font-family:'Sora',sans-serif;background:var(--w2);color:var(--ink);min-hei
 <div class="tabs">
   <div class="tab on" data-tab="clock" onclick="showTab('clock')">⏱ Chấm Công</div>
   <div class="tab" data-tab="summary" onclick="showTab('summary')">📋 Hôm Nay</div>
+  <div class="tab" data-tab="calendar" onclick="showTab('calendar')">📅 Lịch Tháng</div>
   <div class="tab" data-tab="admin" onclick="showTab('admin')">⚙ Quản Lý</div>
 </div>
 
 <div id="pg-clock" class="pg on"></div>
 <div id="pg-summary" class="pg"></div>
+<div id="pg-calendar" class="pg"></div>
 <div id="pg-admin" class="pg"></div>
 
 <div class="toast" id="toast"></div>
@@ -419,6 +444,7 @@ function applyRemote(remote){
     else renderClock();
   }
   else if(tab==='summary') renderSummary();
+  else if(tab==='calendar') renderCalendar();
   else if(tab==='admin'&&state.adminUnlocked) renderAdminPanel(document.getElementById('pg-admin'));
 }
 
@@ -673,6 +699,7 @@ function showTab(tab){
   document.getElementById('pg-'+tab).classList.add('on');
   if(tab==='clock') renderClock();
   if(tab==='summary') renderSummary();
+  if(tab==='calendar') renderCalendar();
   if(tab==='admin') renderAdmin();
 }
 
@@ -1007,6 +1034,115 @@ function renderSummary(){
 function sumNav(d){ state.sumDateOffset+=d; renderSummary(); }
 
 // ══════════════════════════════════════════════════════
+// CALENDAR TAB — Lịch làm cả tháng
+// ══════════════════════════════════════════════════════
+function renderCalendar(){
+  const el=document.getElementById('pg-calendar');
+  if(!state.calMonth){
+    const n=new Date();
+    state.calMonth=n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0');
+  }
+  const [yr,mo]=state.calMonth.split('-').map(Number);
+  const days=new Date(yr,mo,0).getDate();
+  const DOW=['CN','T2','T3','T4','T5','T6','T7'];
+
+  function prevMo(){const d=new Date(yr,mo-2,1);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');}
+  function nextMo(){const d=new Date(yr,mo,1);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');}
+
+  // Day header row
+  const dayHdrs=Array.from({length:days},(_,i)=>{
+    const dow=new Date(yr,mo-1,i+1).getDay();
+    const cls=dow===0?'sun':dow===6?'sat':'';
+    return `<th class="cal-day-h ${cls}"><div class="dn">${i+1}</div><div class="dw">${DOW[dow]}</div></th>`;
+  }).join('');
+
+  // Staff rows
+  const staffRows=STAFF.map(s=>{
+    const cells=Array.from({length:days},(_,i)=>{
+      const d=i+1;
+      const dk=yr+'-'+String(mo).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+      const rec=(state.records[dk]||{})[s.id]||null;
+      const dow=new Date(yr,mo-1,d).getDay();
+      let cls='cal-cell'+(dow===0?' sun':dow===6?' sat':'');
+      let inner='';
+      if(rec?.isOff){
+        cls+=' off'; inner='<div class="cal-kyuu">休</div>';
+      } else if(rec?.clockIn&&rec?.clockOut){
+        inner=`<div class="cal-t cal-ti">${fmtTime(rec.clockIn)}</div><div class="cal-t cal-to">${fmtTime(rec.clockOut)}</div>`;
+      } else if(rec?.clockIn){
+        cls+=' wkg'; inner=`<div class="cal-t cal-ti">${fmtTime(rec.clockIn)}</div><div class="cal-t" style="color:var(--o)">▷</div>`;
+      }
+      return `<td class="${cls}">${inner}</td>`;
+    }).join('');
+    return `<tr><td class="cal-name-cell" style="color:${s.hex||'var(--ink)'}">${s.name}</td>${cells}</tr>`;
+  }).join('');
+
+  // Total hours per day
+  const sumCells=Array.from({length:days},(_,i)=>{
+    const dk=yr+'-'+String(mo).padStart(2,'0')+'-'+String(i+1).padStart(2,'0');
+    let tot=0;
+    STAFF.forEach(s=>{
+      const rec=(state.records[dk]||{})[s.id];
+      if(rec?.clockIn&&rec?.clockOut){
+        const brk=(rec.breaks||[]).reduce((a,b)=>a+(b.end&&b.start?b.end-b.start:0),0);
+        tot+=(rec.clockOut-rec.clockIn-brk)/3600000;
+      }
+    });
+    const h=Math.floor(tot), m=Math.round((tot-h)*60);
+    const txt=tot>0?(h+(m?'h'+String(m).padStart(2,'0'):'h')):'';
+    return `<td class="cal-sum-cell">${txt}</td>`;
+  }).join('');
+
+  // Month summary totals per staff
+  const staffTotals=STAFF.map(s=>{
+    let reg=0,night=0,wd=0;
+    for(let i=1;i<=days;i++){
+      const dk=yr+'-'+String(mo).padStart(2,'0')+'-'+String(i).padStart(2,'0');
+      const rec=(state.records[dk]||{})[s.id];
+      if(rec?.clockIn&&rec?.clockOut){
+        const brk=(rec.breaks||[]).reduce((a,b)=>a+(b.end&&b.start?b.end-b.start:0),0);
+        const tot=(rec.clockOut-rec.clockIn-brk)/3600000;
+        const inH=new Date(rec.clockIn).getHours()+new Date(rec.clockIn).getMinutes()/60;
+        const outH=new Date(rec.clockOut).getHours()+new Date(rec.clockOut).getMinutes()/60+(new Date(rec.clockOut)<new Date(rec.clockIn)?24:0);
+        const nH=Math.max(0,outH-Math.max(inH,22));
+        night+=nH; reg+=Math.max(0,tot-nH); wd++;
+      }
+    }
+    const tot=reg+night;
+    const hh=Math.floor(tot),mm=Math.round((tot-hh)*60);
+    let sal=0;
+    if(s.type==='main'){const hr=s.base/273;sal=s.base+night*hr*0.25+Math.max(0,tot-208)*hr*0.25;}
+    else{sal=reg*s.rate+night*s.rate*1.25+Math.max(0,tot-208)*s.rate*0.25;}
+    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 14px;border-bottom:1px solid var(--bdr);font-size:12.5px;">
+      <span style="font-weight:700;color:${s.hex||'var(--ink)'}">${s.name}</span>
+      <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink3)">${wd}ng · ${hh}h${mm?String(mm).padStart(2,'0')+'p':''}</span>
+      <span style="font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--g)">${Math.round(sal).toLocaleString('vi-VN')}đ</span>
+    </div>`;
+  }).join('');
+
+  const moLabel=new Date(yr,mo-1,1).toLocaleDateString('vi-VN',{month:'long',year:'numeric'});
+
+  el.innerHTML=`
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;background:var(--w);border-radius:var(--rr);padding:11px 14px;border:1px solid var(--bdr);">
+    <button class="nav-btn" onclick="state.calMonth='${prevMo()}';renderCalendar()">‹</button>
+    <div style="flex:1;text-align:center;font-size:14px;font-weight:700;">${moLabel}</div>
+    <button class="nav-btn" onclick="state.calMonth='${nextMo()}';renderCalendar()">›</button>
+  </div>
+  <div class="cal-wrap">
+    <table class="cal-table">
+      <thead><tr><th class="cal-name-h">Tên</th>${dayHdrs}</tr></thead>
+      <tbody>
+        ${staffRows}
+        <tr><td class="cal-name-cell sum">Tổng (h)</td>${sumCells}</tr>
+      </tbody>
+    </table>
+  </div>
+  <div style="background:var(--w);border:1px solid var(--bdr);border-radius:var(--rr);margin-top:12px;overflow:hidden;">
+    <div style="padding:10px 14px;border-bottom:1px solid var(--bdr);font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--ink4);font-weight:700;">Tổng tháng</div>
+    ${staffTotals}
+  </div>`;
+}
+
 // ADMIN TAB
 // ══════════════════════════════════════════════════════
 function renderAdmin(){
