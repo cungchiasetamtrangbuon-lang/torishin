@@ -1095,28 +1095,20 @@ function renderCalendar(){
 
   // Month summary totals per staff
   const staffTotals=STAFF.map(s=>{
-    let reg=0,night=0,wd=0;
+    let tot=0,wd=0;
     for(let i=1;i<=days;i++){
       const dk=yr+'-'+String(mo).padStart(2,'0')+'-'+String(i).padStart(2,'0');
       const rec=(state.records[dk]||{})[s.id];
       if(rec?.clockIn&&rec?.clockOut){
         const brk=(rec.breaks||[]).reduce((a,b)=>a+(b.end&&b.start?b.end-b.start:0),0);
-        const tot=(rec.clockOut-rec.clockIn-brk)/3600000;
-        const inH=new Date(rec.clockIn).getHours()+new Date(rec.clockIn).getMinutes()/60;
-        const outH=new Date(rec.clockOut).getHours()+new Date(rec.clockOut).getMinutes()/60+(new Date(rec.clockOut)<new Date(rec.clockIn)?24:0);
-        const nH=Math.max(0,outH-Math.max(inH,22));
-        night+=nH; reg+=Math.max(0,tot-nH); wd++;
+        tot+=(rec.clockOut-rec.clockIn-brk)/3600000; wd++;
       }
     }
-    const tot=reg+night;
     const hh=Math.floor(tot),mm=Math.round((tot-hh)*60);
-    let sal=0;
-    if(s.type==='main'){const hr=s.base/273;sal=s.base+night*hr*0.25+Math.max(0,tot-208)*hr*0.25;}
-    else{sal=reg*s.rate+night*s.rate*1.25+Math.max(0,tot-208)*s.rate*0.25;}
     return `<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 14px;border-bottom:1px solid var(--bdr);font-size:12.5px;">
       <span style="font-weight:700;color:${s.hex||'var(--ink)'}">${s.name}</span>
-      <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink3)">${wd}ng · ${hh}h${mm?String(mm).padStart(2,'0')+'p':''}</span>
-      <span style="font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--g)">${Math.round(sal).toLocaleString('vi-VN')}đ</span>
+      <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--ink2)">${wd} ngày làm</span>
+      <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--ink3)">${hh}h${mm?String(mm).padStart(2,'0'):'00'}p</span>
     </div>`;
   }).join('');
 
