@@ -219,6 +219,7 @@ tr.sum-row:hover td{background:#f1f5f9}
 </style>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
 </head>
 <body>
 
@@ -227,6 +228,7 @@ tr.sum-row:hover td{background:#f1f5f9}
   <div class="hdr-logo">🍣 <span>TORISHIN</span></div>
   <div class="hdr-months" id="monthTabs"></div>
   <div class="hdr-actions">
+    <button class="hdr-btn" onclick="openScanModal()" title="Scan hóa đơn / レシートスキャン">📷 Scan</button>
     <button class="hdr-btn" id="syncCloudBtn" onclick="saveToCloud()" title="Đồng bộ lên cloud">☁ Đồng bộ</button>
     <button class="hdr-btn" onclick="exportJSON()" title="Xuất dữ liệu JSON">⬇ Xuất</button>
     <button class="hdr-btn" onclick="importJSON()" title="Nhập dữ liệu JSON">⬆ Nhập</button>
@@ -1556,6 +1558,220 @@ function importJSON(){
 }
 
 // ═══════════════════════════════════════════════════════════════
+// SCAN HÓA ĐƠN
+// ═══════════════════════════════════════════════════════════════
+let _scanItems=[], _scanDate=null;
+
+function openScanModal(){
+  _scanItems=[]; _scanDate=null;
+  document.getElementById('scanFileInput').value='';
+  document.getElementById('scanModal').style.display='flex';
+  showScanStep(1);
+}
+function closeScanModal(){ document.getElementById('scanModal').style.display='none'; }
+function showScanStep(n){ [1,2,3].forEach(i=>document.getElementById('scanStep'+i).style.display=i===n?'block':'none'); }
+
+function handleScanFile(file){
+  if(!file||!file.type.startsWith('image/')) return;
+  showScanStep(2);
+  document.getElementById('scanProgressBar').style.width='0%';
+  document.getElementById('scanProgressTxt').textContent='Đang khởi động OCR...';
+  Tesseract.recognize(file,'vie+eng',{
+    logger:m=>{
+      if(m.status==='recognizing text'){
+        const p=Math.round(m.progress*100);
+        document.getElementById('scanProgressBar').style.width=p+'%';
+        document.getElementById('scanProgressTxt').textContent='Đang đọc hóa đơn... '+p+'%';
+      } else if(m.status==='loading language traineddata'){
+        document.getElementById('scanProgressTxt').textContent='Đang tải dữ liệu ngôn ngữ...';
+      }
+    }
+  }).then(({data:{text}})=>{
+    document.getElementById('scanRawText').textContent=text;
+    const parsed=parseReceiptText(text);
+    _scanDate=parsed.date||_todayKey();
+    _scanItems=parsed.items.map((it,i)=>({...it,id:i}));
+    renderScanReview();
+    showScanStep(3);
+  }).catch(e=>{ showScanStep(1); alert('Lỗi đọc ảnh: '+e.message); });
+}
+
+function _todayKey(){
+  const d=new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+
+function parseReceiptText(text){
+  // Detect date DD/MM/YYYY or DD-MM-YYYY
+  let date=null;
+  const dm=text.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
+  if(dm){
+    const d=dm[1].padStart(2,'0'), mo=dm[2].padStart(2,'0'), y=dm[3].length===2?'20'+dm[3]:dm[3];
+    if(+mo>=1&&+mo<=12&&+d>=1&&+d<=31) date=`${y}-${mo}-${d}`;
+  }
+  // Parse line items
+  const items=[], priceRx=/\b(\d{1,3}(?:[.,]\d{3})+|\d{5,8})\b/g;
+  const skipRx=/t[oổ]ng|subtotal|total|thu[eế]|vat|gi[aảá]m|discount|thanh to[aá]n|change|ti[eề]n th[oừ]a|payment/i;
+  text.split('\n').map(l=>l.trim()).filter(l=>l.length>2).forEach(line=>{
+    if(skipRx.test(line)) return;
+    const nums=[...line.matchAll(priceRx)].map(m=>({raw:m[1],val:parseInt(m[1].replace(/[.,]/g,''))}))
+      .filter(n=>n.val>=1000&&n.val<=50000000);
+    if(!nums.length) return;
+    const price=nums[nums.length-1];
+    const name=line.slice(0,line.lastIndexOf(price.raw)).replace(/[:\-\|*x×]/g,' ').replace(/\s+/g,' ').trim();
+    if(!name||name.length<2||name.length>80) return;
+    const {cat,col}=_guessCategory(name);
+    items.push({name,price:price.val,cat,col});
+  });
+  return {date,items};
+}
+
+function _norm(s){ return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,''); }
+
+function _guessCategory(name){
+  const n=_norm(name);
+  const foodKw=[
+    ['simba','Simba'],['akuruhi','Akuruhi'],['ga ','Gà'],['rau','Rau'],
+    ['hai san','Hải sản'],['seafood','Hải sản'],['chef','Chef Meat'],
+    ['xuc xich','Xúc xích'],['trung cut','Trứng cút'],['trung','Trứng cút'],
+    ['bh xanh','BH Xanh'],['than tai','Thần tài'],
+    ['gas','Gas'],['dung cu','Dụng cụ'],['lotte','Lotte Mart'],['kimchi','Kimchi'],
+  ];
+  for(const [kw,col] of foodKw){
+    if(n.includes(_norm(kw))){ const ci=TP_COLS.indexOf(col); if(ci>=0) return {cat:'thucpham',col:ci}; }
+  }
+  const drinkKw=[
+    ['san miguel','San Miguel'],['bia hn','Bia HN'],['huda','Huda Tiger'],
+    ['sapporo','Sapporo'],['coca','Coca'],['traf','Traf Ôlong'],
+    ['than ','Than'],['huefoods','Huefoods'],
+  ];
+  for(const [kw,col] of drinkKw){
+    if(n.includes(_norm(kw))){ const ci=RU_COLS.indexOf(col); if(ci>=0) return {cat:'ruou',col:ci}; }
+  }
+  const otherKw=[
+    ['dien','Điện'],['nuoc','Nước'],['internet','Internet'],['wifi','Internet'],
+    ['dung cu','Dụng cụ'],['sua chua','Sửa chữa'],['sua','Sửa chữa'],
+  ];
+  for(const [kw,col] of otherKw){
+    if(n.includes(_norm(kw))){ const ci=OTHER_COLS.indexOf(col); if(ci>=0) return {cat:'chikhac',col:ci}; }
+  }
+  return {cat:'',col:-1};
+}
+
+function _colOpts(cat, selCol){
+  const cols=cat==='thucpham'?TP_COLS:cat==='ruou'?RU_COLS:cat==='chikhac'?OTHER_COLS:[];
+  return cols.map((c,i)=>`<option value="${i}"${i===selCol?' selected':''}>${c}</option>`).join('');
+}
+
+function renderScanReview(){
+  const sel=(val,opts)=>`<select style="padding:4px 5px;border:1px solid var(--border);border-radius:5px;font-size:12px;max-width:130px" ${opts}>${val}</select>`;
+  const catOpts=(selCat)=>[
+    `<option value=""${!selCat?' selected':''}>— Bỏ qua —</option>`,
+    `<option value="thucpham"${selCat==='thucpham'?' selected':''}>🍱 Thực Phẩm</option>`,
+    `<option value="ruou"${selCat==='ruou'?' selected':''}>🍺 Rượu / ĐU</option>`,
+    `<option value="chikhac"${selCat==='chikhac'?' selected':''}>⚡ Chi Phí Khác</option>`,
+  ].join('');
+
+  const rows=_scanItems.map((it,idx)=>`
+    <tr style="border-bottom:1px solid var(--border)">
+      <td style="padding:6px 8px">
+        <input style="width:170px;padding:4px 6px;border:1px solid var(--border);border-radius:5px;font-size:12px"
+          value="${it.name.replace(/"/g,'&quot;')}"
+          oninput="_scanItems[${idx}].name=this.value">
+      </td>
+      <td style="padding:6px 8px">
+        <input type="number" style="width:105px;padding:4px 6px;border:1px solid var(--border);border-radius:5px;font-size:12px;text-align:right"
+          value="${it.price}" oninput="_scanItems[${idx}].price=+this.value">
+      </td>
+      <td style="padding:6px 8px">
+        <select style="padding:4px 5px;border:1px solid var(--border);border-radius:5px;font-size:12px"
+          onchange="_scanItems[${idx}].cat=this.value;_scanItems[${idx}].col=-1;renderScanReview()">
+          ${catOpts(it.cat)}
+        </select>
+      </td>
+      <td style="padding:6px 8px">
+        ${it.cat?`<select style="padding:4px 5px;border:1px solid var(--border);border-radius:5px;font-size:12px;max-width:120px"
+          onchange="_scanItems[${idx}].col=+this.value">
+          <option value="-1"${it.col<0?' selected':''}>— Chọn —</option>
+          ${_colOpts(it.cat,it.col)}
+        </select>`:'<span style="color:var(--muted);font-size:11px">—</span>'}
+      </td>
+      <td style="padding:6px 4px;text-align:center">
+        <button onclick="_scanItems.splice(${idx},1);renderScanReview()"
+          style="border:none;background:none;color:var(--bad);cursor:pointer;font-size:16px;line-height:1">✕</button>
+      </td>
+    </tr>`).join('');
+
+  document.getElementById('scanReview').innerHTML=`
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+      <strong style="font-size:13px;white-space:nowrap">📅 Ngày hóa đơn:</strong>
+      <input type="date" value="${_scanDate||_todayKey()}"
+        style="padding:5px 9px;border:1px solid var(--border);border-radius:7px;font-size:13px"
+        oninput="_scanDate=this.value">
+      <span style="font-size:11px;color:var(--muted)">Sửa nếu OCR đọc sai ngày</span>
+    </div>
+    ${_scanItems.length===0
+      ?`<div style="text-align:center;padding:28px;color:var(--muted);background:var(--bg);border-radius:10px">
+          Không tìm thấy mặt hàng nào từ OCR —
+          <a href="#" onclick="scanAddRow();return false" style="color:var(--accent)">thêm thủ công</a>
+        </div>`
+      :`<div style="overflow-x:auto;border:1px solid var(--border);border-radius:10px">
+        <table style="width:100%;border-collapse:collapse;font-size:12.5px">
+          <thead><tr style="background:var(--bg)">
+            <th style="text-align:left;padding:7px 8px;border-bottom:1px solid var(--border);white-space:nowrap">Tên hàng</th>
+            <th style="padding:7px 8px;border-bottom:1px solid var(--border);white-space:nowrap">Số tiền (đ)</th>
+            <th style="padding:7px 8px;border-bottom:1px solid var(--border)">Danh mục</th>
+            <th style="padding:7px 8px;border-bottom:1px solid var(--border)">Cột</th>
+            <th style="padding:7px 4px;border-bottom:1px solid var(--border)"></th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`}
+    <button onclick="scanAddRow()"
+      style="margin-top:10px;border:1px dashed var(--border);background:none;padding:5px 14px;border-radius:6px;cursor:pointer;font-size:12px;color:var(--muted)">
+      ＋ Thêm dòng thủ công
+    </button>`;
+}
+
+function scanAddRow(){
+  _scanItems.push({name:'',price:0,cat:'',col:-1,id:Date.now()});
+  renderScanReview();
+}
+
+function saveScanData(){
+  if(!_scanDate){ alert('Chưa có ngày'); return; }
+  const [yr,mo,dy]=_scanDate.split('-').map(Number);
+  const mid=S.months.find(m=>m.year===yr&&m.num===mo)?.id;
+  if(!mid){ alert(`Tháng ${mo}/${yr} chưa có trong hệ thống.\nVui lòng thêm tháng trước.`); return; }
+  const dayIdx=dy-1;
+  const md=monthData(mid);
+  let saved=0;
+  _scanItems.forEach(it=>{
+    if(!it.cat||it.col<0||!it.price) return;
+    if(it.cat==='thucpham'){
+      if(!md.thucPham[dayIdx]) md.thucPham[dayIdx]=Array(TP_COLS.length).fill(null);
+      md.thucPham[dayIdx][it.col]=(md.thucPham[dayIdx][it.col]||0)+it.price;
+    } else if(it.cat==='ruou'){
+      if(!md.ruou[dayIdx]) md.ruou[dayIdx]=Array(RU_COLS.length).fill(null);
+      md.ruou[dayIdx][it.col]=(md.ruou[dayIdx][it.col]||0)+it.price;
+    } else if(it.cat==='chikhac'){
+      if(!md.chiKhac[dayIdx]) md.chiKhac[dayIdx]=Array(OTHER_COLS.length).fill(null);
+      md.chiKhac[dayIdx][it.col]=(md.chiKhac[dayIdx][it.col]||0)+it.price;
+    }
+    saved++;
+  });
+  if(!saved){ alert('Chưa chọn Danh mục + Cột cho mục nào.\nHãy điền đầy đủ rồi thử lại.'); return; }
+  S.curMonth=mid;
+  saveData();
+  closeScanModal();
+  renderShell(); renderContent();
+  const t=document.createElement('div');
+  t.textContent=`✓ Đã lưu ${saved} mục vào ngày ${dy}/${mo}/${yr}`;
+  t.style.cssText='position:fixed;bottom:22px;right:22px;background:var(--good);color:#fff;padding:11px 18px;border-radius:9px;z-index:9999;font-size:13px;font-weight:700;box-shadow:0 4px 16px rgba(0,0,0,.2)';
+  document.body.appendChild(t); setTimeout(()=>t.remove(),3000);
+}
+
+// ═══════════════════════════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════════════════════════
 renderShell();
@@ -1574,5 +1790,56 @@ window.addEventListener('beforeunload',()=>{
   }catch(e){}
 });
 </script>
+
+<!-- SCAN HÓA ĐƠN MODAL -->
+<div id="scanModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:800;align-items:center;justify-content:center;padding:16px">
+  <div style="background:#fff;border-radius:16px;width:min(95vw,760px);max-height:92vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3);display:flex;flex-direction:column">
+    <div style="padding:16px 22px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-shrink:0">
+      <div style="font-size:17px;font-weight:800">📷 Scan Hóa Đơn / レシートスキャン</div>
+      <button onclick="closeScanModal()" style="border:none;background:none;font-size:22px;cursor:pointer;color:var(--muted);line-height:1">✕</button>
+    </div>
+    <!-- Step 1: Upload -->
+    <div id="scanStep1" style="padding:28px 24px">
+      <div id="scanDropZone"
+        style="border:2px dashed var(--border);border-radius:12px;padding:52px 24px;text-align:center;cursor:pointer;transition:.15s"
+        onclick="document.getElementById('scanFileInput').click()"
+        ondragover="event.preventDefault();this.style.borderColor='var(--accent)';this.style.background='#fef2f2'"
+        ondragleave="this.style.borderColor='';this.style.background=''"
+        ondrop="event.preventDefault();this.style.borderColor='';this.style.background='';handleScanFile(event.dataTransfer.files[0])">
+        <div style="font-size:46px;margin-bottom:14px">🧾</div>
+        <div style="font-size:15px;font-weight:700;margin-bottom:6px">Kéo ảnh hóa đơn vào đây</div>
+        <div style="font-size:13px;color:var(--muted)">hoặc click để chọn · JPG, PNG, WebP, HEIC</div>
+        <input type="file" id="scanFileInput" accept="image/*" style="display:none" onchange="handleScanFile(this.files[0])">
+      </div>
+      <div style="text-align:center;margin-top:14px;font-size:12px;color:var(--muted)">
+        🔒 OCR chạy hoàn toàn trên máy bạn — không gửi ảnh đi đâu
+      </div>
+    </div>
+    <!-- Step 2: Processing -->
+    <div id="scanStep2" style="display:none;padding:52px 24px;text-align:center">
+      <div style="font-size:40px;margin-bottom:18px">⏳</div>
+      <div style="font-size:15px;font-weight:600;margin-bottom:20px" id="scanProgressTxt">Đang khởi động OCR...</div>
+      <div style="height:8px;background:var(--bg);border-radius:4px;overflow:hidden;max-width:380px;margin:0 auto 10px">
+        <div id="scanProgressBar" style="height:100%;width:0%;background:var(--accent);transition:width .25s;border-radius:4px"></div>
+      </div>
+      <div style="font-size:11px;color:var(--muted)">Lần đầu cần tải ~10MB ngôn ngữ, sau đó cache lại tự động</div>
+    </div>
+    <!-- Step 3: Review -->
+    <div id="scanStep3" style="display:none;padding:18px 22px;flex:1;overflow-y:auto">
+      <div style="display:flex;justify-content:space-between;align-items:start;gap:12px;margin-bottom:14px;flex-wrap:wrap">
+        <div style="font-size:13px;color:var(--muted);max-width:380px">Kiểm tra thông tin, chọn đúng danh mục rồi bấm <strong>Lưu</strong>. Số tiền sẽ được <em>cộng dồn</em> vào ô hiện có.</div>
+        <details style="font-size:11px;color:var(--muted)">
+          <summary style="cursor:pointer">Xem text OCR thô ▾</summary>
+          <pre id="scanRawText" style="font-size:10px;background:var(--bg);padding:10px;border-radius:6px;max-height:110px;overflow-y:auto;white-space:pre-wrap;margin-top:6px;border:1px solid var(--border)"></pre>
+        </details>
+      </div>
+      <div id="scanReview"></div>
+      <div style="margin-top:18px;display:flex;gap:8px;justify-content:flex-end;padding-top:14px;border-top:1px solid var(--border)">
+        <button onclick="showScanStep(1)" class="btn btn-ghost">‹ Quét lại</button>
+        <button onclick="saveScanData()" class="btn btn-primary">💾 Lưu vào hệ thống</button>
+      </div>
+    </div>
+  </div>
+</div>
 </body>
 </html>
