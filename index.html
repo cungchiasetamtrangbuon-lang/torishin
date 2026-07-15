@@ -474,6 +474,8 @@ function loadFromCloud(){
         if(nav.curTab) S.curTab=nav.curTab;
       }catch(e){}
       renderShell(); renderContent();
+      // Preload attendance so dashboard KPI matches bảng lương
+      loadAttendance().then(()=>{ if(S.curTab==='dashboard'||S.curTab==='bangluong') renderContent(); });
       return;
     }
     // Cập nhật real-time từ thiết bị khác
@@ -548,7 +550,8 @@ function payrollSummary(mid){
 }
 
 function totalPayroll(mid){
-  return payrollSummary(mid).reduce((s,r)=>({
+  const summary=(_attData!==null&&attPayroll(mid))||payrollSummary(mid);
+  return summary.reduce((s,r)=>({
     salary:s.salary+r.salary, meal:s.meal+r.meal, total:s.total+r.total
   }),{salary:0,meal:0,total:0});
 }
