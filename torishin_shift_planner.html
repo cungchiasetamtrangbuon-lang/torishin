@@ -506,13 +506,15 @@ firebase.initializeApp({databaseURL:FB_URL});
 const _spRef=firebase.database().ref('torishin_shifts');
 const _attRef=firebase.database().ref('torishin_attendance');
 let monthScheds={};
+let monthKibo={};      // {monthKey: {sid:[days...]}} — lưu kibo từng tháng riêng biệt
+let monthKiboH={}; // {monthKey: {sid:{day:{start,end}}}} — giờ kibo từng tháng
 
 function monthKey(){return curY+'-'+curM;}
 
 function saveState(){
   try{
     monthScheds[monthKey()]=normalizeSched(JSON.parse(JSON.stringify(sched)));
-    const payload={v:1,curY,curM,OT_NIGHT,MAX,PASS,staff:STAFF,monthScheds,_lastUpdated:Date.now()};
+    const payload={v:1,curY,curM,OT_NIGHT,MAX,PASS,staff:STAFF,monthScheds,monthKibo,monthKiboH,_lastUpdated:Date.now()};
     localStorage.setItem(STORAGE_KEY,JSON.stringify(payload));
     const ind=document.getElementById('saveInd');
     if(ind){ind.style.opacity='1';clearTimeout(ind._t);ind._t=setTimeout(()=>ind.style.opacity='0',1800);}
@@ -532,7 +534,7 @@ function setSyncBadge(s){
 async function saveToCloud(){
   if(_syncFlight)return;_syncFlight=true;setSyncBadge('syncing');
   try{
-    const payload={v:1,curY,curM,OT_NIGHT,MAX,PASS,staff:STAFF,monthScheds,_lastUpdated:Date.now()};
+    const payload={v:1,curY,curM,OT_NIGHT,MAX,PASS,staff:STAFF,monthScheds,monthKibo,monthKiboH,_lastUpdated:Date.now()};
     localStorage.setItem(STORAGE_KEY,JSON.stringify(payload));
     await _spRef.set(payload);
     setSyncBadge('ok');setTimeout(()=>setSyncBadge(''),3000);
@@ -559,6 +561,19 @@ async function loadFromCloud(){
       if(remote.curY)curY=remote.curY;
       if(remote.curM)curM=remote.curM;
       if(remote.monthScheds)monthScheds=remote.monthScheds;
+      if(remote.monthKibo)monthKibo=remote.monthKibo;
+      if(remote.monthKiboH)monthKiboH=remote.monthKiboH;
+      // Migrate old data that stored kibo inside STAFF
+      if(!remote.monthKibo&&remote.staff){
+        const k=remote.curY+'-'+remote.curM;
+        monthKibo[k]={};
+        remote.staff.forEach(sv=>{if(sv.requestedOff&&sv.requestedOff.length)monthKibo[k][sv.id]=sv.requestedOff;});
+      }
+      if(!remote.monthKiboH&&remote.staff){
+        const k=remote.curY+'-'+remote.curM;
+        monthKiboH[k]={};
+        remote.staff.forEach(sv=>{if(sv.kiboHours&&Object.keys(sv.kiboHours).length)monthKiboH[k][sv.id]=sv.kiboHours;});
+      }
       if(remote.staff)remote.staff.forEach(sv=>{const s=STAFF.find(x=>x.id===sv.id);if(s)Object.assign(s,sv);});
       localStorage.setItem(STORAGE_KEY,JSON.stringify(remote));
       loadMonthSched();renderAll();
@@ -578,6 +593,19 @@ function loadState(){
     if(d.curY)curY=d.curY;
     if(d.curM)curM=d.curM;
     if(d.monthScheds)monthScheds=d.monthScheds;
+    if(d.monthKibo)monthKibo=d.monthKibo;
+    if(d.monthKiboH)monthKiboH=d.monthKiboH;
+    // Migrate old data that stored kibo inside STAFF
+    if(!d.monthKibo&&d.staff){
+      const k=d.curY+'-'+d.curM;
+      monthKibo[k]={};
+      d.staff.forEach(sv=>{if(sv.requestedOff&&sv.requestedOff.length)monthKibo[k][sv.id]=sv.requestedOff;});
+    }
+    if(!d.monthKiboH&&d.staff){
+      const k=d.curY+'-'+d.curM;
+      monthKiboH[k]={};
+      d.staff.forEach(sv=>{if(sv.kiboHours&&Object.keys(sv.kiboHours).length)monthKiboH[k][sv.id]=sv.kiboHours;});
+    }
     if(d.staff)d.staff.forEach(sv=>{const s=STAFF.find(x=>x.id===sv.id);if(s)Object.assign(s,sv);});
     loadMonthSched();
     return true;
@@ -595,6 +623,13 @@ function loadMonthSched(){
   const saved=monthScheds[monthKey()];
   if(saved)sched=normalizeSched(JSON.parse(JSON.stringify(saved)));
   else buildDefault();
+  // Apply per-month kibo into STAFF so all existing code reading s.requestedOff/s.kiboHours works correctly
+  const mk=monthKibo[monthKey()]||{};
+  const mh=monthKiboH[monthKey()]||{};
+  STAFF.forEach(s=>{
+    s.requestedOff=mk[s.id]?[...mk[s.id]]:[];
+    if(s.kiboHours!==undefined)s.kiboHours=mh[s.id]?Object.assign({},mh[s.id]):{};
+  });
 }
 
 // ════════════════════════════════════
@@ -1625,11 +1660,16 @@ window.toggleKibo=function(sid,d,el){
   const idx=s.requestedOff.indexOf(d);
   if(idx>=0){s.requestedOff.splice(idx,1);el.classList.remove('on');}
   else{s.requestedOff.push(d);el.classList.add('on');}
+  // Lưu vào per-month store
+  if(!monthKibo[monthKey()])monthKibo[monthKey()]={};
+  monthKibo[monthKey()][sid]=[...s.requestedOff];
   saveState();
 };
 window.clearKibo=function(sid){
   const s=gs(sid);if(!s)return;
   s.requestedOff=[];
+  if(!monthKibo[monthKey()])monthKibo[monthKey()]={};
+  monthKibo[monthKey()][sid]=[];
   document.querySelectorAll(`#kibo-${sid} .kd`).forEach(el=>el.classList.remove('on'));
   saveState();
 };
@@ -1660,6 +1700,10 @@ window.addKiboHour=function(sid){
   if(sv===null||ev===null){toast('Cần nhập cả giờ vào và ra','e');return;}
   if(!s.kiboHours)s.kiboHours={};
   s.kiboHours[d]={start:sv,end:ev>sv?ev:ev+24};
+  // Lưu vào per-month store
+  if(!monthKiboH[monthKey()])monthKiboH[monthKey()]={};
+  if(!monthKiboH[monthKey()][sid])monthKiboH[monthKey()][sid]={};
+  monthKiboH[monthKey()][sid][d]=s.kiboHours[d];
   dEl.value='';sEl.value='';eEl.value='';
   document.getElementById(`khTable-${sid}`).innerHTML=renderKiboHoursTable(sid);
   saveState();toast(`Đã thêm giờ kibo ngày ${d}`,'ok');
@@ -1667,6 +1711,9 @@ window.addKiboHour=function(sid){
 window.removeKiboHour=function(sid,d){
   const s=gs(sid);if(!s||!s.kiboHours)return;
   delete s.kiboHours[d];
+  // Xóa khỏi per-month store
+  if(monthKiboH[monthKey()]&&monthKiboH[monthKey()][sid])
+    delete monthKiboH[monthKey()][sid][d];
   document.getElementById(`khTable-${sid}`).innerHTML=renderKiboHoursTable(sid);
   saveState();toast(`Đã xóa giờ kibo ngày ${d}`,'ok');
 };
