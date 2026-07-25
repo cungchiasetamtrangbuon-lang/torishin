@@ -719,44 +719,7 @@ function computeStaffOff(){
     }
   });
 
-  // ── PT: bù ngày nghỉ để cap 26 ngày/tháng ──
-  // Ưu tiên chọn ngày ít cần PT nhất để không gây thiếu người (không trigger Help sai)
-  const MAX_WORK=26, needOff=Math.max(0,dm-MAX_WORK);
-  // Tính số slot PT cần mỗi ngày (dựa trên số NVCT có mặt đã xác định ở trên)
-  const ptSlotsNeeded=(d)=>{
-    const w=getDow(d);
-    const mc=MAINS.filter(id=>!off[id].has(d)).length;
-    if(w>=1&&w<=4)return mc>=3?1:2;
-    if(w===5||w===6)return mc>=3?2:3;
-    return mc>=3?2:3; // 日
-  };
-  const ptIds=STAFF.filter(s=>s.type==='pt').map(s=>s.id);
-  const ptTaken=new Set();
-  ptIds.forEach(id=>off[id].forEach(d=>ptTaken.add(d)));
-  ptIds.forEach(id=>{
-    let extra=needOff-off[id].size;
-    if(extra<=0)return;
-    // Sắp xếp ngày ưu tiên: chọn ngày cần ít PT nhất trước (tránh ngày cần 3 PT)
-    const candidates=[];
-    for(let d=1;d<=dm;d++){
-      if(off[id].has(d)||ptTaken.has(d))continue;
-      const slots=ptSlotsNeeded(d);
-      if(slots<3)candidates.push({d,slots}); // không chọn ngày cần đủ 3 PT
-    }
-    candidates.sort((a,b)=>a.slots-b.slots); // ưu tiên ngày cần ít PT nhất
-    for(const c of candidates){
-      if(extra<=0)break;
-      off[id].add(c.d);ptTaken.add(c.d);extra--;
-    }
-    // Fallback: nếu vẫn thiếu → chọn ngày bất kỳ chưa bị 2+ PT off cùng lúc
-    for(let d=1;d<=dm&&extra>0;d++){
-      if(!off[id].has(d)&&!ptTaken.has(d)){off[id].add(d);ptTaken.add(d);extra--;}
-    }
-    // Last resort
-    for(let d=1;d<=dm&&extra>0;d++){
-      if(!off[id].has(d)){off[id].add(d);extra--;}
-    }
-  });
+  // PT: chỉ nghỉ đúng ngày kibo — không tự thêm ngày nghỉ extra
 
   return off;
 }
