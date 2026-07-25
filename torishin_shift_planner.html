@@ -734,7 +734,7 @@ function buildDefault(){
     });
   });
   const days=daysInM(); sched={};
-  const newRules=(curY>2026)||(curY===2026&&curM>=7);
+  const newRules=true; // Quy tắc mới áp dụng cho tất cả các tháng
   const staffOff=newRules?computeStaffOff():null;
   const isOff=(id,d)=>{
     if(staffOff&&staffOff[id])return staffOff[id].has(d);
