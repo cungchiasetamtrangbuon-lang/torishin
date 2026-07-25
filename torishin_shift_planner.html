@@ -752,7 +752,7 @@ function buildDefault(){
         const kh=pt&&pt.kiboHours&&pt.kiboHours[d];
         const minS=(pt&&pt.weekendFree&&(w===0||w===6))?s:(pt&&pt.ds||s);
         const actualS=kh&&kh.start!=null?kh.start:Math.max(s,minS);
-        const actualE=kh&&kh.end!=null?kh.end:e;
+        const actualE=kh&&kh.end!=null?kh.end:Math.min(e,pt&&pt.de?pt.de:e);
         sched[d].push({staffId:id,start:actualS,end:actualE,breakMin:brk||0,note:kh?'⏱特':''});
         return true;
       };
@@ -1208,6 +1208,13 @@ function renderSettings(){
               <span style="font-size:11.5px;font-weight:600;color:var(--ink2);">希望休 — Ngày xin nghỉ T${curM}</span>
               <span class="kibo-clear" onclick="clearKibo('${s.id}')">Xóa hết</span>
             </div>
+            <div style="display:flex;align-items:center;gap:4px;margin-bottom:5px;flex-wrap:wrap;">
+              <span style="font-size:10.5px;color:var(--ink4);">Chọn khoảng:</span>
+              <input class="set-i" type="number" id="kibo-f-${s.id}" min="1" max="${daysInM()}" placeholder="Từ" style="width:42px;">
+              <span style="font-size:10.5px;color:var(--ink4);">–</span>
+              <input class="set-i" type="number" id="kibo-t-${s.id}" min="1" max="${daysInM()}" placeholder="Đến" style="width:42px;">
+              <button class="btn" onclick="selectKiboRange('${s.id}')" style="padding:2px 8px;font-size:11px;">✓ Chọn</button>
+            </div>
             <div class="kibo-grid" id="kibo-${s.id}">
               ${(()=>{
                 const days=daysInM();let g='';
@@ -1617,16 +1624,25 @@ function toast(msg,type){
 // ════════════════════════════════════
 // KIBO (希望休)
 // ════════════════════════════════════
+function _applyKiboToSched(sid){
+  // Xóa tất cả ca làm của người này ở những ngày kibo, rồi re-render
+  const s=gs(sid);if(!s)return;
+  const offDays=new Set(s.requestedOff||[]);
+  Object.keys(sched).forEach(dk=>{
+    const di=+dk;
+    if(offDays.has(di))sched[di]=(sched[di]||[]).filter(sh=>sh.staffId!==sid);
+  });
+}
 window.toggleKibo=function(sid,d,el){
   const s=gs(sid);if(!s)return;
   if(!s.requestedOff)s.requestedOff=[];
   const idx=s.requestedOff.indexOf(d);
   if(idx>=0){s.requestedOff.splice(idx,1);el.classList.remove('on');}
   else{s.requestedOff.push(d);el.classList.add('on');}
-  // Lưu vào per-month store
   if(!monthKibo[monthKey()])monthKibo[monthKey()]={};
   monthKibo[monthKey()][sid]=[...s.requestedOff];
-  saveState();
+  _applyKiboToSched(sid);
+  saveState();renderCal();
 };
 window.clearKibo=function(sid){
   const s=gs(sid);if(!s)return;
@@ -1634,7 +1650,24 @@ window.clearKibo=function(sid){
   if(!monthKibo[monthKey()])monthKibo[monthKey()]={};
   monthKibo[monthKey()][sid]=[];
   document.querySelectorAll(`#kibo-${sid} .kd`).forEach(el=>el.classList.remove('on'));
-  saveState();
+  _applyKiboToSched(sid);
+  saveState();renderCal();
+};
+window.selectKiboRange=function(sid){
+  const s=gs(sid);if(!s)return;
+  const from=parseInt(document.getElementById('kibo-f-'+sid).value);
+  const to=parseInt(document.getElementById('kibo-t-'+sid).value);
+  if(!from||!to||from>to||from<1||to>daysInM()){toast('Khoảng ngày không hợp lệ','e');return;}
+  if(!s.requestedOff)s.requestedOff=[];
+  for(let d=from;d<=to;d++){if(!s.requestedOff.includes(d))s.requestedOff.push(d);}
+  if(!monthKibo[monthKey()])monthKibo[monthKey()]={};
+  monthKibo[monthKey()][sid]=[...s.requestedOff];
+  document.querySelectorAll(`#kibo-${sid} .kd`).forEach(el=>{
+    if(parseInt(el.textContent)>=from&&parseInt(el.textContent)<=to)el.classList.add('on');
+  });
+  _applyKiboToSched(sid);
+  saveState();renderCal();
+  toast(`Đã chọn kibo ${from}–${to} cho ${s.name}`,'ok');
 };
 
 // ── Kibo giờ đặc biệt (PT only) ──
