@@ -620,16 +620,16 @@ function normalizeSched(raw){
 }
 
 function loadMonthSched(){
-  const saved=monthScheds[monthKey()];
-  if(saved)sched=normalizeSched(JSON.parse(JSON.stringify(saved)));
-  else buildDefault();
-  // Apply per-month kibo into STAFF so all existing code reading s.requestedOff/s.kiboHours works correctly
+  // Cập nhật STAFF trước để buildDefault() đọc đúng kibo của tháng này
   const mk=monthKibo[monthKey()]||{};
   const mh=monthKiboH[monthKey()]||{};
   STAFF.forEach(s=>{
     s.requestedOff=mk[s.id]?[...mk[s.id]]:[];
     if(s.kiboHours!==undefined)s.kiboHours=mh[s.id]?Object.assign({},mh[s.id]):{};
   });
+  const saved=monthScheds[monthKey()];
+  if(saved)sched=normalizeSched(JSON.parse(JSON.stringify(saved)));
+  else buildDefault();
 }
 
 // ════════════════════════════════════
