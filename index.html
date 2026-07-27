@@ -294,6 +294,7 @@ const SEED_DATA={"T4":{"num":4,"year":2026,"days":30,"doanhThu":[{"rev":13617880
 firebase.initializeApp({databaseURL:'https://torishin-ace11-default-rtdb.asia-southeast1.firebasedatabase.app'});
 const _revRef=firebase.database().ref('torishin_rev');
 const _attRef=firebase.database().ref('torishin_attendance');
+const _mmenuRef=firebase.database().ref('torishin_mmenu');
 let _attData=null;
 
 async function loadAttendance(){
@@ -461,6 +462,37 @@ function applyRemote(remote){
   S.months.forEach(m=>{if(!S.data[m.id])S.data[m.id]=seedMonthData(m.id,m.days);});
 }
 
+function applyMmenuPayload(payload){
+  if(!payload) return;
+  const items = Array.isArray(payload) ? payload : Object.values(payload);
+  let changed=false;
+  items.forEach(item=>{
+    if(!item || typeof item !== 'object') return;
+    const dateValue = item.date || item.saleDate || item.createdAt || item.day || item.datetime;
+    const revenue = Number(item.revenue ?? item.total ?? item.amount ?? item.rev ?? item.sales ?? 0);
+    if(!dateValue || !Number.isFinite(revenue) || revenue<=0) return;
+    const d = new Date(dateValue);
+    if(Number.isNaN(d.getTime())) return;
+    const mid = `T${d.getMonth()+1}`;
+    const idx = d.getDate()-1;
+    const cfg = S.months.find(m=>m.id===mid);
+    if(!cfg) return;
+    const md = monthData(mid);
+    if(!md.doanhThu[idx]) md.doanhThu[idx] = {rev:null};
+    if(md.doanhThu[idx].rev !== revenue){
+      md.doanhThu[idx].rev = revenue;
+      md.doanhThu[idx].mmenu = true;
+      md.doanhThu[idx].mmenuMeta = item;
+      changed=true;
+    }
+  });
+  if(changed){
+    S.curMonth = S.curMonth || 'T7';
+    saveData();
+    renderContent();
+  }
+}
+
 function loadFromCloud(){
   const main=document.getElementById('main');
   if(main) main.innerHTML='<div style="padding:80px;text-align:center;font-size:1.1rem;color:var(--muted)">⏳ Đang tải dữ liệu...</div>';
@@ -486,6 +518,12 @@ function loadFromCloud(){
     if(_saveTimer) return;                          // đang có thay đổi chưa lưu, bỏ qua
     applyRemote(remote);
     renderContent();
+  });
+
+  _mmenuRef.on('value', snap=>{
+    const payload=snap.val();
+    if(!payload) return;
+    applyMmenuPayload(payload);
   });
 }
 
