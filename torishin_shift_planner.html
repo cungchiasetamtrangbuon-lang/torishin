@@ -1848,7 +1848,7 @@ function buildPrintTableHtml(half){
     if(helps.length)helpDays[d]=helps;
   }
   if(Object.keys(helpDays).length>0){
-    let helpRow=`<td class="col-name" style="padding:4px 8px;font-weight:bold;color:#8a6500;white-space:nowrap;border-right:2px solid #ddd;font-size:11px;background:#fff8e0;">⚠ Cần bổ sung</td>`;
+    let helpRow=`<td class="col-name" style="padding:4px 8px;font-weight:bold;color:#8a6500;white-space:nowrap;border-right:2px solid #ddd;font-size:11px;background:#fff8e0;">⚠ Help</td>`;
     for(let d=dFrom;d<=dTo;d++){
       const w=getDow(d);
       const bgWe=w===0?'background:#fff5f5':w===6?'background:#f5f7ff':'';
