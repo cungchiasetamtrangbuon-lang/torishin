@@ -235,9 +235,9 @@
     function saveState(){
       try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(S)); }catch(e){}
     }
-    function saveStateAndSync(){
+    async function saveStateAndSync(){
       try{ S._lastUpdated=Date.now(); localStorage.setItem(STORAGE_KEY, JSON.stringify(S)); }catch(e){}
-      try{ if(typeof saveToCloud === 'function') saveToCloud(); }catch(e){}
+      try{ if(typeof saveToCloud === 'function') await saveToCloud(); }catch(e){}
     }
     function getMonthIdForDate(dateValue){
       const d = new Date(dateValue || new Date().toISOString().slice(0,10));
@@ -374,7 +374,7 @@
       $('lineReport').value = dt.report || '';
       updateTotals();
     }
-    function saveDailyReport(){
+    async function saveDailyReport(){
       const date = ($('date')?.value) || new Date().toISOString().slice(0,10);
       const mid = getMonthIdForDate(date);
       const idx = getDayIndex(date);
@@ -395,7 +395,7 @@
       dt.report = buildLineReport();
       md.doanhThu[idx] = dt;
       S.curMonth = mid;
-      saveStateAndSync();
+      await saveStateAndSync();
       $('lineReport').value = dt.report;
       const btn = $('saveBtn');
       if(btn){ btn.textContent='✓ Đã lưu và tạo báo cáo'; btn.style.background='var(--success)'; setTimeout(()=>{ btn.textContent='Lưu & tạo báo cáo'; btn.style.background=''; },1800);} 
