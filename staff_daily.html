@@ -466,8 +466,32 @@
     firebase.initializeApp({databaseURL:'https://torishin-ace11-default-rtdb.asia-southeast1.firebasedatabase.app'});
     const _revRef=firebase.database().ref('torishin_rev');
     let _cloudFlight=false;
+    let _cloudListenerAttached=false;
+
+    function applyRemoteState(remote){
+      if(!remote) return false;
+      const localTs=S._lastUpdated||0;
+      const remoteTs=remote._lastUpdated||0;
+      const localJson=JSON.stringify(S);
+      const remoteJson=JSON.stringify(remote);
+      const shouldApply = !localTs || remoteTs>localTs || (remoteTs===localTs && remoteJson!==localJson);
+      if(!shouldApply) return false;
+      Object.assign(S, remote);
+      S._lastUpdated = Math.max(localTs, remoteTs || 0);
+      fillFormFromDate($('date')?.value);
+      try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(S)); }catch(e){}
+      setSyncBadge('ok');
+      return true;
+    }
 
     function initCloudSync(){
+      if(!_cloudListenerAttached){
+        _revRef.on('value', snap=>{
+          const remote=snap.val();
+          if(remote) applyRemoteState(remote);
+        });
+        _cloudListenerAttached=true;
+      }
       loadFromCloud();
       document.addEventListener('visibilitychange',()=>{
         if(document.visibilityState==='visible') loadFromCloud();
@@ -489,7 +513,11 @@
       setSyncBadge('syncing');
       try{
         _cloudFlight=true;
-        await _revRef.set(S);
+        const payload=JSON.parse(JSON.stringify(S));
+        payload._lastUpdated=Date.now();
+        S._lastUpdated=payload._lastUpdated;
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(S));
+        await _revRef.set(payload);
         setSyncBadge('ok');
       }catch(e){ setSyncBadge('err'); }
       finally{ _cloudFlight=false; }
@@ -499,16 +527,8 @@
       try{
         const snap=await _revRef.once('value');
         const remote=snap.val();
-        if(!remote)return;
-        const localTs=S._lastUpdated||0;
-        const remoteTs=remote._lastUpdated||0;
-        if(remoteTs>localTs){
-          Object.assign(S,remote);
-          fillFormFromDate($('date')?.value);
-          try{localStorage.setItem(STORAGE_KEY,JSON.stringify(S));}catch(e){}
-          setSyncBadge('ok');
-        }
-      }catch(e){}
+        if(remote) applyRemoteState(remote);
+      }catch(e){ setSyncBadge('err'); }
     }
 
     init();
