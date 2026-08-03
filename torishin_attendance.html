@@ -1250,7 +1250,7 @@ function buildExportRows(mk){
       const rec=getRec(dk,s.id);
       if(!rec) continue;
       const loai=s.type==='main'?'Chính thức':'PT';
-      if(rec.isOff){rows.push([s.name,d,loai,'','','','','','','','休',0]);return;}
+      if(rec.isOff){rows.push([s.name,d,loai,'','','','','','','','休',0]);continue;}
       const h=calcHours(rec);
       const sal=h?calcDaySalary(s,h):0;
       const brks=(rec.breaks||[]).filter(b=>b.start&&b.end);
