@@ -303,6 +303,7 @@
       dt.note = ($('note')?.value || '').trim();
       md.doanhThu[idx] = dt;
       S.curMonth = mid;
+      S._lastUpdated = Date.now(); // đánh dấu draft mới nhất để không bị Firebase ghi đè
       saveState();
     }
     function updateDateLabel(){
@@ -467,6 +468,7 @@
     const _revRef=firebase.database().ref('torishin_rev');
     let _cloudFlight=false;
     let _cloudListenerAttached=false;
+    let _visListenerAttached=false;
 
     function applyRemoteState(remote){
       if(!remote) return false;
@@ -493,9 +495,13 @@
         _cloudListenerAttached=true;
       }
       loadFromCloud();
-      document.addEventListener('visibilitychange',()=>{
-        if(document.visibilityState==='visible') loadFromCloud();
-      });
+      if(!_visListenerAttached){
+        document.addEventListener('visibilitychange',()=>{
+          if(document.visibilityState==='hidden') syncDailyDraft(); // lưu ngay trước khi bị kill
+          if(document.visibilityState==='visible') loadFromCloud();
+        });
+        _visListenerAttached=true;
+      }
     }
 
     function setSyncBadge(state){
