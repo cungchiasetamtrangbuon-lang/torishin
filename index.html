@@ -509,6 +509,7 @@ function applyRemote(remote){
   Object.assign(S,remote);
   normalizeS(S);
   S.months.forEach(m=>{if(!S.data[m.id])S.data[m.id]=seedMonthData(m.id,m.days);});
+  normalizeS(S); // normalize lại sau seed — seed data có thể có null rows chưa được pad
 }
 
 function applyMmenuPayload(payload){
@@ -1595,7 +1596,8 @@ function openMC(el){
   const raw=arr?.[+i]?.[+c]||null;
   const cols=r==='thucpham'?TP_COLS:r==='ruou'?RU_COLS:OTHER_COLS;
   const colName=cols[+c], day=+i+1;
-  const lines=cellLines(raw);
+  // Copy lines để tránh mutate dữ liệu gốc raw.lines
+  const lines=cellLines(raw).map(l=>({...l}));
   if(!lines.length||lines.every(l=>!l.v&&!l.n)) lines.splice(0,lines.length,{v:'',n:''});
   _mc={el,m,r,i:+i,c:+c};
   _renderMCPanel(colName,day,lines);
@@ -1664,26 +1666,31 @@ function closeMC(){
 }
 
 function saveMC(){
-  const {el,m,r,i,c}=_mc;
+  const {m,r,i,c}=_mc;
   const amts=[...document.querySelectorAll('.mc-amt')];
   const notes=[...document.querySelectorAll('.mc-note')];
   const lines=amts.map((inp,idx)=>({v:Number(inp.value)||0,n:(notes[idx]?.value||'').trim()})).filter(l=>l.v>0||l.n);
   const total=lines.reduce((s,l)=>s+l.v,0);
   const md=monthData(m);
   const arr=r==='thucpham'?md.thucPham:r==='ruou'?md.ruou:md.chiKhac;
-  if(!arr||!arr[i]) return;
+  if(!arr) return;
+  // Đảm bảo hàng tồn tại — có thể null từ seed data chưa qua normalizeS
+  if(!arr[i]) arr[i]=Array(r==='thucpham'?TP_COLS.length:r==='ruou'?RU_COLS.length:OTHER_COLS.length).fill(null);
   // Lưu dữ liệu
   if(!lines.length) arr[i][c]=null;
-  else if(lines.length===1&&!lines[0].n) arr[i][c]=lines[0].v||null; // số đơn giản
+  else if(lines.length===1&&!lines[0].n) arr[i][c]=lines[0].v||null;
   else arr[i][c]={v:total,lines};
-  // Cập nhật ô trên bảng
+  // Cập nhật ô trên bảng — dùng querySelector để tránh el stale sau renderContent
   const newRaw=arr[i][c];
   const multi=newRaw&&typeof newRaw==='object'&&newRaw.lines&&newRaw.lines.length>1;
   const tip=cellTip(newRaw);
-  el.className='mcell'+(multi?' has-lines':'');
-  el.innerHTML=(total?num(total):'')+(multi?`<span class="mcell-cnt">${newRaw.lines.length}</span>`:'');
-  if(tip) el.setAttribute('data-tip',tip); else el.removeAttribute('data-tip');
-  updateRowTotals(el,r,m,i);
+  const freshEl=document.querySelector(`td[data-m="${m}"][data-r="${r}"][data-i="${i}"][data-c="${c}"]`)||_mc.el;
+  if(freshEl){
+    freshEl.className='mcell'+(multi?' has-lines':'');
+    freshEl.innerHTML=(total?num(total):'')+(multi?`<span class="mcell-cnt">${newRaw.lines.length}</span>`:'');
+    if(tip) freshEl.setAttribute('data-tip',tip); else freshEl.removeAttribute('data-tip');
+    updateRowTotals(freshEl,r,m,i);
+  }
   saveData();
   closeMC();
 }
