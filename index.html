@@ -208,6 +208,39 @@ tr.sum-row:hover td{background:#f1f5f9}
 .bk-today-btn{padding:4px 10px;font-size:11px;border:1px solid var(--border);background:#fff;border-radius:6px;cursor:pointer;color:var(--muted);margin-left:4px}
 .bk-today-btn:hover{background:var(--bg);color:var(--ink)}
 
+/* Multi-invoice cells */
+.mcell{cursor:pointer;user-select:none}
+.mcell:hover{background:#f0f9ff!important}
+.mcell.has-lines{color:var(--accent);font-weight:700}
+.mcell-cnt{font-size:9px;vertical-align:super;color:var(--accent);margin-left:1px;font-weight:800}
+/* CSS tooltip */
+.mcell[data-tip]{position:relative}
+.mcell[data-tip]::after{content:attr(data-tip);position:absolute;left:50%;top:calc(100% + 4px);z-index:9999;transform:translateX(-50%);background:#1e293b;color:#f1f5f9;font-size:11px;line-height:1.55;white-space:pre;padding:7px 11px;border-radius:9px;pointer-events:none;box-shadow:0 8px 24px rgba(0,0,0,.28);min-width:130px;text-align:left;visibility:hidden;opacity:0;transition:opacity .15s .1s}
+.mcell[data-tip]:hover::after{visibility:visible;opacity:1}
+/* Multi-invoice modal */
+#mcOverlay{display:none;position:fixed;inset:0;z-index:8000;background:rgba(0,0,0,.45)}
+#mcOverlay.open{display:flex;align-items:center;justify-content:center}
+#mcPanel{background:#fff;border-radius:18px;box-shadow:0 24px 64px rgba(0,0,0,.28);padding:24px;width:440px;max-width:95vw;max-height:88vh;overflow-y:auto}
+.mc-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.mc-title{font-size:15px;font-weight:800;color:var(--ink)}
+.mc-close{background:none;border:1px solid var(--border);border-radius:8px;width:32px;height:32px;cursor:pointer;font-size:17px;line-height:1;color:var(--muted);display:flex;align-items:center;justify-content:center}
+.mc-close:hover{background:var(--bg)}
+.mc-col-hdr{display:grid;grid-template-columns:1fr 1fr 30px;gap:6px;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;padding:0 2px}
+.mc-row{display:grid;grid-template-columns:1fr 1fr 30px;gap:6px;align-items:center;margin-bottom:7px}
+.mc-amt,.mc-note{padding:9px 10px;border:1.5px solid var(--border);border-radius:8px;font-family:var(--font);background:#fafafa;width:100%;transition:.1s;font-size:13.5px}
+.mc-amt{font-weight:700;text-align:right}
+.mc-amt:focus,.mc-note:focus{border-color:var(--accent);outline:none;background:#fff}
+.mc-del-btn{width:30px;height:30px;border:1px solid var(--border);border-radius:7px;background:#fff;cursor:pointer;font-size:15px;color:var(--muted);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.mc-del-btn:hover{background:#fee2e2;border-color:#fca5a5;color:#dc2626}
+.mc-add-btn{width:100%;padding:9px;border:1.5px dashed var(--border);border-radius:9px;background:none;cursor:pointer;font-size:13px;color:var(--accent);font-weight:600;margin-top:2px;transition:.12s}
+.mc-add-btn:hover{background:#eff6ff;border-color:var(--accent)}
+.mc-total-bar{padding:11px 14px;background:#f8fafc;border-radius:10px;font-size:15px;font-weight:800;color:var(--ink);text-align:right;margin-top:12px;border:1px solid var(--border)}
+.mc-actions{display:flex;gap:8px;margin-top:14px;justify-content:flex-end}
+.mc-clear-btn{padding:9px 16px;border:1px solid var(--border);background:#fff;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;color:var(--muted)}
+.mc-clear-btn:hover{background:#fee2e2;border-color:#fca5a5;color:#dc2626}
+.mc-save-btn{padding:9px 24px;background:var(--accent);color:#fff;border:none;border-radius:9px;font-size:14px;font-weight:800;cursor:pointer}
+.mc-save-btn:hover{background:var(--accent2)}
+
 /* Print */
 @media print{
   .hdr,.sidebar,.page-actions,.hdr-actions{display:none!important}
@@ -222,6 +255,11 @@ tr.sum-row:hover td{background:#f1f5f9}
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
 </head>
 <body>
+
+<!-- Multi-invoice modal -->
+<div id="mcOverlay" onclick="if(event.target===this)closeMC()">
+  <div id="mcPanel"></div>
+</div>
 
 <!-- HEADER -->
 <header class="hdr">
@@ -443,6 +481,17 @@ function normalizeS(s){
     if(md.chiKhac){ const a=fbObjToArr(md.chiKhac); md.chiKhac=a.map(r=>fbObjToArr(r)); }
     if(!md.chiKhac) md.chiKhac=[];
     pad(md.chiKhac,days,()=>Array(OTHER_COLS.length).fill(null));
+    // Normalize {v, lines} cells — Firebase có thể trả lines dưới dạng object {0:,1:,...}
+    ['thucPham','ruou','chiKhac'].forEach(k=>{
+      if(!md[k]) return;
+      md[k].forEach(row=>{
+        if(!row) return;
+        row.forEach((cell,ci)=>{
+          if(cell&&typeof cell==='object'&&!Array.isArray(cell)&&cell.lines&&!Array.isArray(cell.lines))
+            row[ci]={...cell,lines:fbObjToArr(cell.lines)};
+        });
+      });
+    });
     // bangLuong
     if(!md.bangLuong) md.bangLuong={shifts:{}};
     if(!md.bangLuong.shifts) md.bangLuong.shifts={};
@@ -565,9 +614,23 @@ function dayDate(m,i){
 }
 function dayDOW(m,i){ return dayDate(m,i).getDay(); } // 0=Sun,6=Sat
 
-function dayFoodCost(md,i){ return (md.thucPham[i]||[]).reduce((s,v)=>s+(v||0),0); }
-function dayDrinkCost(md,i){ return (md.ruou[i]||[]).reduce((s,v)=>s+(v||0),0); }
-function dayOtherCost(md,i){ return (md.chiKhac?.[i]||[]).reduce((s,v)=>s+(v||0),0); }
+// Helpers cho ô đa hóa đơn
+function cellV(raw){ if(!raw) return 0; if(typeof raw==='number') return raw; return raw.v||0; }
+function cellLines(raw){
+  if(!raw) return [];
+  if(typeof raw==='number') return [{v:raw,n:''}];
+  if(raw.lines&&raw.lines.length) return raw.lines;
+  return raw.v?[{v:raw.v,n:''}]:[];
+}
+function cellTip(raw){
+  const ls=cellLines(raw);
+  if(!ls.length||ls.every(l=>!l.n)) return '';
+  return ls.map(l=>l.n?`${l.n}: ${(l.v||0).toLocaleString('vi-VN')}đ`:`${(l.v||0).toLocaleString('vi-VN')}đ`).join('\n');
+}
+
+function dayFoodCost(md,i){ return (md.thucPham[i]||[]).reduce((s,v)=>s+cellV(v),0); }
+function dayDrinkCost(md,i){ return (md.ruou[i]||[]).reduce((s,v)=>s+cellV(v),0); }
+function dayOtherCost(md,i){ return (md.chiKhac?.[i]||[]).reduce((s,v)=>s+cellV(v),0); }
 function dayCost(md,i){ return dayFoodCost(md,i)+dayDrinkCost(md,i); }
 function dayRev(md,i){ return md.doanhThu[i]?.rev||0; }
 function dayRatio(md,i){ const r=dayRev(md,i); return r?dayCost(md,i)/r:null; }
@@ -625,10 +688,10 @@ function totalPayroll(mid){
 function supRanking(mid){
   const md=monthData(mid),cfg=monthCfg(mid);
   const foodTotals=TP_COLS.map((name,ci)=>({
-    name,total:Array.from({length:cfg.days},(_,ri)=>md.thucPham[ri]?.[ci]||0).reduce((a,b)=>a+b,0)
+    name,total:Array.from({length:cfg.days},(_,ri)=>cellV(md.thucPham[ri]?.[ci])).reduce((a,b)=>a+b,0)
   })).filter(x=>x.total>0).sort((a,b)=>b.total-a.total);
   const drinkTotals=RU_COLS.map((name,ci)=>({
-    name,total:Array.from({length:cfg.days},(_,ri)=>md.ruou[ri]?.[ci]||0).reduce((a,b)=>a+b,0)
+    name,total:Array.from({length:cfg.days},(_,ri)=>cellV(md.ruou[ri]?.[ci])).reduce((a,b)=>a+b,0)
   })).filter(x=>x.total>0).sort((a,b)=>b.total-a.total);
   return {food:foodTotals,drink:drinkTotals};
 }
@@ -1131,11 +1194,14 @@ function renderThucPham(){
     const isWE=dow===0||dow===6;
     const rowTotal=dayFoodCost(md,i);
     const cells=TP_COLS.map((col,ci)=>{
-      const v=md.thucPham[i]?.[ci]||null;
-      colTotals[ci]+=(v||0);
-      return `<td class="editable" contenteditable tabindex="0"
+      const raw=md.thucPham[i]?.[ci]||null;
+      const tot=cellV(raw); colTotals[ci]+=tot;
+      const tip=cellTip(raw);
+      const multi=raw&&typeof raw==='object'&&raw.lines&&raw.lines.length>1;
+      return `<td class="mcell${multi?' has-lines':''}"
         data-m="${mid}" data-r="thucpham" data-i="${i}" data-c="${ci}"
-        onblur="saveCell(this)" onkeydown="navCell(event,this)">${v||''}</td>`;
+        ${tip?`data-tip="${tip.replace(/"/g,'&quot;').replace(/\n/g,'&#10;')}"`:''}
+        onclick="openMC(this)">${tot?num(tot):''}${multi?`<span class="mcell-cnt">${raw.lines.length}</span>`:''}</td>`;
     }).join('');
     return `<tr style="${isWE?'background:#fffbf5':''}">
       <td class="left">${dowHTML(mid,i)}<strong>${i+1}</strong></td>
@@ -1179,11 +1245,14 @@ function renderRuou(){
     const isWE=dow===0||dow===6;
     const rowTotal=dayDrinkCost(md,i);
     const cells=RU_COLS.map((col,ci)=>{
-      const v=md.ruou[i]?.[ci]||null;
-      colTotals[ci]+=(v||0);
-      return `<td class="editable" contenteditable tabindex="0"
+      const raw=md.ruou[i]?.[ci]||null;
+      const tot=cellV(raw); colTotals[ci]+=tot;
+      const tip=cellTip(raw);
+      const multi=raw&&typeof raw==='object'&&raw.lines&&raw.lines.length>1;
+      return `<td class="mcell${multi?' has-lines':''}"
         data-m="${mid}" data-r="ruou" data-i="${i}" data-c="${ci}"
-        onblur="saveCell(this)" onkeydown="navCell(event,this)">${v||''}</td>`;
+        ${tip?`data-tip="${tip.replace(/"/g,'&quot;').replace(/\n/g,'&#10;')}"`:''}
+        onclick="openMC(this)">${tot?num(tot):''}${multi?`<span class="mcell-cnt">${raw.lines.length}</span>`:''}</td>`;
     }).join('');
     return `<tr style="${isWE?'background:#fffbf5':''}">
       <td class="left">${dowHTML(mid,i)}<strong>${i+1}</strong></td>
@@ -1226,11 +1295,14 @@ function renderChiKhac(){
     const d=dayDate(mid,i), dow=d.getDay(), isWE=dow===0||dow===6;
     const rowTotal=dayOtherCost(md,i);
     const cells=OTHER_COLS.map((col,ci)=>{
-      const v=md.chiKhac[i]?.[ci]||null;
-      colTotals[ci]+=(v||0);
-      return `<td class="editable" contenteditable tabindex="0"
+      const raw=md.chiKhac[i]?.[ci]||null;
+      const tot=cellV(raw); colTotals[ci]+=tot;
+      const tip=cellTip(raw);
+      const multi=raw&&typeof raw==='object'&&raw.lines&&raw.lines.length>1;
+      return `<td class="mcell${multi?' has-lines':''}"
         data-m="${mid}" data-r="chikhac" data-i="${i}" data-c="${ci}"
-        onblur="saveCell(this)" onkeydown="navCell(event,this)">${v||''}</td>`;
+        ${tip?`data-tip="${tip.replace(/"/g,'&quot;').replace(/\n/g,'&#10;')}"`:''}
+        onclick="openMC(this)">${tot?num(tot):''}${multi?`<span class="mcell-cnt">${raw.lines.length}</span>`:''}</td>`;
     }).join('');
     return `<tr style="${isWE?'background:#fffbf5':''}">
       <td class="left">${dowHTML(mid,i)}<strong>${i+1}</strong></td>
@@ -1509,6 +1581,111 @@ function navCell(e,el){
     const idx=all.indexOf(el);
     if(idx<all.length-1) all[idx+1].focus();
   }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MODAL ĐA HÓA ĐƠN
+// ═══════════════════════════════════════════════════════════════
+let _mc={el:null,m:null,r:null,i:0,c:0};
+
+function openMC(el){
+  const {m,r,i,c}=el.dataset;
+  const md=monthData(m);
+  const arr=r==='thucpham'?md.thucPham:r==='ruou'?md.ruou:md.chiKhac;
+  const raw=arr?.[+i]?.[+c]||null;
+  const cols=r==='thucpham'?TP_COLS:r==='ruou'?RU_COLS:OTHER_COLS;
+  const colName=cols[+c], day=+i+1;
+  const lines=cellLines(raw);
+  if(!lines.length||lines.every(l=>!l.v&&!l.n)) lines.splice(0,lines.length,{v:'',n:''});
+  _mc={el,m,r,i:+i,c:+c};
+  _renderMCPanel(colName,day,lines);
+  document.getElementById('mcOverlay').classList.add('open');
+}
+
+function _renderMCPanel(colName,day,lines){
+  const rowsHtml=lines.map((l,idx)=>`
+    <div class="mc-row">
+      <input class="mc-amt" type="number" inputmode="numeric" value="${l.v||''}" placeholder="Số tiền" oninput="_mcSum()">
+      <input class="mc-note" type="text" value="${(l.n||'')}" placeholder="Tên hàng / Ghi chú">
+      <button class="mc-del-btn" onclick="_mcDel(this)" title="Xóa dòng">×</button>
+    </div>`).join('');
+  document.getElementById('mcPanel').innerHTML=`
+    <div class="mc-head">
+      <div class="mc-title">${colName} — Ngày ${day}</div>
+      <button class="mc-close" onclick="closeMC()">×</button>
+    </div>
+    <div class="mc-col-hdr"><span>Số tiền</span><span>Tên hàng / Ghi chú</span><span></span></div>
+    <div id="mc-rows">${rowsHtml}</div>
+    <button class="mc-add-btn" onclick="_mcAdd()">＋ Thêm hóa đơn</button>
+    <div class="mc-total-bar" id="mc-total">Tổng: 0đ</div>
+    <div class="mc-actions">
+      <button class="mc-clear-btn" onclick="_mcClear()">Xóa hết</button>
+      <button class="mc-save-btn" onclick="saveMC()">✓ Lưu</button>
+    </div>`;
+  _mcSum();
+  // Focus first amount input
+  setTimeout(()=>document.querySelector('.mc-amt')?.focus(),50);
+}
+
+function _mcSum(){
+  const total=[...document.querySelectorAll('.mc-amt')].reduce((s,inp)=>s+(Number(inp.value)||0),0);
+  const el=document.getElementById('mc-total');
+  if(el) el.textContent=`Tổng: ${total.toLocaleString('vi-VN')}đ`;
+}
+
+function _mcAdd(){
+  const rows=document.getElementById('mc-rows');
+  const div=document.createElement('div');
+  div.className='mc-row';
+  div.innerHTML=`<input class="mc-amt" type="number" inputmode="numeric" placeholder="Số tiền" oninput="_mcSum()"><input class="mc-note" type="text" placeholder="Tên hàng / Ghi chú"><button class="mc-del-btn" onclick="_mcDel(this)" title="Xóa dòng">×</button>`;
+  rows.appendChild(div);
+  div.querySelector('.mc-amt').focus();
+  _mcSum();
+}
+
+function _mcDel(btn){
+  const rows=document.getElementById('mc-rows');
+  const row=btn.closest('.mc-row');
+  if(rows.children.length<=1){
+    row.querySelector('.mc-amt').value='';
+    row.querySelector('.mc-note').value='';
+  } else { row.remove(); }
+  _mcSum();
+}
+
+function _mcClear(){
+  document.querySelectorAll('#mc-rows .mc-amt').forEach(inp=>inp.value='');
+  document.querySelectorAll('#mc-rows .mc-note').forEach(inp=>inp.value='');
+  _mcSum();
+}
+
+function closeMC(){
+  document.getElementById('mcOverlay').classList.remove('open');
+}
+
+function saveMC(){
+  const {el,m,r,i,c}=_mc;
+  const amts=[...document.querySelectorAll('.mc-amt')];
+  const notes=[...document.querySelectorAll('.mc-note')];
+  const lines=amts.map((inp,idx)=>({v:Number(inp.value)||0,n:(notes[idx]?.value||'').trim()})).filter(l=>l.v>0||l.n);
+  const total=lines.reduce((s,l)=>s+l.v,0);
+  const md=monthData(m);
+  const arr=r==='thucpham'?md.thucPham:r==='ruou'?md.ruou:md.chiKhac;
+  if(!arr||!arr[i]) return;
+  // Lưu dữ liệu
+  if(!lines.length) arr[i][c]=null;
+  else if(lines.length===1&&!lines[0].n) arr[i][c]=lines[0].v||null; // số đơn giản
+  else arr[i][c]={v:total,lines};
+  // Cập nhật ô trên bảng
+  const newRaw=arr[i][c];
+  const multi=newRaw&&typeof newRaw==='object'&&newRaw.lines&&newRaw.lines.length>1;
+  const tip=cellTip(newRaw);
+  el.className='mcell'+(multi?' has-lines':'');
+  el.innerHTML=(total?num(total):'')+(multi?`<span class="mcell-cnt">${newRaw.lines.length}</span>`:'');
+  if(tip) el.setAttribute('data-tip',tip); else el.removeAttribute('data-tip');
+  updateRowTotals(el,r,m,i);
+  saveData();
+  closeMC();
 }
 
 function shiftChange(inp){
@@ -1814,13 +1991,13 @@ function saveScanData(){
     if(!it.cat||it.col<0||!it.price) return;
     if(it.cat==='thucpham'){
       if(!md.thucPham[dayIdx]) md.thucPham[dayIdx]=Array(TP_COLS.length).fill(null);
-      md.thucPham[dayIdx][it.col]=(md.thucPham[dayIdx][it.col]||0)+it.price;
+      md.thucPham[dayIdx][it.col]=(cellV(md.thucPham[dayIdx][it.col])||0)+it.price;
     } else if(it.cat==='ruou'){
       if(!md.ruou[dayIdx]) md.ruou[dayIdx]=Array(RU_COLS.length).fill(null);
-      md.ruou[dayIdx][it.col]=(md.ruou[dayIdx][it.col]||0)+it.price;
+      md.ruou[dayIdx][it.col]=(cellV(md.ruou[dayIdx][it.col])||0)+it.price;
     } else if(it.cat==='chikhac'){
       if(!md.chiKhac[dayIdx]) md.chiKhac[dayIdx]=Array(OTHER_COLS.length).fill(null);
-      md.chiKhac[dayIdx][it.col]=(md.chiKhac[dayIdx][it.col]||0)+it.price;
+      md.chiKhac[dayIdx][it.col]=(cellV(md.chiKhac[dayIdx][it.col])||0)+it.price;
     }
     saved++;
   });
