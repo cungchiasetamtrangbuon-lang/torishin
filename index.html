@@ -515,7 +515,33 @@ function loadFromCloud(){
     // Cập nhật real-time từ thiết bị khác
     if(!remote) return;
     if(remote._lastUpdated===_lastWriteTs) return; // echo từ write của mình, bỏ qua
-    if(_saveTimer) return;                          // đang có thay đổi chưa lưu, bỏ qua
+    if(_saveTimer){
+      // Đang có thay đổi chưa lưu → không apply toàn bộ, nhưng merge doanhThu
+      // từ staff_daily vào S để không mất khi index.html save tiếp theo
+      if(Array.isArray(remote.months)){
+        remote.months.forEach(rm=>{
+          if(!S.months.find(m=>m.id===rm.id)){
+            S.months.push(rm);
+            if(!S.data[rm.id]) S.data[rm.id]=seedMonthData(rm.id,rm.days);
+          }
+        });
+      }
+      if(remote.data){
+        Object.keys(remote.data).forEach(mid=>{
+          if(!S.data[mid]) return;
+          const rdt=remote.data[mid]?.doanhThu;
+          if(!rdt) return;
+          const arr=Array.isArray(rdt)?rdt:fbObjToArr(rdt);
+          arr.forEach((rd,i)=>{
+            if(!S.data[mid].doanhThu[i]) S.data[mid].doanhThu[i]={rev:null};
+            // Chỉ merge nếu remote có dữ liệu và local đang null
+            if(rd?.rev!=null&&!(S.data[mid].doanhThu[i]?.rev>0))
+              S.data[mid].doanhThu[i]=rd;
+          });
+        });
+      }
+      return;
+    }
     applyRemote(remote);
     renderContent();
   });

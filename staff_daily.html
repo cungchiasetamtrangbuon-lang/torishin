@@ -485,10 +485,20 @@
     let _cloudListenerAttached=false;
     let _visListenerAttached=false;
 
+    // Firebase đôi khi trả array dưới dạng object {0:v,1:v,...}
+    function fbObjToArr(v){
+      if(!v) return [];
+      if(Array.isArray(v)) return v;
+      const keys=Object.keys(v).map(Number).filter(k=>!isNaN(k));
+      if(!keys.length) return [];
+      const len=Math.max(...keys)+1;
+      return Array.from({length:len},(_,i)=>v[i]!==undefined?v[i]:null);
+    }
+
     function applyRemoteState(remote){
       if(!remote) return false;
-      // Luôn merge các tháng từ cloud vào local (kể cả khi local mới hơn)
-      if(remote.months && Array.isArray(remote.months)){
+      // Luôn merge tháng từ cloud vào local (kể cả khi local mới hơn)
+      if(Array.isArray(remote.months)){
         remote.months.forEach(rm=>{
           if(!S.months.find(m=>m.id===rm.id)){
             S.months.push(rm);
@@ -498,19 +508,26 @@
       }
       const localTs=S._lastUpdated||0;
       const remoteTs=remote._lastUpdated||0;
-      const localJson=JSON.stringify(S);
-      const remoteJson=JSON.stringify(remote);
-      const shouldApply = !localTs || remoteTs>localTs || (remoteTs===localTs && remoteJson!==localJson);
-      if(!shouldApply) return false;
+      if(localTs && remoteTs<=localTs) return false; // local mới hơn, giữ draft
+      // Lưu lại các tháng tự tạo local chưa có trong remote
+      const localOnlyMonths=S.months.filter(lm=>!remote.months||!remote.months.find(r=>r.id===lm.id));
+      const localOnlyData={};
+      localOnlyMonths.forEach(lm=>{ if(S.data[lm.id]) localOnlyData[lm.id]=S.data[lm.id]; });
       Object.assign(S, remote);
-      // Giữ lại các tháng đã merge trước đó mà remote chưa có
-      if(remote.months && Array.isArray(remote.months)){
-        remote.months.forEach(rm=>{
-          if(!S.months.find(m=>m.id===rm.id)) S.months.push(rm);
-        });
-        S.months.forEach(m=>{ if(!S.data[m.id]) S.data[m.id]=initMonthData(m.days); });
-      }
-      S._lastUpdated = Math.max(localTs, remoteTs || 0);
+      // Normalize doanhThu (Firebase trả object {0:v,...} thay vì array)
+      S.months.forEach(m=>{
+        const md=S.data[m.id];
+        if(!md) return;
+        if(md.doanhThu&&!Array.isArray(md.doanhThu)) md.doanhThu=fbObjToArr(md.doanhThu);
+        if(!md.doanhThu) md.doanhThu=[];
+        while(md.doanhThu.length<m.days) md.doanhThu.push({rev:null});
+      });
+      // Khôi phục tháng local tự tạo mà remote chưa có
+      localOnlyMonths.forEach(lm=>{
+        if(!S.months.find(r=>r.id===lm.id)) S.months.push(lm);
+        if(!S.data[lm.id]) S.data[lm.id]=localOnlyData[lm.id]||initMonthData(lm.days);
+      });
+      S._lastUpdated=remoteTs;
       fillFormFromDate($('date')?.value);
       try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(S)); }catch(e){}
       setSyncBadge('ok');
@@ -550,11 +567,19 @@
       setSyncBadge('syncing');
       try{
         _cloudFlight=true;
-        const payload=JSON.parse(JSON.stringify(S));
-        payload._lastUpdated=Date.now();
-        S._lastUpdated=payload._lastUpdated;
+        const ts=Date.now();
+        S._lastUpdated=ts;
         localStorage.setItem(STORAGE_KEY, JSON.stringify(S));
-        await _revRef.set(payload);
+        // Dùng update() thay vì set() — chỉ ghi doanhThu & months,
+        // không xóa thucPham/ruou/chiKhac mà index.html đã lưu
+        const updates={};
+        S.months.forEach(m=>{
+          const md=S.data[m.id];
+          if(md?.doanhThu) updates[`data/${m.id}/doanhThu`]=md.doanhThu;
+        });
+        updates.months=S.months;
+        updates._lastUpdated=ts;
+        await _revRef.update(updates);
         setSyncBadge('ok');
       }catch(e){ setSyncBadge('err'); }
       finally{ _cloudFlight=false; }
