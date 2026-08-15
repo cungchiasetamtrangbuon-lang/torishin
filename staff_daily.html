@@ -375,7 +375,9 @@
       const md = monthData(mid);
       const idx = getDayIndex(dateValue);
       const dt = md.doanhThu[idx]||{};
-      if($('cash')) $('cash').value = dt.cash ?? '';
+      // Nếu chỉ có .rev (nhập từ index.html, không có breakdown) → đổ vào tiền mặt
+      const hasBreakdown=dt.cash||dt.card||dt.transfer||dt.capichi||dt.grab;
+      if($('cash')) $('cash').value = dt.cash ?? (hasBreakdown?'':dt.rev??'');
       if($('card')) $('card').value = dt.card ?? '';
       if($('transfer')) $('transfer').value = dt.transfer ?? '';
       if($('capichi')) $('capichi').value = dt.capichi ?? '';
