@@ -318,8 +318,8 @@
       dt.note = ($('note')?.value || '').trim();
       md.doanhThu[idx] = dt;
       S.curMonth = mid;
-      S._lastUpdated = Date.now(); // đánh dấu draft mới nhất để không bị Firebase ghi đè
-      saveState();
+      _isDirty = true; // đánh dấu đang nhập, chưa lưu lên cloud
+      saveState();     // chỉ lưu local, KHÔNG cập nhật _lastUpdated
     }
     function updateDateLabel(){
       const date = new Date(($('date')?.value) || new Date().toISOString().slice(0,10));
@@ -484,6 +484,7 @@
     let _cloudFlight=false;
     let _cloudListenerAttached=false;
     let _visListenerAttached=false;
+    let _isDirty=false; // user đang nhập chưa lưu — bảo vệ khỏi bị Firebase ghi đè
 
     // Firebase đôi khi trả array dưới dạng object {0:v,1:v,...}
     function fbObjToArr(v){
@@ -508,6 +509,7 @@
       }
       const localTs=S._lastUpdated||0;
       const remoteTs=remote._lastUpdated||0;
+      if(_isDirty) return false;                     // đang nhập chưa lưu, giữ draft
       if(localTs && remoteTs<=localTs) return false; // local mới hơn, giữ draft
       // Lưu lại các tháng tự tạo local chưa có trong remote
       const localOnlyMonths=S.months.filter(lm=>!remote.months||!remote.months.find(r=>r.id===lm.id));
@@ -580,6 +582,7 @@
         updates.months=S.months;
         updates._lastUpdated=ts;
         await _revRef.update(updates);
+        _isDirty=false; // lưu thành công, cho phép nhận update từ máy khác
         setSyncBadge('ok');
       }catch(e){ setSyncBadge('err'); }
       finally{ _cloudFlight=false; }
