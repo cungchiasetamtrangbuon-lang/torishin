@@ -318,8 +318,7 @@
       dt.note = ($('note')?.value || '').trim();
       md.doanhThu[idx] = dt;
       S.curMonth = mid;
-      _isDirty = true; // đánh dấu đang nhập, chưa lưu lên cloud
-      saveState();     // chỉ lưu local, KHÔNG cập nhật _lastUpdated
+      saveState(); // chỉ lưu local, _isDirty được set từ input handler
     }
     function updateDateLabel(){
       const date = new Date(($('date')?.value) || new Date().toISOString().slice(0,10));
@@ -462,15 +461,15 @@
       window.addEventListener('storage', onStorageChange);
       ['cash','card','transfer','capichi','grab'].forEach(id=>{
         const el = $(id);
-        if(el) el.addEventListener('input', updateTotals);
+        if(el) el.addEventListener('input', ()=>{ _isDirty=true; updateTotals(); });
       });
       BILLS.forEach(amount => {
         const el = $('bill_' + amount);
-        if(el) el.addEventListener('input', updateBillSummary);
+        if(el) el.addEventListener('input', ()=>{ _isDirty=true; updateBillSummary(); });
       });
       ['staff','note'].forEach(id=>{
         const el = $(id);
-        if(el) el.addEventListener('input', updateTotals);
+        if(el) el.addEventListener('input', ()=>{ _isDirty=true; updateTotals(); });
       });
       if($('date')){ $('date').addEventListener('change', ()=>fillFormFromDate($('date')?.value)); }
       if($('saveBtn')) $('saveBtn').addEventListener('click', saveDailyReport);
@@ -577,10 +576,13 @@
         // Dùng update() thay vì set() — chỉ ghi doanhThu & months,
         // không xóa thucPham/ruou/chiKhac mà index.html đã lưu
         const updates={};
-        S.months.forEach(m=>{
-          const md=S.data[m.id];
-          if(md?.doanhThu) updates[`data/${m.id}/doanhThu`]=md.doanhThu;
-        });
+        // Chỉ ghi đúng 1 ô ngày hiện tại — KHÔNG ghi cả mảng (tránh xóa ngày khác)
+        const date=$('date')?.value||new Date().toISOString().slice(0,10);
+        const mid=getMonthIdForDate(date);
+        const idx=getDayIndex(date);
+        const md=S.data[mid];
+        if(md?.doanhThu?.[idx]!=null) updates[`data/${mid}/doanhThu/${idx}`]=md.doanhThu[idx];
+        // Ghi months sau khi applyRemoteState đã merge đủ — an toàn vì S.months có tất cả tháng từ Firebase
         updates.months=S.months;
         updates._lastUpdated=ts;
         await _revRef.update(updates);
