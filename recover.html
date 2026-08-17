@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Khôi phục dữ liệu Torishin</title>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<style>
+*{box-sizing:border-box;font-family:'Segoe UI',sans-serif}
+body{margin:0;padding:24px;background:#f1f5f9;color:#0f172a}
+h1{font-size:22px;margin:0 0 4px}
+.sub{color:#64748b;font-size:14px;margin-bottom:24px}
+.card{background:#fff;border-radius:16px;border:1px solid #e2e8f0;padding:20px;margin-bottom:16px;box-shadow:0 4px 16px rgba(0,0,0,.05)}
+.card h2{margin:0 0 12px;font-size:16px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{border:1px solid #e2e8f0;padding:8px 10px;text-align:right}
+th{background:#f8fafc;font-weight:700;text-align:center}
+td:first-child{text-align:left}
+.btn{display:inline-block;padding:12px 24px;border-radius:12px;border:none;font-weight:700;font-size:14px;cursor:pointer;margin:4px}
+.btn-green{background:#16a34a;color:#fff}
+.btn-blue{background:#2563eb;color:#fff}
+.btn-gray{background:#e2e8f0;color:#0f172a}
+.status{margin-top:12px;padding:12px;border-radius:10px;font-weight:600;font-size:14px;display:none}
+.ok{background:#d1fae5;color:#065f46;display:block}
+.err{background:#fee2e2;color:#991b1b;display:block}
+.warn{background:#fef3c7;color:#92400e;display:block}
+.num{color:#2563eb;font-weight:700}
+.empty{color:#94a3b8;font-style:italic}
+pre{background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px;font-size:11px;overflow:auto;max-height:200px}
+</style>
+</head>
+<body>
+<h1>🔧 Khôi phục dữ liệu Torishin</h1>
+<p class="sub">Trang này đọc localStorage của thiết bị và khôi phục dữ liệu T7/T8 lên Firebase</p>
+
+<div class="card" id="scanCard">
+  <h2>Bước 1 — Quét dữ liệu trên thiết bị này</h2>
+  <button class="btn btn-blue" onclick="scan()">🔍 Quét localStorage</button>
+  <div class="status" id="scanStatus"></div>
+  <div id="scanResult"></div>
+</div>
+
+<div class="card" id="restoreCard" style="display:none">
+  <h2>Bước 2 — Khôi phục lên Firebase</h2>
+  <p style="color:#64748b;font-size:13px">Chỉ ghi những ngày có dữ liệu thật (rev > 0) — không xóa dữ liệu hiện có của ngày khác</p>
+  <button class="btn btn-green" onclick="restore()">☁ Khôi phục lên Firebase</button>
+  <div class="status" id="restoreStatus"></div>
+</div>
+
+<div class="card">
+  <h2>Dán dữ liệu từ thiết bị khác (tùy chọn)</h2>
+  <p style="color:#64748b;font-size:13px">Nếu thiết bị khác có dữ liệu, copy từ Console và dán vào đây</p>
+  <textarea id="pasteBox" style="width:100%;height:100px;border:1px solid #e2e8f0;border-radius:8px;padding:10px;font-size:12px;font-family:monospace" placeholder='Dán JSON từ lệnh: JSON.parse(localStorage.getItem("torishin_rev_v3"))'></textarea>
+  <br>
+  <button class="btn btn-blue" onclick="scanPasted()">🔍 Phân tích dữ liệu dán</button>
+  <div class="status" id="pasteStatus"></div>
+  <div id="pasteResult"></div>
+  <button class="btn btn-green" id="pasteRestoreBtn" style="display:none" onclick="restorePasted()">☁ Khôi phục dữ liệu dán lên Firebase</button>
+</div>
+
+<script>
+firebase.initializeApp({databaseURL:'https://torishin-ace11-default-rtdb.asia-southeast1.firebasedatabase.app'});
+const db = firebase.database().ref('torishin_rev');
+
+const MONTHS_TO_RECOVER = ['T7','T8','T9','T10','T11','T12'];
+let _recoveryData = null;
+let _pastedRecoveryData = null;
+
+function fmt(v){ return v ? Number(v).toLocaleString('vi-VN')+'đ' : '<span class="empty">—</span>'; }
+
+function extractRecoveryData(s){
+  if(!s || !s.data) return null;
+  const result = {};
+  MONTHS_TO_RECOVER.forEach(mid=>{
+    const md = s.data[mid];
+    if(!md || !md.doanhThu) return;
+    const days = [];
+    const arr = Array.isArray(md.doanhThu) ? md.doanhThu :
+      Object.keys(md.doanhThu).sort((a,b)=>+a-+b).map(k=>md.doanhThu[k]);
+    arr.forEach((dt,i)=>{
+      if(dt && dt.rev > 0) days.push({idx:i, day:i+1, dt});
+    });
+    if(days.length) result[mid] = { days, monthCfg: s.months?.find(m=>m.id===mid) };
+  });
+  return Object.keys(result).length ? result : null;
+}
+
+function renderTable(data, containerId){
+  if(!data){ document.getElementById(containerId).innerHTML=''; return; }
+  let html = '';
+  Object.entries(data).forEach(([mid, {days}])=>{
+    html += `<h3 style="margin:16px 0 8px;font-size:14px">Tháng ${mid.replace('T','')}</h3>`;
+    html += '<table><tr><th>Ngày</th><th>Doanh Thu</th><th>Tiền Mặt</th><th>Thẻ</th><th>CK</th><th>Capichi</th><th>Grab</th></tr>';
+    days.forEach(({day,dt})=>{
+      const total = dt.cash||dt.card||dt.transfer||dt.capichi||dt.grab
+        ? (dt.cash||0)+(dt.card||0)+(dt.transfer||0)+(dt.capichi||0)+(dt.grab||0)
+        : dt.rev;
+      html += `<tr>
+        <td>Ngày ${day}</td>
+        <td class="num">${fmt(dt.rev)}</td>
+        <td>${fmt(dt.cash)}</td>
+        <td>${fmt(dt.card)}</td>
+        <td>${fmt(dt.transfer)}</td>
+        <td>${fmt(dt.capichi)}</td>
+        <td>${fmt(dt.grab)}</td>
+      </tr>`;
+    });
+    html += `<tr style="background:#eff6ff"><td><b>Tổng ${days.length} ngày</b></td>
+      <td class="num" colspan="6"><b>${fmt(days.reduce((s,{dt})=>s+(dt.rev||0),0))}</b></td></tr>`;
+    html += '</table>';
+  });
+  document.getElementById(containerId).innerHTML = html;
+}
+
+function setStatus(id, msg, cls){
+  const el = document.getElementById(id);
+  el.textContent = msg; el.className = 'status '+cls;
+}
+
+function scan(){
+  const raw = localStorage.getItem('torishin_rev_v3');
+  if(!raw){
+    setStatus('scanStatus','❌ Không tìm thấy dữ liệu (torishin_rev_v3) trên thiết bị này. Hãy thử trên điện thoại / máy tính khác đã dùng để nhập liệu.','err');
+    return;
+  }
+  try{
+    const s = JSON.parse(raw);
+    _recoveryData = extractRecoveryData(s);
+    if(!_recoveryData){
+      setStatus('scanStatus','⚠ Tìm thấy localStorage nhưng không có dữ liệu T7/T8 có giá trị (rev > 0).','warn');
+      return;
+    }
+    const total = Object.values(_recoveryData).reduce((s,{days})=>s+days.length,0);
+    setStatus('scanStatus',`✅ Tìm thấy dữ liệu! ${total} ngày có doanh thu trong ${Object.keys(_recoveryData).join(', ')}`, 'ok');
+    renderTable(_recoveryData, 'scanResult');
+    document.getElementById('restoreCard').style.display='block';
+  }catch(e){
+    setStatus('scanStatus','❌ Lỗi khi đọc dữ liệu: '+e.message,'err');
+  }
+}
+
+function scanPasted(){
+  const raw = document.getElementById('pasteBox').value.trim();
+  if(!raw){ setStatus('pasteStatus','Hãy dán dữ liệu vào ô trên.','warn'); return; }
+  try{
+    const s = JSON.parse(raw);
+    _pastedRecoveryData = extractRecoveryData(s);
+    if(!_pastedRecoveryData){
+      setStatus('pasteStatus','⚠ Không tìm thấy dữ liệu T7/T8 có giá trị trong dữ liệu dán.','warn');
+      return;
+    }
+    const total = Object.values(_pastedRecoveryData).reduce((s,{days})=>s+days.length,0);
+    setStatus('pasteStatus',`✅ Tìm thấy ${total} ngày có dữ liệu trong ${Object.keys(_pastedRecoveryData).join(', ')}`, 'ok');
+    renderTable(_pastedRecoveryData, 'pasteResult');
+    document.getElementById('pasteRestoreBtn').style.display='inline-block';
+  }catch(e){
+    setStatus('pasteStatus','❌ JSON không hợp lệ: '+e.message,'err');
+  }
+}
+
+async function doRestore(data, statusId){
+  if(!data){ setStatus(statusId,'Không có dữ liệu để khôi phục.','err'); return; }
+  setStatus(statusId,'⏳ Đang khôi phục lên Firebase...','warn');
+  try{
+    // Read current months from Firebase first
+    const monthsSnap = await firebase.database().ref('torishin_rev/months').once('value');
+    let months = monthsSnap.val() || [];
+    if(!Array.isArray(months)) months = Object.values(months).filter(Boolean);
+
+    const updates = {};
+    for(const [mid, {days, monthCfg}] of Object.entries(data)){
+      // Add month to list if missing
+      if(!months.find(m=>m&&m.id===mid) && monthCfg){
+        months.push(monthCfg);
+      }
+      // Write only days that have real data
+      days.forEach(({idx, dt})=>{
+        updates[`data/${mid}/doanhThu/${idx}`] = dt;
+      });
+    }
+    updates.months = months.filter(Boolean);
+    updates._lastUpdated = Date.now();
+    await firebase.database().ref('torishin_rev').update(updates);
+    const total = Object.values(data).reduce((s,{days})=>s+days.length,0);
+    setStatus(statusId,`✅ Đã khôi phục ${total} ngày dữ liệu lên Firebase thành công! Tải lại index.html để xem.`,'ok');
+  }catch(e){
+    setStatus(statusId,'❌ Lỗi: '+e.message,'err');
+  }
+}
+
+function restore(){ doRestore(_recoveryData, 'restoreStatus'); }
+function restorePasted(){ doRestore(_pastedRecoveryData, 'pasteStatus'); }
+</script>
+</body>
+</html>
