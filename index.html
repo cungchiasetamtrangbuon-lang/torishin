@@ -422,15 +422,18 @@ function seedMonthData(mid,days){
 
 // ═══ FIREBASE-ONLY STORAGE ═══
 let _saveFlight=false, _saveQueued=false, _saveTimer=null, _lastWriteTs=0, _fbReady=false;
+let _hasPendingChanges=false; // true chỉ khi người dùng đã sửa nhưng chưa lưu xong
 
 function saveData(){
   clearTimeout(_saveTimer);
+  _hasPendingChanges=true;
   _saveTimer=setTimeout(_doSave, 300);
 }
 function saveNav(){
   try{localStorage.setItem('torishin_nav',JSON.stringify({curMonth:S.curMonth,curTab:S.curTab}));}catch(e){}
 }
 async function _doSave(force){
+  _saveTimer=null; // timer đã cháy, reset về null để real-time merge hoạt động đúng
   if(_saveFlight){_saveQueued=true;return;}
   _saveFlight=true; _saveQueued=false;
   const btn=document.getElementById('syncCloudBtn');
@@ -439,6 +442,7 @@ async function _doSave(force){
     S._lastUpdated=Date.now();
     _lastWriteTs=S._lastUpdated;
     await _revRef.set(S);
+    _hasPendingChanges=false;
     if(btn){btn.textContent='☁ Đã lưu';btn.style.opacity='1';btn.style.color='#6ee7b7';
       setTimeout(()=>{btn.textContent='☁ Cloud';btn.style.color='';},2000);}
   }catch(e){
@@ -567,8 +571,7 @@ function loadFromCloud(){
     if(!remote) return;
     if(remote._lastUpdated===_lastWriteTs) return; // echo từ write của mình, bỏ qua
     if(_saveTimer){
-      // Đang có thay đổi chưa lưu → không apply toàn bộ, nhưng merge doanhThu
-      // từ staff_daily vào S để không mất khi index.html save tiếp theo
+      // Đang có thay đổi chưa lưu → merge remote vào S để không mất khi save tiếp theo
       if(Array.isArray(remote.months)){
         remote.months.forEach(rm=>{
           if(!S.months.find(m=>m.id===rm.id)){
@@ -579,15 +582,36 @@ function loadFromCloud(){
       }
       if(remote.data){
         Object.keys(remote.data).forEach(mid=>{
-          if(!S.data[mid]) return;
-          const rdt=remote.data[mid]?.doanhThu;
-          if(!rdt) return;
-          const arr=Array.isArray(rdt)?rdt:fbObjToArr(rdt);
-          arr.forEach((rd,i)=>{
-            if(!S.data[mid].doanhThu[i]) S.data[mid].doanhThu[i]={rev:null};
-            // Chỉ merge nếu remote có dữ liệu và local đang null
-            if(rd?.rev!=null&&!(S.data[mid].doanhThu[i]?.rev>0))
-              S.data[mid].doanhThu[i]=rd;
+          const rmd=remote.data[mid];
+          if(!rmd) return;
+          if(!S.data[mid]) S.data[mid]=seedMonthData(mid,(S.months.find(m=>m.id===mid)||{}).days||31);
+          // doanhThu: chỉ nhận ngày remote có data mà local còn null
+          const rdt=rmd.doanhThu;
+          if(rdt){
+            const arr=Array.isArray(rdt)?rdt:fbObjToArr(rdt);
+            arr.forEach((rd,i)=>{
+              if(!S.data[mid].doanhThu[i]) S.data[mid].doanhThu[i]={rev:null};
+              if(rd?.rev!=null&&!(S.data[mid].doanhThu[i]?.rev>0))
+                S.data[mid].doanhThu[i]=rd;
+            });
+          }
+          // thucPham, ruou, chiKhac: nhận từ remote nếu local còn nguyên (chưa sửa)
+          // Merge từng ô — nếu local null thì nhận giá trị remote
+          ['thucPham','ruou','chiKhac'].forEach(field=>{
+            const rfield=rmd[field];
+            if(!rfield) return;
+            const rarr=Array.isArray(rfield)?rfield:fbObjToArr(rfield);
+            rarr.forEach((rrow,i)=>{
+              if(!rrow) return;
+              const rrowArr=Array.isArray(rrow)?rrow:fbObjToArr(rrow);
+              if(!S.data[mid][field]) return;
+              if(!S.data[mid][field][i]) return;
+              rrowArr.forEach((rcell,j)=>{
+                // Chỉ ghi đè nếu local null (chưa có dữ liệu)
+                if(rcell!=null && S.data[mid][field][i][j]==null)
+                  S.data[mid][field][i][j]=rcell;
+              });
+            });
           });
         });
       }
@@ -2026,8 +2050,12 @@ function saveScanData(){
 renderShell();
 loadFromCloud();
 
-// Lưu ngay trước khi trang tải lại/đóng — fetch keepalive đảm bảo hoàn thành kể cả khi F5
+// Lưu ngay trước khi trang tải lại/đóng — chỉ lưu khi có thay đổi thật sự và Firebase đã load
 window.addEventListener('beforeunload',()=>{
+  // QUAN TRỌNG: không lưu nếu Firebase chưa load xong (S.data còn rỗng → sẽ xóa data trên cloud)
+  if(!_fbReady) return;
+  // Không lưu nếu không có thay đổi chưa ghi
+  if(!_hasPendingChanges && !_saveFlight && !_saveQueued) return;
   clearTimeout(_saveTimer);
   S._lastUpdated=Date.now();
   _lastWriteTs=S._lastUpdated;
