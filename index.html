@@ -399,7 +399,8 @@ function initMonthData(days){
     thucPham: Array.from({length:days},()=>Array(TP_COLS.length).fill(null)),
     ruou:     Array.from({length:days},()=>Array(RU_COLS.length).fill(null)),
     chiKhac:  Array.from({length:days},()=>Array(OTHER_COLS.length).fill(null)),
-    bangLuong:{shifts:Object.fromEntries(STAFF.map(s=>[s.id,Array(days).fill(null)]))}
+    bangLuong:{shifts:Object.fromEntries(STAFF.map(s=>[s.id,Array(days).fill(null)]))},
+    plConfig: {shohizei:0, shakai_hoken:0, yachin:0, zatsuhiyou:0}
   };
 }
 
@@ -428,6 +429,13 @@ function saveData(){
   clearTimeout(_saveTimer);
   _hasPendingChanges=true;
   _saveTimer=setTimeout(_doSave, 300);
+}
+
+function savePLConfig(key, val){
+  const md=monthData(S.curMonth);
+  if(!md.plConfig) md.plConfig={shohizei:0,shakai_hoken:0,yachin:0,zatsuhiyou:0};
+  md.plConfig[key]=val;
+  saveData();
 }
 function saveNav(){
   try{localStorage.setItem('torishin_nav',JSON.stringify({curMonth:S.curMonth,curTab:S.curTab}));}catch(e){}
@@ -1091,6 +1099,74 @@ function renderDashboard(){
       <div class="kpi-value big">${mn(pay.total)}</div>
       <div class="kpi-sub">${payRatio?pct(payRatio)+' DT':''}</div></div>
   </div>
+
+  ${(()=>{
+    /* ── P&L / 損益計算書 ── */
+    const plc=md.plConfig||{};
+    const shohizei=plc.shohizei||0;
+    const shakai_hoken=plc.shakai_hoken||0;
+    const yachin=plc.yachin||0;
+    const zatsuhiyou=plc.zatsuhiyou||0;
+    const junbai=T.rev-shohizei;
+    const genka=T.food+T.drink;
+    const jinkenhi=pay.total+shakai_hoken;
+    const fl=junbai>0?(genka+jinkenhi)/junbai:null;
+    const utilities=T.other;
+    const eigyo_rieki=junbai-(genka+jinkenhi+utilities+yachin+zatsuhiyou);
+    const rieki_pct=junbai>0?eigyo_rieki/junbai:null;
+    const p=junbai>0?v=>pct(v/junbai):'';
+    const pJunbai=v=>junbai>0?pct(v/junbai):'';
+
+    const editInput=(key,val)=>`<span
+      contenteditable="true"
+      style="outline:none;cursor:text;padding:1px 6px;border-radius:4px;border:1px dashed var(--border);min-width:60px;display:inline-block;text-align:right"
+      onfocus="this.style.borderColor='var(--accent)';this.style.background='#fffbeb'"
+      onblur="this.style.borderColor='var(--border)';this.style.background='';
+        var v=parseInt(this.innerText.replace(/[^0-9]/g,''))||0;
+        savePLConfig('${key}',v);
+        this.innerText=v.toLocaleString('vi-VN');
+        renderDashboard()"
+      >${val.toLocaleString('vi-VN')}</span>`;
+
+    const row=(vn,jp,amtHtml,pctStr,opts={})=>{
+      const bold=opts.bold||opts.total;
+      const sep=opts.sep?'border-top:2px solid var(--border);':opts.sub?'background:#fafbfd;':'';
+      const ac=opts.profit?(eigyo_rieki>=0?'color:var(--good)':'color:var(--bad)'):'';
+      return `<tr style="${sep}">
+        <td style="padding:7px 14px;font-size:13px;${bold?'font-weight:700;':''}${opts.sub?'padding-left:28px;color:var(--muted);font-size:12px;':''}">${vn}${jp?`<br><span style="font-size:9.5px;color:var(--muted);font-weight:400">${jp}</span>`:''}</td>
+        <td style="padding:7px 12px;text-align:right;font-size:${bold?'14':'13'}px;${bold?'font-weight:800;':'font-weight:500;'}${ac};min-width:140px">${amtHtml}</td>
+        <td style="padding:7px 10px;text-align:right;font-size:12px;color:var(--muted);width:56px;white-space:nowrap">${pctStr||''}</td>
+      </tr>`;
+    };
+
+    return `<div class="card" style="margin-bottom:18px">
+      <div class="card-hdr" style="justify-content:space-between">
+        <span class="card-title">📋 P&L / 損益計算書 <span style="font-size:11px;font-weight:400;color:var(--muted)">— ${cfg.id}/${cfg.year}</span></span>
+        <span style="font-size:11px;color:var(--muted)">✏ Ô màu vàng = có thể sửa trực tiếp</span>
+      </div>
+      <table style="width:100%;border-collapse:collapse">
+        <colgroup><col style="width:55%"><col style="width:30%"><col style="width:15%"></colgroup>
+        <tbody>
+          ${row('総売 — Doanh thu gộp','Gross Revenue','<strong>'+num(T.rev)+'</strong>','100%',{bold:true})}
+          ${row('消税 — Thuế / Phí dịch vụ','Tax / Service Charge',editInput('shohizei',shohizei),shohizei&&T.rev?'− '+pct(shohizei/T.rev):'—',{sub:true})}
+          ${row('純売 — Doanh thu thuần','Net Revenue','<strong>'+num(junbai)+'</strong>','',{bold:true,sep:true})}
+          ${row('原価 — Thực phẩm + Đồ uống','COGS (食材費+酒類費)',num(genka),pJunbai(genka),{sep:true})}
+          ${row('人件費 — Nhân công','Labor Cost (base)',num(pay.total),pJunbai(pay.total))}
+          ${row('社保 — Bảo hiểm xã hội','Social Insurance',editInput('shakai_hoken',shakai_hoken),'',{sub:true})}
+          ${row('人件費 合計','Total Labor',num(jinkenhi),pJunbai(jinkenhi),{bold:true})}
+          ${row('FL% — Nguyên vật liệu + Nhân công','Food & Labor Ratio',
+            `<span style="font-size:15px;font-weight:800;color:${fl===null?'var(--muted)':fl<0.65?'var(--good)':fl<0.72?'var(--warn)':'var(--bad)'}">${fl!==null?pct(fl):'—'}</span>`,
+            '',{bold:true,sep:true})}
+          ${row('電光熱費 — Điện / Nước / Gas','Utilities (từ chiKhac)',num(utilities),pJunbai(utilities),{sep:true})}
+          ${row('家賃 — Tiền thuê nhà','Rent','<span style="background:#fffbeb;border-radius:3px;padding:1px 4px">'+editInput('yachin',yachin)+'</span>',pJunbai(yachin))}
+          ${row('雑費 — Tạp phí','Miscellaneous','<span style="background:#fffbeb;border-radius:3px;padding:1px 4px">'+editInput('zatsuhiyou',zatsuhiyou)+'</span>',pJunbai(zatsuhiyou))}
+          ${row('営業利益 — Lợi nhuận hoạt động','Operating Profit',
+            `<strong style="${eigyo_rieki>=0?'color:var(--good)':'color:var(--bad)'}">${num(eigyo_rieki)}</strong>`,
+            rieki_pct!==null?pct(rieki_pct):'—',{bold:true,sep:true,profit:true})}
+        </tbody>
+      </table>
+    </div>`;
+  })()}
 
   <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:10px;margin-bottom:18px">
     ${bestRev?mini('🏆','Ngày Cao Nhất / 最高売上日',mn(bestRev.r),'Ngày '+bestRev.d,'var(--good)'):''}
