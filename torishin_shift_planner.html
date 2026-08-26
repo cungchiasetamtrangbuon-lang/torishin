@@ -259,27 +259,6 @@ body{font-family:'Sora',sans-serif;background:var(--w2);color:var(--ink);min-hei
 .mbtn.ok{background:var(--ink);color:#fff;border-color:var(--ink);}
 .mbtn.ok:hover{background:var(--ink2);}
 .mbtn.dl{background:var(--rb);color:var(--r);border-color:var(--rbd);}
-/* ── ATT CALENDAR ── */
-.att-nav-btn{width:30px;height:30px;border:1px solid var(--bdr);background:var(--w);border-radius:7px;cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;transition:background .12s;}
-.att-nav-btn:hover{background:var(--w3);}
-.att-cal-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:var(--rr);border:1px solid var(--bdr);background:var(--w);}
-.att-cal-table{border-collapse:collapse;white-space:nowrap;font-family:'JetBrains Mono',monospace;}
-.att-cal-table th,.att-cal-table td{border-right:1px solid var(--bdr);border-bottom:1px solid var(--bdr);padding:0;}
-.att-name-h{position:sticky;left:0;z-index:3;background:var(--w2);padding:6px 8px;font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink4);font-weight:700;min-width:62px;border-right:2px solid var(--bdr2)!important;}
-.att-name-cell{position:sticky;left:0;z-index:2;background:var(--w);padding:4px 7px;font-size:12px;font-weight:700;min-width:62px;max-width:62px;border-right:2px solid var(--bdr2)!important;overflow:hidden;text-overflow:ellipsis;}
-.att-name-cell.sum{background:var(--w2);font-size:10px;color:var(--ink4);font-weight:500;}
-.att-day-h{width:44px;min-width:44px;text-align:center;padding:4px 2px;background:var(--w2);}
-.att-day-h .adn{font-size:11px;font-weight:700;color:var(--ink2);}
-.att-day-h .adw{font-size:9px;color:var(--ink4);}
-.att-day-h.sun .adn,.att-day-h.sun .adw{color:var(--r);}
-.att-day-h.sat .adn,.att-day-h.sat .adw{color:var(--b);}
-.att-cell{width:44px;min-width:44px;text-align:center;padding:3px 1px;vertical-align:middle;height:40px;}
-.att-cell.sun{background:#fff8f8;}.att-cell.sat{background:#f5f8ff;}
-.att-cell.off{background:var(--rb);}.att-cell.wkg{background:var(--gb);}
-.att-t{font-size:9.5px;line-height:1.5;font-family:'JetBrains Mono',monospace;}
-.att-ti{color:var(--g);}.att-to{color:var(--r);}
-.att-kyuu{color:var(--r);font-weight:700;font-size:12px;}
-.att-sum-cell{text-align:center;padding:3px 1px;font-size:9px;font-family:'JetBrains Mono',monospace;color:var(--ink3);background:var(--w2);height:26px;vertical-align:middle;}
 /* ── TOAST ── */
 .toast{position:fixed;bottom:18px;right:18px;z-index:200;background:var(--w);border:1px solid var(--bdr);border-radius:var(--rr);padding:8px 13px;font-size:12px;font-weight:500;box-shadow:var(--sh2);display:none;}
 .toast.show{display:block;animation:up .13s ease;}
@@ -350,7 +329,6 @@ body{font-family:'Sora',sans-serif;background:var(--w2);color:var(--ink);min-hei
   <button class="tab" onclick="goTab(event,'tl')">⏱ Timeline</button>
   <button class="tab" id="rTab" onclick="handleRTab(event)">📊 Báo cáo 🔒</button>
   <button class="tab" onclick="goTab(event,'settings')">⚙ Cài đặt</button>
-  <button class="tab" onclick="goTab(event,'attcal')">📋 Thực Tế</button>
 </div>
 <div class="pg">
   <!-- LỊCH -->
@@ -410,9 +388,6 @@ body{font-family:'Sora',sans-serif;background:var(--w2);color:var(--ink);min-hei
     <div id="settingsContent"></div>
   </div>
   <!-- CHẤM CÔNG THỰC TẾ -->
-  <div id="attcal" class="sec">
-    <div id="attCalContent"></div>
-  </div>
 </div>
 <!-- MODAL: xếp ca ngày -->
 <div class="ov" id="modal">
@@ -504,7 +479,6 @@ const STORAGE_KEY='torishin_shift_planner_v1';
 const FB_URL='https://torishin-ace11-default-rtdb.asia-southeast1.firebasedatabase.app';
 firebase.initializeApp({databaseURL:FB_URL});
 const _spRef=firebase.database().ref('torishin_shifts');
-const _attRef=firebase.database().ref('torishin_attendance');
 let monthScheds={};
 let monthKibo={};      // {monthKey: {sid:[days...]}} — lưu kibo từng tháng riêng biệt
 let monthKiboH={}; // {monthKey: {sid:{day:{start,end}}}} — giờ kibo từng tháng
@@ -1249,11 +1223,74 @@ function renderSettings(){
   });
 
   html+=`</div>
+
+    <div class="set-section-h" style="margin-top:20px;">➕ Thêm thành viên mới</div>
+    <div class="set-global" style="margin-bottom:16px;">
+      <div class="set-global-grid" style="grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;">
+        <div class="set-row" style="flex-direction:column;align-items:flex-start;gap:4px;">
+          <div class="set-lbl">Tên nhân viên</div>
+          <input class="set-i" id="nm-name" placeholder="Ví dụ: Lan" style="width:100%;">
+        </div>
+        <div class="set-row" style="flex-direction:column;align-items:flex-start;gap:4px;">
+          <div class="set-lbl">Loại nhân viên</div>
+          <select class="set-i" id="nm-type" style="width:100%;">
+            <option value="pt">Part-time (làm thêm)</option>
+            <option value="main">Chính thức (NVCT)</option>
+          </select>
+        </div>
+        <div class="set-row" style="flex-direction:column;align-items:flex-start;gap:4px;">
+          <div class="set-lbl">Màu hiển thị</div>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <input type="color" id="nm-color" value="#2d6a9f" style="width:44px;height:30px;border:1px solid var(--bdr);border-radius:5px;cursor:pointer;padding:1px;">
+            <span style="font-size:10px;color:var(--ink4);">Chọn màu chip lịch</span>
+          </div>
+        </div>
+        <div class="set-row" style="flex-direction:column;align-items:flex-start;gap:4px;">
+          <div class="set-lbl">Giờ vào / Giờ ra mặc định</div>
+          <div style="display:flex;gap:6px;align-items:center;">
+            <input class="set-i w90" type="time" id="nm-ds" value="17:00">
+            <span style="font-size:11px;color:var(--ink4);">~</span>
+            <input class="set-i w90" type="time" id="nm-de" value="23:00">
+          </div>
+        </div>
+        <div class="set-row" style="flex-direction:column;align-items:flex-start;gap:4px;">
+          <div class="set-lbl">Giải lao mặc định</div>
+          <div class="set-field-wrap">
+            <input class="set-i w80" type="number" id="nm-brk" min="0" max="120" step="5" value="0">
+            <span class="set-field-unit">phút</span>
+          </div>
+        </div>
+        ${isMgr?`
+        <div class="set-row" style="flex-direction:column;align-items:flex-start;gap:4px;">
+          <div class="set-lbl" id="nm-pay-lbl">Đơn giá / giờ (PT)</div>
+          <div class="set-field-wrap">
+            <input class="set-i w120" type="text" id="nm-pay" placeholder="30000">
+            <span class="set-field-unit" id="nm-pay-unit">đ/giờ</span>
+          </div>
+        </div>`:''}
+      </div>
+      <div style="margin-top:12px;display:flex;align-items:center;gap:10px;">
+        <button class="btn dk" onclick="addNewMember()" style="padding:7px 18px;font-size:12px;">➕ Thêm vào danh sách</button>
+        <span id="nm-msg" style="font-size:11px;color:var(--g);"></span>
+      </div>
+    </div>
+
     <div class="set-apply-bar">
       <span class="set-apply-note">Lưu sẽ reset lịch tháng ${curM}/${curY} theo cài đặt mới</span>
       <button class="btn dk" onclick="applySettings()" style="padding:8px 20px;font-size:12.5px;">💾 Lưu & áp dụng</button>
     </div>
   `;
+  // Update pay label when type changes
+  setTimeout(()=>{
+    const sel=document.getElementById('nm-type');
+    if(!sel)return;
+    sel.addEventListener('change',()=>{
+      const lbl=document.getElementById('nm-pay-lbl');
+      const unit=document.getElementById('nm-pay-unit');
+      if(lbl)lbl.textContent=sel.value==='main'?'Lương cơ bản / tháng':'Đơn giá / giờ (PT)';
+      if(unit)unit.textContent=sel.value==='main'?'đ/tháng':'đ/giờ';
+    });
+  },50);
 
   document.getElementById('settingsContent').innerHTML=html;
 }
@@ -1290,6 +1327,45 @@ function applySettings(){
   if(document.getElementById('tl').classList.contains('on'))renderTl();
   if(document.getElementById('rpt').classList.contains('on')&&rptOpen)renderReport();
   toast('Đã lưu cài đặt & cập nhật lịch ✓','ok');
+}
+
+function addNewMember(){
+  const name=(document.getElementById('nm-name').value||'').trim();
+  const type=document.getElementById('nm-type').value;
+  const hex=document.getElementById('nm-color').value;
+  const dsRaw=document.getElementById('nm-ds').value;
+  const deRaw=document.getElementById('nm-de').value;
+  const brkV=parseInt(document.getElementById('nm-brk').value)||0;
+  const payEl=document.getElementById('nm-pay');
+  const payV=payEl?parseInt((payEl.value||'').replace(/\D/g,''))||0:0;
+  const msg=document.getElementById('nm-msg');
+
+  if(!name){if(msg)msg.textContent='⚠ Vui lòng nhập tên nhân viên.';return;}
+  if(STAFF.find(s=>s.name.toLowerCase()===name.toLowerCase())){if(msg)msg.textContent='⚠ Tên đã tồn tại.';return;}
+
+  const ds=t2h(dsRaw)||17;
+  let de=t2h(deRaw)||23;
+  if(de<=ds)de+=24;
+
+  // Generate unique id from name
+  const baseId=name.toLowerCase().replace(/\s+/g,'').replace(/[^a-z0-9]/g,'').substring(0,12)||('nv'+Date.now());
+  const id=STAFF.find(s=>s.id===baseId)?baseId+Date.now():baseId;
+
+  const newMember={
+    id, name, type, hex, ds, de,
+    fix: type==='main',
+    defaultBreak: brkV,
+    requestedOff: [],
+    kiboHours: {}
+  };
+  if(type==='main') newMember.base=payV||10000000;
+  else newMember.rate=payV||30000;
+
+  STAFF.push(newMember);
+  saveState();
+  renderSettings();
+  renderAll();
+  toast(`Đã thêm ${name} vào danh sách ✓`,'ok');
 }
 
 // ════════════════════════════════════
@@ -1496,124 +1572,9 @@ function goTab(e,id){
   if(id==='tl')renderTl();
   if(id==='rpt'&&rptOpen)renderReport();
   if(id==='settings')renderSettings();
-  if(id==='attcal')renderAttCal();
 }
 
 // ════════════════════════════════════
-// CHẤM CÔNG THỰC TẾ — lịch tháng
-// ════════════════════════════════════
-let _attCalMonth=null;
-let _attRecords={};
-
-function _fmtTime(ts){
-  if(!ts)return'--';
-  const d=new Date(ts);
-  return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
-}
-
-function renderAttCal(){
-  const el=document.getElementById('attCalContent');
-  if(!_attCalMonth){
-    const n=new Date();
-    _attCalMonth=n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0');
-  }
-  el.innerHTML='<div style="padding:40px;text-align:center;color:var(--ink4)">⏳ Đang tải dữ liệu chấm công...</div>';
-  _attRef.once('value').then(snap=>{
-    _attRecords=snap.val()||{};
-    _renderAttCalGrid(el);
-  }).catch(()=>{
-    el.innerHTML='<div style="padding:40px;text-align:center;color:var(--r)">❌ Không tải được dữ liệu</div>';
-  });
-}
-
-function _renderAttCalGrid(el){
-  const [yr,mo]=_attCalMonth.split('-').map(Number);
-  const days=new Date(yr,mo,0).getDate();
-  const DOW=['CN','T2','T3','T4','T5','T6','T7'];
-
-  function prevMo(){const d=new Date(yr,mo-2,1);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');}
-  function nextMo(){const d=new Date(yr,mo,1);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');}
-
-  const dayHdrs=Array.from({length:days},(_,i)=>{
-    const dow=new Date(yr,mo-1,i+1).getDay();
-    const cls=dow===0?'sun':dow===6?'sat':'';
-    return `<th class="att-day-h ${cls}"><div class="adn">${i+1}</div><div class="adw">${DOW[dow]}</div></th>`;
-  }).join('');
-
-  const staffRows=STAFF.map(s=>{
-    const cells=Array.from({length:days},(_,i)=>{
-      const dk=yr+'-'+String(mo).padStart(2,'0')+'-'+String(i+1).padStart(2,'0');
-      const rec=(_attRecords[dk]||{})[s.id]||null;
-      const dow=new Date(yr,mo-1,i+1).getDay();
-      let cls='att-cell'+(dow===0?' sun':dow===6?' sat':'');
-      let inner='';
-      if(rec?.isOff){
-        cls+=' off';inner='<div class="att-kyuu">休</div>';
-      } else if(rec?.clockIn&&rec?.clockOut){
-        inner=`<div class="att-t att-ti">${_fmtTime(rec.clockIn)}</div><div class="att-t att-to">${_fmtTime(rec.clockOut)}</div>`;
-      } else if(rec?.clockIn){
-        cls+=' wkg';inner=`<div class="att-t att-ti">${_fmtTime(rec.clockIn)}</div><div class="att-t" style="color:var(--o)">▷</div>`;
-      }
-      return `<td class="${cls}">${inner}</td>`;
-    }).join('');
-    return `<tr><td class="att-name-cell" style="color:${s.hex||'var(--ink)'}">${s.name}</td>${cells}</tr>`;
-  }).join('');
-
-  const sumCells=Array.from({length:days},(_,i)=>{
-    const dk=yr+'-'+String(mo).padStart(2,'0')+'-'+String(i+1).padStart(2,'0');
-    let tot=0;
-    STAFF.forEach(s=>{
-      const rec=(_attRecords[dk]||{})[s.id];
-      if(rec?.clockIn&&rec?.clockOut){
-        const brk=(rec.breaks||[]).reduce((a,b)=>a+(b.end&&b.start?b.end-b.start:0),0);
-        tot+=(rec.clockOut-rec.clockIn-brk)/3600000;
-      }
-    });
-    const h=Math.floor(tot),m=Math.round((tot-h)*60);
-    const txt=tot>0?(h+(m?'h'+String(m).padStart(2,'0'):'h')):'';
-    return `<td class="att-sum-cell">${txt}</td>`;
-  }).join('');
-
-  const staffTotals=STAFF.map(s=>{
-    let tot=0,wd=0;
-    for(let i=1;i<=days;i++){
-      const dk=yr+'-'+String(mo).padStart(2,'0')+'-'+String(i).padStart(2,'0');
-      const rec=(_attRecords[dk]||{})[s.id];
-      if(rec?.clockIn&&rec?.clockOut){
-        const brk=(rec.breaks||[]).reduce((a,b)=>a+(b.end&&b.start?b.end-b.start:0),0);
-        tot+=(rec.clockOut-rec.clockIn-brk)/3600000; wd++;
-      }
-    }
-    const hh=Math.floor(tot),mm=Math.round((tot-hh)*60);
-    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 14px;border-bottom:1px solid var(--bdr);font-size:12.5px;">
-      <span style="font-weight:700;color:${s.hex||'var(--ink)'}">${s.name}</span>
-      <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--ink2)">${wd} ngày làm</span>
-      <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--ink3)">${hh}h${String(mm).padStart(2,'0')}p</span>
-    </div>`;
-  }).join('');
-
-  const moLabel=new Date(yr,mo-1,1).toLocaleDateString('vi-VN',{month:'long',year:'numeric'});
-
-  el.innerHTML=`
-  <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;background:var(--w);border-radius:var(--rr);padding:11px 14px;border:1px solid var(--bdr);">
-    <button class="att-nav-btn" onclick="_attCalMonth='${prevMo()}';_renderAttCalGrid(document.getElementById('attCalContent'))">‹</button>
-    <div style="flex:1;text-align:center;font-size:14px;font-weight:700;">${moLabel}</div>
-    <button class="att-nav-btn" onclick="_attCalMonth='${nextMo()}';renderAttCal()">›</button>
-  </div>
-  <div class="att-cal-wrap">
-    <table class="att-cal-table">
-      <thead><tr><th class="att-name-h">Tên</th>${dayHdrs}</tr></thead>
-      <tbody>
-        ${staffRows}
-        <tr><td class="att-name-cell sum">Tổng (h)</td>${sumCells}</tr>
-      </tbody>
-    </table>
-  </div>
-  <div style="background:var(--w);border:1px solid var(--bdr);border-radius:var(--rr);margin-top:12px;overflow:hidden;">
-    <div style="padding:10px 14px;border-bottom:1px solid var(--bdr);font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--ink4);font-weight:700;">Tổng tháng</div>
-    ${staffTotals}
-  </div>`;
-}
 function toast(msg,type){
   const t=document.getElementById('toast');t.textContent=msg;
   const c=type==='ok'?'var(--g)':type==='e'?'var(--r)':'var(--o)';
@@ -1790,17 +1751,6 @@ function buildPrintTableHtml(half){
     thDow+=`<th style="font-size:8px;padding:2px 1px;${bg};color:${w===0?'#c94040':w===6?'#1a4a9e':'#666'};">${DOW_JP[w]}<br><span style="font-size:7px;opacity:.7">${DOW_VI[w]}</span></th>`;
   }
   const cellBg=(w)=>w===0?'background:#fff5f5':w===6?'background:#f5f7ff':'';
-  // Giờ PT dự kiến theo pattern (sếp quy định)
-  const ptExpected=(d)=>{
-    const w=getDow(d);
-    const mc=getA(d).filter(sh=>{const s=gs(sh.staffId);return s&&s.type==='main';}).length;
-    if(w>=1&&w<=4) return mc>=3?6.5:13;
-    if(w===5||w===6) return mc>=3?13:20;
-    return mc>=3?10:18; // 日
-  };
-  // Giờ PT thực tế đã xếp (net hours, không tính __help__)
-  const ptActual=(d)=>getA(d).filter(sh=>{const s=gs(sh.staffId);return s&&s.type==='pt';})
-    .reduce((sum,sh)=>sum+calcShift(sh).net,0);
 
   let rows='';
   STAFF.forEach(s=>{
@@ -1816,31 +1766,6 @@ function buildPrintTableHtml(half){
     rows+=`<tr style="border-bottom:1px solid #e5e5e5;">${row}</tr>`;
   });
 
-  // ── 2 hàng tổng giờ PT cuối bảng ──
-  let totalExp=0, totalAct=0;
-  let expRow=`<td class="col-name" style="padding:4px 8px;font-weight:700;color:#1840a0;white-space:nowrap;border-right:2px solid #ddd;font-size:10px;background:#eef2fc;">予定<br><span style="font-size:8px;font-weight:400;">Dự kiến (h)</span></td>`;
-  let actRow=`<td class="col-name" style="padding:4px 8px;font-weight:700;color:#1e7a48;white-space:nowrap;border-right:2px solid #ddd;font-size:10px;background:#eef8f2;">実際<br><span style="font-size:8px;font-weight:400;">Thực tế (h)</span></td>`;
-  for(let d=dFrom;d<=dTo;d++){
-    const w=getDow(d),bg=cellBg(w);
-    const exp=ptExpected(d), act=ptActual(d);
-    totalExp+=exp; totalAct+=act;
-    const diff=Math.abs(exp-act);
-    const actColor=diff<0.1?'#1e7a48':diff<=1?'#8a5c08':'#c94040';
-    expRow+=`<td style="text-align:center;font-size:9px;font-weight:600;${bg};background:${bg||'#f0f4ff'};color:#1840a0;">${hL(exp)}</td>`;
-    actRow+=`<td style="text-align:center;font-size:9px;font-weight:600;${bg};background:${bg||'#f0faf4'};color:${actColor};">${act>0?hL(act):'—'}</td>`;
-  }
-  const diffTotal=totalAct-totalExp;
-  rows+=`<tr style="border-top:2px solid #bbb;">${expRow}</tr>`;
-  rows+=`<tr style="border-bottom:2px solid #bbb;">${actRow}</tr>`;
-  // Dòng tổng kỳ
-  rows+=`<tr><td colspan="${dTo-dFrom+2}" style="padding:5px 10px;font-size:10px;background:#f8f6f2;border-top:1px solid #ddd;">
-    <b>Tổng kỳ:</b>
-    &nbsp;予定 Dự kiến: <b style="color:#1840a0">${hL(totalExp)}</b>
-    &nbsp;|&nbsp;
-    実際 Thực tế: <b style="color:#1e7a48">${hL(totalAct)}</b>
-    &nbsp;|&nbsp;
-    Chênh lệch: <b style="color:${Math.abs(diffTotal)<0.1?'#1e7a48':diffTotal<0?'#c94040':'#8a5c08'}">${diffTotal>=0?'+':''}${hL(Math.abs(diffTotal))}${diffTotal<0?' (thiếu)':diffTotal>0?' (dư)':' ✓'}</b>
-  </td></tr>`;
   // Hàng Help: chỉ hiện nếu có ít nhất 1 ngày cần bổ sung trong kỳ này
   const helpDays={};
   for(let d=dFrom;d<=dTo;d++){
