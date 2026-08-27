@@ -354,9 +354,9 @@ function calcAttHours(rec){
 }
 function attPayroll(mid){
   if(!_attData?.records) return null;
-  const cfg=monthCfg(mid);
+  const cfg=monthCfg(mid), md=monthData(mid);
   return STAFF.map(s=>{
-    let reg=0,night=0,workDays=0,mealDays=0;
+    let reg=0,night=0,workDays=0,mealDays=0,revBonus=0;
     const days=[];
     for(let i=0;i<cfg.days;i++){
       const dk=`${cfg.year}-${String(cfg.num).padStart(2,'0')}-${String(i+1).padStart(2,'0')}`;
@@ -365,7 +365,13 @@ function attPayroll(mid){
       if(rec?.isOff){ cell.status='off'; }
       else if(rec?.clockIn&&rec?.clockOut){
         const h=calcAttHours(rec);
-        if(h&&h.total>0){ cell.status='done';cell.h=h; reg+=h.reg;night+=h.night;workDays++; if(h.total>=6) mealDays++; }
+        if(h&&h.total>0){
+          cell.status='done';cell.h=h;
+          reg+=h.reg;night+=h.night;workDays++;
+          if(h.total>=6) mealDays++;
+          // Thưởng ngày DT>15M + làm >6h
+          if(h.total>6&&dayRev(md,i)>15000000) revBonus+=50000;
+        }
       } else if(rec?.clockIn){ cell.status='working'; }
       days.push(cell);
     }
@@ -373,7 +379,11 @@ function attPayroll(mid){
     let salary=0;
     if(s.type==='lcb'){ const hr=s.base/273; salary=s.base+night*hr*0.25+Math.max(0,totalHrs-208)*hr*0.25; }
     else { salary=reg*s.rate+night*s.rate*1.25+Math.max(0,totalHrs-208)*s.rate*0.25; }
-    return {...s,reg,night,totalHrs,workDays,mealDays,meal,salary,total:Math.round(salary+meal),days};
+    const attBonus=workDays>=26?300000:0;
+    const langBonus=s.id==='trung'?1000000:0;
+    const bhxh=s.type==='lcb'?577500:0;
+    const total=Math.round(salary+meal+revBonus+attBonus+langBonus-bhxh);
+    return {...s,reg,night,totalHrs,workDays,mealDays,meal,salary,revBonus,attBonus,langBonus,bhxh,total,days};
   });
 }
 
