@@ -1107,11 +1107,11 @@ function renderDashboard(){
     const shakai_hoken=plc.shakai_hoken||0;
     const denkounetsu=plc.denkounetsu||0;
     const yachin=plc.yachin||0;
-    const zatsuhiyou=plc.zatsuhiyou||0;
     const junbai=T.rev-shohizei;
     const genka=T.food+T.drink;
     const jinkenhi=pay.total+shakai_hoken;
     const fl=junbai>0?(genka+jinkenhi)/junbai:null;
+    const zatsuhiyou=T.other; // 雑費 = tổng chiKhac (tự động)
     const eigyo_rieki=junbai-(genka+jinkenhi+denkounetsu+yachin+zatsuhiyou);
     const rieki_pct=junbai>0?eigyo_rieki/junbai:null;
     const p=junbai>0?v=>pct(v/junbai):'';
@@ -1159,7 +1159,7 @@ function renderDashboard(){
             '',{bold:true,sep:true})}
           ${row('電光熱費 — Điện / Nước / Gas','Utilities',editInput('denkounetsu',denkounetsu),pJunbai(denkounetsu),{sep:true})}
           ${row('家賃 — Tiền thuê nhà','Rent','<span style="background:#fffbeb;border-radius:3px;padding:1px 4px">'+editInput('yachin',yachin)+'</span>',pJunbai(yachin))}
-          ${row('雑費 — Tạp phí','Miscellaneous','<span style="background:#fffbeb;border-radius:3px;padding:1px 4px">'+editInput('zatsuhiyou',zatsuhiyou)+'</span>',pJunbai(zatsuhiyou))}
+          ${row('雑費 — Chi phí khác','Miscellaneous (từ chiKhac)',num(zatsuhiyou),pJunbai(zatsuhiyou))}
           ${row('営業利益 — Lợi nhuận hoạt động','Operating Profit',
             `<strong style="${eigyo_rieki>=0?'color:var(--good)':'color:var(--bad)'}">${num(eigyo_rieki)}</strong>`,
             rieki_pct!==null?pct(rieki_pct):'—',{bold:true,sep:true,profit:true})}
