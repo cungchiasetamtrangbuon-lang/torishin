@@ -285,7 +285,7 @@ tr.sum-row:hover td{background:#f1f5f9}
 // ═══════════════════════════════════════════════════════════════
 const TP_COLS = ['Simba','Akuruhi','Gà','Rau','Hải sản','Chef Meat','Xúc xích','Trứng cút','BH Xanh','Thần tài','Gas','Dụng cụ','Lotte Mart','Kimchi'];
 const RU_COLS = ['San Miguel','Bia HN','Huda Tiger','Sapporo','Coca','Traf Ôlong','Than','Huefoods'];
-const OTHER_COLS = ['Điện','Nước','Internet','Dụng cụ','Sửa chữa','Chi khác'];
+const OTHER_COLS = ['Gas','Than','Internet','Dụng cụ','Sửa chữa','Chi khác'];
 const STAFF = [
   {id:'trung',  name:'Trung 店長', short:'Trung',  type:'lcb', base:12500000},
   {id:'khuong', name:'Khương',     short:'Khương', type:'lcb', base:10500000},
@@ -410,7 +410,8 @@ function initMonthData(days){
     ruou:     Array.from({length:days},()=>Array(RU_COLS.length).fill(null)),
     chiKhac:  Array.from({length:days},()=>Array(OTHER_COLS.length).fill(null)),
     bangLuong:{shifts:Object.fromEntries(STAFF.map(s=>[s.id,Array(days).fill(null)]))},
-    plConfig: {shohizei:0, shakai_hoken:0, denkounetsu:0, yachin:0, zatsuhiyou:0}
+    plConfig: {shohizei:0, shakai_hoken:0, denkounetsu:0, yachin:0, zatsuhiyou:0},
+    chiKhacCols: []
   };
 }
 
@@ -1418,14 +1419,27 @@ function renderRuou(){
 // ═══════════════════════════════════════════════════════════════
 // CHI PHÍ KHÁC
 // ═══════════════════════════════════════════════════════════════
+function addChiKhacCol(mid){
+  const name=(prompt('Tên cột mới (nhà cung cấp / khoản mục):')||'').trim();
+  if(!name) return;
+  const md=monthData(mid);
+  if(!md.chiKhacCols) md.chiKhacCols=[];
+  md.chiKhacCols.push(name);
+  saveData();
+  renderChiKhac();
+}
+
 function renderChiKhac(){
   const mid=S.curMonth, cfg=monthCfg(mid), md=monthData(mid);
-  if(!md.chiKhac) md.chiKhac=Array.from({length:cfg.days},()=>Array(OTHER_COLS.length).fill(null));
-  const colTotals=Array(OTHER_COLS.length).fill(0);
+  if(!md.chiKhacCols) md.chiKhacCols=[];
+  const allCols=[...OTHER_COLS,...md.chiKhacCols];
+  if(!md.chiKhac) md.chiKhac=Array.from({length:cfg.days},()=>Array(allCols.length).fill(null));
+  const colTotals=Array(allCols.length).fill(0);
+  const OTHER_JP=['ガス','炭','通信費','備品費','修繕費','雑費'];
   const rows=Array.from({length:cfg.days},(_,i)=>{
     const d=dayDate(mid,i), dow=d.getDay(), isWE=dow===0||dow===6;
     const rowTotal=dayOtherCost(md,i);
-    const cells=OTHER_COLS.map((col,ci)=>{
+    const cells=allCols.map((col,ci)=>{
       const raw=md.chiKhac[i]?.[ci]||null;
       const tot=cellV(raw); colTotals[ci]+=tot;
       const tip=cellTip(raw);
@@ -1443,24 +1457,24 @@ function renderChiKhac(){
   }).join('');
   const totRow=colTotals.map(v=>`<td style="font-weight:700">${v?num(v):'—'}</td>`).join('');
   const grandTotal=colTotals.reduce((a,b)=>a+b,0);
-
-  const OTHER_JP=['電気代','水道代','通信費','備品費','修繕費','雑費'];
   document.getElementById('main').innerHTML=`
   <div class="page-hdr">
     <div><div class="page-title">⚡ Chi Phí Khác / その他経費 — ${cfg.id}/${cfg.year}</div>
-    <div class="page-sub">電気・水道・通信など運営経費 / Điện, nước, internet và các chi phí vận hành.</div></div>
+    <div class="page-sub">ガス・炭・通信など運営経費 / Gas, than, internet và các chi phí vận hành.</div></div>
   </div>
   <div class="card">
     <div class="card-body"><table>
       <thead><tr>
         <th style="text-align:left;min-width:80px">Ngày<br><span style="font-weight:400;opacity:.65">日付</span></th>
-        ${OTHER_COLS.map((c,i)=>`<th>${c}<br><span style="font-weight:400;opacity:.65">${OTHER_JP[i]||''}</span></th>`).join('')}
+        ${allCols.map((c,i)=>`<th>${c}<br><span style="font-weight:400;opacity:.65">${OTHER_JP[i]||''}</span></th>`).join('')}
         <th style="color:var(--info)">Tổng ngày<br><span style="font-weight:400;opacity:.65">日計</span></th>
+        <th style="padding:0"><button onclick="addChiKhacCol('${mid}')" title="Thêm cột nhà cung cấp" style="background:var(--accent);color:#fff;border:none;border-radius:6px;padding:4px 10px;font-size:1.1rem;cursor:pointer;line-height:1">+</button></th>
       </tr></thead>
       <tbody>${rows}</tbody>
       <tfoot><tr class="sum-row">
         <td class="left">TỔNG / 合計</td>${totRow}
         <td style="font-weight:800;color:var(--info)">${num(grandTotal)}</td>
+        <td></td>
       </tr></tfoot>
     </table></div>
   </div>`;
