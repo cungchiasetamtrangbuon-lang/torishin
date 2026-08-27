@@ -708,7 +708,26 @@ function payrollSummary(mid){
   const md=monthData(mid), cfg=monthCfg(mid);
   return STAFF.map(s=>{
     const shifts=md.bangLuong.shifts[s.id]||Array(cfg.days).fill(null);
-    return {...s, ...calcStaff(s,shifts)};
+    const base=calcStaff(s,shifts);
+
+    // Thưởng ngày doanh thu >15M + làm >6 tiếng → +50,000đ/ngày
+    let revBonus=0;
+    shifts.forEach((code,i)=>{
+      const h=getShiftHours(code);
+      if(h.r+h.n>6 && dayRev(md,i)>15000000) revBonus+=50000;
+    });
+
+    // Thưởng chuyên cần: đủ 26 công → +300,000đ
+    const attBonus=base.workDays>=26?300000:0;
+
+    // Phụ cấp tiếng Nhật (Trung 店長) → +1,000,000đ
+    const langBonus=s.id==='trung'?1000000:0;
+
+    // Trừ BHXH nhân viên chính thức (LCB) → -577,500đ
+    const bhxh=s.type==='lcb'?577500:0;
+
+    const total=Math.round(base.salary+base.meal+revBonus+attBonus+langBonus-bhxh);
+    return {...s,...base,revBonus,attBonus,langBonus,bhxh,total};
   });
 }
 
@@ -1496,17 +1515,24 @@ function renderBangLuong(){
   `<tr><td colspan="100" style="text-align:center;color:var(--muted);padding:20px">Chưa có dữ liệu chấm công tháng này</td></tr>`;
 
   // Salary detail table
-  const detailRows=summary.map(s=>`<tr>
+  const detailRows=summary.map(s=>{
+    const bonusParts=[];
+    if(s.revBonus) bonusParts.push(`+${num(s.revBonus)} (DT>15M)`);
+    if(s.attBonus) bonusParts.push(`+${num(s.attBonus)} (26công)`);
+    if(s.langBonus) bonusParts.push(`+${num(s.langBonus)} (tiếng Nhật)`);
+    if(s.bhxh) bonusParts.push(`<span style="color:var(--bad)">−${num(s.bhxh)} (BHXH)</span>`);
+    return `<tr>
     <td class="left">${s.name}</td>
     <td class="center">${s.type==='lcb'?'LCB':'Giờ'}</td>
-    <td class="center">${s.workDays}</td>
+    <td class="center" style="${s.workDays>=26?'color:var(--good);font-weight:700':''}">${s.workDays}</td>
     <td class="center">${s.mealDays}</td>
     <td>${s.reg.toFixed(1)}H</td>
     <td>${s.night.toFixed(1)}H</td>
     <td style="font-weight:700">${s.salary?num(Math.round(s.salary)):'—'}</td>
     <td>${s.meal?num(s.meal):'—'}</td>
+    <td style="font-size:11px;color:var(--muted)">${bonusParts.join('<br>')||'—'}</td>
     <td style="font-weight:800;color:var(--accent)">${s.total?num(s.total):'—'}</td>
-  </tr>`).join('');
+  </tr>`;}).join('');
 
   // Manual shift table (fallback / reference)
   const shiftSum=payrollSummary(mid);
@@ -1592,6 +1618,7 @@ function renderBangLuong(){
           <th>Giờ đêm<br><span style="font-weight:400;opacity:.65">深夜H</span></th>
           <th>Lương<br><span style="font-weight:400;opacity:.65">基本給</span></th>
           <th>Tiền ăn<br><span style="font-weight:400;opacity:.65">食事手当</span></th>
+          <th>Thưởng / Trừ<br><span style="font-weight:400;opacity:.65">手当・控除</span></th>
           <th>Tổng<br><span style="font-weight:400;opacity:.65">合計</span></th>
         </tr></thead>
         <tbody>${detailRows}</tbody>
@@ -1599,6 +1626,7 @@ function renderBangLuong(){
           <td class="left" colspan="6"><strong>TỔNG CỘNG / 合計</strong></td>
           <td>${num(Math.round(totals.salary))}</td>
           <td>${num(totals.meal)}</td>
+          <td>—</td>
           <td style="color:var(--accent);font-weight:800">${num(totals.total)}</td>
         </tr></tfoot>
       </table>
