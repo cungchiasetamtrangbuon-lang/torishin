@@ -400,7 +400,7 @@ function initMonthData(days){
     ruou:     Array.from({length:days},()=>Array(RU_COLS.length).fill(null)),
     chiKhac:  Array.from({length:days},()=>Array(OTHER_COLS.length).fill(null)),
     bangLuong:{shifts:Object.fromEntries(STAFF.map(s=>[s.id,Array(days).fill(null)]))},
-    plConfig: {shohizei:0, shakai_hoken:0, yachin:0, zatsuhiyou:0}
+    plConfig: {shohizei:0, shakai_hoken:0, denkounetsu:0, yachin:0, zatsuhiyou:0}
   };
 }
 
@@ -1105,14 +1105,14 @@ function renderDashboard(){
     const plc=md.plConfig||{};
     const shohizei=plc.shohizei||0;
     const shakai_hoken=plc.shakai_hoken||0;
+    const denkounetsu=plc.denkounetsu||0;
     const yachin=plc.yachin||0;
     const zatsuhiyou=plc.zatsuhiyou||0;
     const junbai=T.rev-shohizei;
     const genka=T.food+T.drink;
     const jinkenhi=pay.total+shakai_hoken;
     const fl=junbai>0?(genka+jinkenhi)/junbai:null;
-    const utilities=T.other;
-    const eigyo_rieki=junbai-(genka+jinkenhi+utilities+yachin+zatsuhiyou);
+    const eigyo_rieki=junbai-(genka+jinkenhi+denkounetsu+yachin+zatsuhiyou);
     const rieki_pct=junbai>0?eigyo_rieki/junbai:null;
     const p=junbai>0?v=>pct(v/junbai):'';
     const pJunbai=v=>junbai>0?pct(v/junbai):'';
@@ -1157,7 +1157,7 @@ function renderDashboard(){
           ${row('FL% — Nguyên vật liệu + Nhân công','Food & Labor Ratio',
             `<span style="font-size:15px;font-weight:800;color:${fl===null?'var(--muted)':fl<0.65?'var(--good)':fl<0.72?'var(--warn)':'var(--bad)'}">${fl!==null?pct(fl):'—'}</span>`,
             '',{bold:true,sep:true})}
-          ${row('電光熱費 — Điện / Nước / Gas','Utilities (từ chiKhac)',num(utilities),pJunbai(utilities),{sep:true})}
+          ${row('電光熱費 — Điện / Nước / Gas','Utilities',editInput('denkounetsu',denkounetsu),pJunbai(denkounetsu),{sep:true})}
           ${row('家賃 — Tiền thuê nhà','Rent','<span style="background:#fffbeb;border-radius:3px;padding:1px 4px">'+editInput('yachin',yachin)+'</span>',pJunbai(yachin))}
           ${row('雑費 — Tạp phí','Miscellaneous','<span style="background:#fffbeb;border-radius:3px;padding:1px 4px">'+editInput('zatsuhiyou',zatsuhiyou)+'</span>',pJunbai(zatsuhiyou))}
           ${row('営業利益 — Lợi nhuận hoạt động','Operating Profit',
