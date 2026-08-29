@@ -1780,6 +1780,15 @@ function buildPrintTableHtml(half){
   }
   rows+=`<tr style="border-top:2px solid #c5d935;">${expRow}</tr>`;
 
+  // Hàng Thực tế: ô trống để điền tay sau khi in
+  let actRow=`<td class="col-name" style="padding:4px 8px;font-weight:600;color:#555;white-space:nowrap;border-right:2px solid #ddd;font-size:10px;background:#fff3f3;">実際 Thực tế (h)</td>`;
+  for(let d=dFrom;d<=dTo;d++){
+    const w=getDow(d);
+    const bgAct=w===0?'background:#fff0f0':w===6?'background:#f5f0ff':'background:#fff3f3';
+    actRow+=`<td style="${bgAct};min-height:18px;"></td>`;
+  }
+  rows+=`<tr style="border-top:1px dashed #e0a0a0;">${actRow}</tr>`;
+
   // Hàng Help: chỉ hiện nếu có ít nhất 1 ngày cần bổ sung trong kỳ này
   const helpDays={};
   for(let d=dFrom;d<=dTo;d++){
