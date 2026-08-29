@@ -1766,28 +1766,35 @@ function buildPrintTableHtml(half){
     rows+=`<tr style="border-bottom:1px solid #e5e5e5;">${row}</tr>`;
   });
 
-  // Hàng Dự kiến: tổng giờ PT mỗi ngày theo ca đã lên lịch
-  let expRow=`<td class="col-name" style="padding:4px 8px;font-weight:600;color:#555;white-space:nowrap;border-right:2px solid #ddd;font-size:10px;background:#f9fbe7;">予定 Dự kiến (h)</td>`;
+  // Hàng Theo quy tắc: tính từ PT slot rules (weekday + số NVCT hôm đó)
+  let ruleRow=`<td class="col-name" style="padding:4px 8px;font-weight:600;color:#555;white-space:nowrap;border-right:2px solid #ddd;font-size:10px;background:#f9fbe7;">📋 Theo quy tắc (h)</td>`;
+  const mainIds=new Set(STAFF.filter(s=>s.type==='main').map(s=>s.id));
+  for(let d=dFrom;d<=dTo;d++){
+    const w=getDow(d);
+    const bgRule=w===0?'background:#fff5f5':w===6?'background:#f5f7ff':'background:#f9fbe7';
+    const mc=getA(d).filter(x=>mainIds.has(x.staffId)).length;
+    let ptSl;
+    if(w>=1&&w<=4) ptSl=mc>=3?[{s:17,e:24,b:30}]:[{s:16,e:24,b:30},{s:18,e:23.5,b:0}];
+    else if(w===5||w===6) ptSl=mc>=3?[{s:17,e:24,b:30},{s:17,e:24,b:30}]:[{s:16,e:24,b:30},{s:17,e:24,b:30},{s:18,e:24,b:0}];
+    else ptSl=mc>=3?[{s:17,e:22,b:0},{s:18,e:23,b:0}]:[{s:16,e:23,b:30},{s:17,e:24,b:30},{s:18,e:23,b:0}];
+    const rH=ptSl.reduce((sum,sl)=>sum+(sl.e-sl.s-sl.b/60),0);
+    ruleRow+=`<td style="${bgRule};text-align:center;font-size:9px;font-weight:600;color:#5a7000;">${rH%1===0?rH:rH.toFixed(1)}</td>`;
+  }
+  rows+=`<tr style="border-top:2px solid #c5d935;">${ruleRow}</tr>`;
+
+  // Hàng Được xếp: tổng giờ PT theo lịch sếp sắp xếp (getA)
+  let schedRow=`<td class="col-name" style="padding:4px 8px;font-weight:600;color:#555;white-space:nowrap;border-right:2px solid #ddd;font-size:10px;background:#f0f4ff;">📅 Được xếp (h)</td>`;
   const ptIds=new Set(STAFF.filter(s=>s.type==='pt').map(s=>s.id));
   for(let d=dFrom;d<=dTo;d++){
     const w=getDow(d);
-    const bgExp=w===0?'background:#fff5f5':w===6?'background:#f5f7ff':'background:#f9fbe7';
+    const bgSched=w===0?'background:#fff5f5':w===6?'background:#f0f0ff':'background:#f0f4ff';
     const ptH=getA(d).filter(x=>ptIds.has(x.staffId))
       .reduce((sum,x)=>sum+(x.end-x.start-(x.breakMin||0)/60),0);
-    expRow+=ptH>0
-      ?`<td style="${bgExp};text-align:center;font-size:9px;font-weight:600;color:#5a7000;">${ptH%1===0?ptH:ptH.toFixed(1)}</td>`
-      :`<td style="${bgExp};"></td>`;
+    schedRow+=ptH>0
+      ?`<td style="${bgSched};text-align:center;font-size:9px;font-weight:600;color:#1840a0;">${ptH%1===0?ptH:ptH.toFixed(1)}</td>`
+      :`<td style="${bgSched};"></td>`;
   }
-  rows+=`<tr style="border-top:2px solid #c5d935;">${expRow}</tr>`;
-
-  // Hàng Thực tế: ô trống để điền tay sau khi in
-  let actRow=`<td class="col-name" style="padding:4px 8px;font-weight:600;color:#555;white-space:nowrap;border-right:2px solid #ddd;font-size:10px;background:#fff3f3;">実際 Thực tế (h)</td>`;
-  for(let d=dFrom;d<=dTo;d++){
-    const w=getDow(d);
-    const bgAct=w===0?'background:#fff0f0':w===6?'background:#f5f0ff':'background:#fff3f3';
-    actRow+=`<td style="${bgAct};min-height:18px;"></td>`;
-  }
-  rows+=`<tr style="border-top:1px dashed #e0a0a0;">${actRow}</tr>`;
+  rows+=`<tr style="border-top:1px dashed #9ab0e0;">${schedRow}</tr>`;
 
   // Hàng Help: chỉ hiện nếu có ít nhất 1 ngày cần bổ sung trong kỳ này
   const helpDays={};
