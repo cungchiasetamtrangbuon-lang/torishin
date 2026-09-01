@@ -1558,37 +1558,6 @@ function renderBangLuong(){
     <td style="font-weight:800;color:var(--accent)">${s.total?num(s.total):'—'}</td>
   </tr>`;}).join('');
 
-  // Manual shift table (fallback / reference)
-  const shiftSum=payrollSummary(mid);
-  const shiftDowHdrs=Array.from({length:n},(_,i)=>{
-    const dow=dayDate(mid,i).getDay();
-    const isWE=dow===0||dow===6;
-    return `<th style="${isWE?'color:var(--accent)':''}">${i+1}<br><span style="font-size:9px;font-weight:400">${DOW_VN[dow===0?6:dow-1]}</span></th>`;
-  }).join('');
-  const shiftRows=shiftSum.map(s=>{
-    const shifts=md.bangLuong.shifts[s.id]||Array(n).fill(null);
-    const cells=Array.from({length:n},(_,i)=>{
-      const val=shifts[i]||'';
-      const isKyuu=val==='休';
-      const dow=dayDate(mid,i).getDay();
-      const isWE=dow===0||dow===6;
-      return `<td style="${isWE?'background:#fff8f8':''}">
-        <input type="text" class="shift-input${isKyuu?' kyuu':''}"
-          value="${val}" placeholder=""
-          data-mid="${mid}" data-sid="${s.id}" data-i="${i}"
-          oninput="shiftChange(this)" onblur="shiftSave(this)"
-          onkeydown="navShift(event,this)">
-      </td>`;
-    }).join('');
-    const p=calcStaff(s,shifts);
-    return `<tr>
-      <td class="left" style="position:sticky;left:0;background:#fff;z-index:1;min-width:90px"><strong>${s.short}</strong><br><span class="day-label">${s.type==='lcb'?'LCB':'PT '+num(s.rate,'/h')}</span></td>
-      ${cells}
-      <td style="font-weight:700;color:var(--accent);white-space:nowrap">${p.total?num(p.total):'—'}</td>
-      <td style="color:var(--muted);white-space:nowrap">${p.workDays}ng</td>
-    </tr>`;
-  }).join('');
-
   const refRows=Object.entries(SHIFT_TABLE).map(([k,v])=>
     `<tr><td class="center"><strong>${k}</strong></td><td class="left">${v.label}</td><td class="center">${v.r}H</td><td class="center">${v.n}H</td></tr>`
   ).join('');
@@ -1666,21 +1635,7 @@ function renderBangLuong(){
       </div>
     </div>
   </div>
-
-  <div class="card" style="margin-top:18px">
-    <div class="card-hdr">
-      <span class="card-title">📅 Bảng Ca Thủ Công <span style="font-size:11px;font-weight:400;color:var(--muted)">/ 手動シフト入力</span></span>
-      <span style="font-size:12px;color:var(--muted)">Nhập mã ca hoặc 休 — dùng khi chưa có chấm công / 勤怠データがない場合</span>
-    </div>
-    <div class="card-body"><div style="overflow-x:auto"><table class="shift-table">
-      <thead><tr>
-        <th style="text-align:left;position:sticky;left:0;background:#f8fafc;z-index:3;min-width:90px">Nhân viên<br><span style="font-weight:400;opacity:.65">スタッフ</span></th>
-        ${shiftDowHdrs}
-        <th>Tổng lương<br><span style="font-weight:400;opacity:.65">給与</span></th><th>Ngày<br><span style="font-weight:400;opacity:.65">日数</span></th>
-      </tr></thead>
-      <tbody>${shiftRows}</tbody>
-    </table></div></div>
-  </div>`;
+  `;
 }
 
 // ═══════════════════════════════════════════════════════════════
