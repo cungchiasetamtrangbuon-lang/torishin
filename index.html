@@ -1558,9 +1558,6 @@ function renderBangLuong(){
     <td style="font-weight:800;color:var(--accent)">${s.total?num(s.total):'—'}</td>
   </tr>`;}).join('');
 
-  const refRows=Object.entries(SHIFT_TABLE).map(([k,v])=>
-    `<tr><td class="center"><strong>${k}</strong></td><td class="left">${v.label}</td><td class="center">${v.r}H</td><td class="center">${v.n}H</td></tr>`
-  ).join('');
 
   document.getElementById('main').innerHTML=`
   <div class="page-hdr">
@@ -1623,16 +1620,6 @@ function renderBangLuong(){
           <td style="color:var(--accent);font-weight:800">${num(totals.total)}</td>
         </tr></tfoot>
       </table>
-    </div>
-    <div class="card" style="min-width:280px">
-      <div class="card-hdr"><span class="card-title">📋 Bảng Quy Đổi Ca <span style="font-size:11px;font-weight:400;color:var(--muted)">/ シフト換算表</span></span></div>
-      <table>
-        <thead><tr><th>Mã / コード</th><th style="text-align:left">Khung giờ / 時間帯</th><th>TT / 通常</th><th>Đêm / 深夜</th></tr></thead>
-        <tbody>${refRows}</tbody>
-      </table>
-      <div style="padding:10px 14px;font-size:11px;color:var(--muted)">
-        ⚡ Sau 22H +25% / 深夜割増 | Sau 208H/tháng +25% / 超過割増<br>🍚 Tiền ăn 25,000đ/ca ≥ 6H / 食事手当
-      </div>
     </div>
   </div>
   `;
