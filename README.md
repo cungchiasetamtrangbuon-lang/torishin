@@ -56,3 +56,18 @@ Then open `staff_daily.html` locally and it will use `http://127.0.0.1:3000/api/
 
 - GitHub Pages alone cannot sync data between browsers/devices because it only serves static files.
 - Use the Render backend URL in `staff_daily.html` for real sync.
+
+## Đặt bàn online (Google Maps)
+
+- `booking.html` — trang cho khách đặt bàn (Tiếng Việt / 日本語 / English). Link công khai:
+  `https://cungchiasetamtrangbuon-lang.github.io/torishin/booking.html`
+- `booking_admin.html` — trang nhân viên xem / xác nhận / hủy đặt bàn (tự tải lại mỗi 30 giây, kêu "bíp" khi có đặt bàn mới). Có nút 📅 Đặt bàn trên trang quản lý chính.
+- Dữ liệu lưu ở Firebase, nhánh `torishin_bookings`.
+
+Sửa địa chỉ, số điện thoại, giờ mở cửa, ngày nghỉ trong khối `SHOP` ở đầu phần `<script>` của `booking.html`.
+
+### Gắn nút "Đặt bàn" lên Google Maps
+
+1. Vào https://business.google.com (hoặc tìm "Torishin" trên Google khi đang đăng nhập tài khoản chủ quán).
+2. Chọn **Chỉnh sửa hồ sơ** → **Đặt chỗ / Reservations** (hoặc mục **Đường liên kết** → **Đặt chỗ**).
+3. Dán link `booking.html` ở trên → Lưu. Google duyệt xong, nút **Đặt bàn** sẽ hiện trên Google Maps.

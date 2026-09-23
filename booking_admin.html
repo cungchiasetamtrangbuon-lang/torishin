@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>Quản lý đặt bàn — Torishin</title>
+  <meta name="robots" content="noindex" />
+  <link rel="icon" href="torishin.jpg" />
+  <style>
+    :root{
+      --bg:#f1f5f9;--panel:#fff;--text:#0f172a;--muted:#64748b;--border:#e2e8f0;
+      --accent:#2563eb;--ok:#16a34a;--warn:#d97706;--danger:#dc2626;
+      --font:'Segoe UI',system-ui,sans-serif;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:var(--font);background:var(--bg);color:var(--text)}
+    a{color:inherit}
+    .page{max-width:960px;margin:0 auto;padding:20px 16px 40px}
+    .top{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+    .top h1{margin:0;font-size:22px;flex:1;min-width:200px}
+    .btn{border:1px solid var(--border);background:#fff;border-radius:10px;padding:8px 12px;font:inherit;font-size:13px;font-weight:600;cursor:pointer}
+    .btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+    .bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+    .bar input,.bar select{font:inherit;font-size:14px;padding:8px 10px;border:1px solid var(--border);border-radius:10px;background:#fff}
+    .stats{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+    .stat{background:#fff;border:1px solid var(--border);border-radius:12px;padding:10px 14px;font-size:13px;color:var(--muted)}
+    .stat b{display:block;font-size:20px;color:var(--text)}
+    .list{display:grid;gap:10px}
+    .bk{background:#fff;border:1px solid var(--border);border-left:5px solid var(--warn);border-radius:12px;padding:12px 14px;display:grid;grid-template-columns:70px 1fr auto;gap:12px;align-items:center}
+    .bk.confirmed{border-left-color:var(--accent)}
+    .bk.arrived{border-left-color:var(--ok);opacity:.75}
+    .bk.cancelled{border-left-color:var(--danger);opacity:.5}
+    .bk .time{font-size:20px;font-weight:800}
+    .bk .date{font-size:11px;color:var(--muted)}
+    .bk .who{font-weight:700}
+    .bk .meta{font-size:13px;color:var(--muted);margin-top:2px}
+    .bk .note{font-size:13px;margin-top:4px;background:#fef9c3;padding:4px 8px;border-radius:6px;display:inline-block}
+    .acts{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+    .acts .btn{padding:6px 10px;font-size:12px}
+    .tag{font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;margin-left:6px;vertical-align:middle}
+    .tag.new{background:#fef3c7;color:#92400e}.tag.confirmed{background:#dbeafe;color:#1e40af}
+    .tag.arrived{background:#dcfce7;color:#166534}.tag.cancelled{background:#fee2e2;color:#991b1b}
+    .empty{text-align:center;color:var(--muted);padding:40px 0}
+    .status{font-size:12px;color:var(--muted)}
+    @media (max-width:600px){.bk{grid-template-columns:60px 1fr}.acts{grid-column:1/-1;justify-content:flex-start}}
+  </style>
+</head>
+<body>
+<div class="page">
+  <div class="top">
+    <h1>📅 Đặt bàn / 予約管理</h1>
+    <a class="btn" href="booking.html" target="_blank">Trang khách đặt ↗</a>
+    <a class="btn" href="index.html">← Quản lý</a>
+  </div>
+
+  <div class="bar">
+    <button class="btn" id="prev">◀</button>
+    <input type="date" id="date" />
+    <button class="btn" id="next">▶</button>
+    <button class="btn" id="today">Hôm nay</button>
+    <select id="view">
+      <option value="day">Theo ngày</option>
+      <option value="upcoming">Sắp tới (tất cả)</option>
+      <option value="new">Chờ xác nhận</option>
+    </select>
+    <label style="font-size:13px"><input type="checkbox" id="showCancelled" /> Hiện đã hủy</label>
+    <button class="btn primary" id="reload">⟳ Tải lại</button>
+    <span class="status" id="status"></span>
+  </div>
+
+  <div class="stats" id="stats"></div>
+  <div class="list" id="list"></div>
+</div>
+
+<script>
+const DB_URL = 'https://torishin-ace11-default-rtdb.asia-southeast1.firebasedatabase.app';
+const PATH = 'torishin_bookings';
+const STATUS = {new:'Chờ xác nhận',confirmed:'Đã xác nhận',arrived:'Đã đến',cancelled:'Đã hủy'};
+const WD = ['CN','T2','T3','T4','T5','T6','T7'];
+
+const $ = id => document.getElementById(id);
+const pad = n => String(n).padStart(2,'0');
+const ymd = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const dmy = s => s.split('-').reverse().join('/');
+const wd = s => { const [y,m,d] = s.split('-').map(Number); return WD[new Date(y,m-1,d).getDay()]; };
+
+let all = {}, knownIds = null;
+
+async function load(){
+  $('status').textContent = 'Đang tải...';
+  try {
+    const res = await fetch(`${DB_URL}/${PATH}.json`, {cache:'no-store'});
+    if (!res.ok) throw new Error(res.status);
+    all = (await res.json()) || {};
+    const ids = Object.keys(all);
+    if (knownIds) {
+      const fresh = ids.filter(id => !knownIds.has(id));
+      if (fresh.length) notify(fresh.length);
+    }
+    knownIds = new Set(ids);
+    $('status').textContent = 'Cập nhật lúc ' + new Date().toLocaleTimeString('vi-VN');
+    render();
+  } catch (e) {
+    $('status').textContent = '⚠ Không tải được dữ liệu';
+  }
+}
+
+function notify(n){
+  document.title = `(${n} mới) Quản lý đặt bàn — Torishin`;
+  try {
+    const ctx = new AudioContext(), o = ctx.createOscillator(), g = ctx.createGain();
+    o.connect(g); g.connect(ctx.destination); o.frequency.value = 880; g.gain.value = .15;
+    o.start(); o.stop(ctx.currentTime + .3);
+  } catch(e){}
+}
+
+function render(){
+  const view = $('view').value, date = $('date').value, showCx = $('showCancelled').checked, today = ymd(new Date());
+  $('date').disabled = $('prev').disabled = $('next').disabled = view !== 'day';
+  let rows = Object.entries(all).map(([id, b]) => ({id, ...b}));
+  if (view === 'day') rows = rows.filter(b => b.date === date);
+  else if (view === 'upcoming') rows = rows.filter(b => b.date >= today);
+  else rows = rows.filter(b => b.status === 'new' && b.date >= today);
+  const active = rows.filter(b => b.status !== 'cancelled');
+  if (!showCx) rows = active;
+  rows.sort((a,b) => (a.date+a.time).localeCompare(b.date+b.time));
+
+  const cnt = s => active.filter(b => b.status === s).length;
+  $('stats').innerHTML = [
+    ['Số bàn', active.length], ['Tổng khách', active.reduce((s,b) => s + (+b.guests||0), 0)],
+    ['Chờ xác nhận', cnt('new')], ['Đã xác nhận', cnt('confirmed')], ['Đã đến', cnt('arrived')],
+  ].map(([k,v]) => `<div class="stat"><b>${v}</b>${k}</div>`).join('');
+
+  $('list').innerHTML = rows.length ? rows.map(b => {
+    const st = STATUS[b.status] ? b.status : 'new';
+    const tel = esc(String(b.phone||'').replace(/[^\d+]/g,''));
+    const zalo = tel.replace(/^\+?84/, '0');
+    return `<div class="bk ${st}">
+      <div><div class="time">${esc(b.time)}</div><div class="date">${wd(b.date)} ${dmy(b.date)}</div></div>
+      <div>
+        <div class="who">${esc(b.name)} · 👥 ${esc(b.guests)}<span class="tag ${st}">${STATUS[st]}</span></div>
+        <div class="meta">📞 <a href="tel:${tel}">${esc(b.phone)}</a> · <a href="https://zalo.me/${zalo}" target="_blank" rel="noopener">Zalo</a>
+          · ${esc((b.lang||'vi').toUpperCase())} · đặt lúc ${b.createdAt ? new Date(b.createdAt).toLocaleString('vi-VN') : '?'}</div>
+        ${b.note ? `<div class="note">📝 ${esc(b.note)}</div>` : ''}
+      </div>
+      <div class="acts">
+        ${st !== 'confirmed' && st !== 'arrived' ? `<button class="btn" data-id="${b.id}" data-s="confirmed">✔ Xác nhận</button>` : ''}
+        ${st !== 'arrived' && st !== 'cancelled' ? `<button class="btn" data-id="${b.id}" data-s="arrived">🍶 Đã đến</button>` : ''}
+        ${st !== 'cancelled' ? `<button class="btn" data-id="${b.id}" data-s="cancelled">✕ Hủy</button>` : `<button class="btn" data-id="${b.id}" data-s="new">↺ Khôi phục</button>`}
+      </div>
+    </div>`;
+  }).join('') : '<div class="empty">Chưa có đặt bàn nào.</div>';
+}
+
+async function setStatus(id, status){
+  if (!all[id]) return;
+  const prev = all[id].status;
+  all[id].status = status; render();
+  try {
+    const res = await fetch(`${DB_URL}/${PATH}/${encodeURIComponent(id)}.json`, {
+      method:'PATCH', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({status, updatedAt: Date.now()})
+    });
+    if (!res.ok) throw new Error(res.status);
+  } catch (e) {
+    all[id].status = prev; render();
+    alert('Lưu thất bại, vui lòng thử lại.');
+  }
+}
+
+function shift(days){
+  const [y,m,d] = $('date').value.split('-').map(Number);
+  $('date').value = ymd(new Date(y, m-1, d + days)); render();
+}
+
+$('date').value = ymd(new Date());
+$('date').addEventListener('change', render);
+$('prev').onclick = () => shift(-1);
+$('next').onclick = () => shift(1);
+$('today').onclick = () => { $('date').value = ymd(new Date()); $('view').value = 'day'; render(); };
+$('view').addEventListener('change', render);
+$('showCancelled').addEventListener('change', render);
+$('reload').onclick = () => { document.title = 'Quản lý đặt bàn — Torishin'; load(); };
+$('list').addEventListener('click', e => {
+  const b = e.target.closest('button[data-id]');
+  if (b) setStatus(b.dataset.id, b.dataset.s);
+});
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') load(); });
+setInterval(load, 30000); // tự tải lại mỗi 30 giây để thấy đặt bàn mới
+load();
+</script>
+</body>
+</html>

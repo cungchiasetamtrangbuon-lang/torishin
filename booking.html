@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>Đặt bàn — Torishin 鳥心</title>
+  <meta name="description" content="Đặt bàn online tại quán Torishin. Chọn ngày, giờ, số người — quán sẽ xác nhận qua điện thoại." />
+  <meta property="og:title" content="Đặt bàn — Torishin 鳥心" />
+  <meta property="og:description" content="Đặt bàn online tại quán Torishin." />
+  <meta property="og:image" content="torishin.jpg" />
+  <link rel="icon" href="torishin.jpg" />
+  <style>
+    :root{
+      --bg:#faf7f2;--panel:#fff;--text:#1c1917;--muted:#78716c;--border:#e7e5e4;
+      --accent:#b91c1c;--accent2:#991b1b;--ok:#15803d;--radius:18px;
+      --shadow:0 18px 50px rgba(28,25,23,.08);
+      --font:'Segoe UI',system-ui,-apple-system,sans-serif;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:var(--font);background:var(--bg);color:var(--text)}
+    .page{max-width:560px;margin:0 auto;padding:20px 16px 48px}
+    .hero{display:flex;align-items:center;gap:14px;margin-bottom:18px}
+    .hero img{width:64px;height:64px;border-radius:16px;object-fit:cover;box-shadow:var(--shadow)}
+    .hero h1{margin:0;font-size:24px}
+    .hero p{margin:4px 0 0;color:var(--muted);font-size:14px}
+    .langs{margin-left:auto;display:flex;gap:4px}
+    .langs button{border:1px solid var(--border);background:#fff;border-radius:999px;padding:5px 9px;font-size:12px;cursor:pointer;color:var(--muted)}
+    .langs button.on{background:var(--text);color:#fff;border-color:var(--text)}
+    .card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px;margin-bottom:16px}
+    .card h2{margin:0 0 14px;font-size:17px}
+    label{display:block;font-size:13px;font-weight:600;margin:14px 0 6px}
+    label:first-of-type{margin-top:0}
+    input,select,textarea{width:100%;font:inherit;font-size:16px;padding:11px 12px;border:1px solid var(--border);border-radius:12px;background:#fff;color:var(--text)}
+    input:focus,select:focus,textarea:focus{outline:2px solid #fecaca;border-color:var(--accent)}
+    textarea{resize:vertical;min-height:70px}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .slots{display:flex;flex-wrap:wrap;gap:8px}
+    .slot{border:1px solid var(--border);background:#fff;border-radius:10px;padding:9px 12px;font-size:14px;cursor:pointer;min-width:66px}
+    .slot.on{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:700}
+    .slot:disabled{opacity:.35;cursor:not-allowed;text-decoration:line-through}
+    .guests{display:flex;align-items:center;gap:10px}
+    .guests button{flex:none;width:44px;height:44px;border-radius:12px;border:1px solid var(--border);background:#fff;font-size:22px;cursor:pointer}
+    .guests input{text-align:center;flex:1;min-width:0;font-weight:700}
+    .row>div{min-width:0}
+    .submit{width:100%;margin-top:18px;padding:14px;border:none;border-radius:14px;background:var(--accent);color:#fff;font-size:16px;font-weight:700;cursor:pointer}
+    .submit:hover{background:var(--accent2)}
+    .submit:disabled{opacity:.6;cursor:wait}
+    .err{color:var(--accent);font-size:13px;margin-top:10px;min-height:1em}
+    .hint{color:var(--muted);font-size:12px;margin-top:6px}
+    .done{text-align:center}
+    .done .icon{font-size:48px}
+    .done h2{color:var(--ok)}
+    .summary{text-align:left;background:#f5f5f4;border-radius:12px;padding:12px 14px;font-size:14px;line-height:1.8;margin:12px 0}
+    .info{font-size:14px;line-height:1.8}
+    .info a{color:var(--accent);font-weight:600}
+    .map{width:100%;aspect-ratio:4/3;border:0;border-radius:12px;margin-top:12px}
+    .hp{position:absolute;left:-9999px}
+  </style>
+</head>
+<body>
+<div class="page">
+  <div class="hero">
+    <img src="torishin.jpg" alt="Torishin" />
+    <div>
+      <h1>Torishin 鳥心</h1>
+      <p data-i18n="tagline"></p>
+    </div>
+    <div class="langs">
+      <button data-lang="vi">VI</button><button data-lang="ja">日本</button><button data-lang="en">EN</button>
+    </div>
+  </div>
+
+  <form class="card" id="form" novalidate>
+    <h2 data-i18n="formTitle"></h2>
+
+    <div class="row">
+      <div>
+        <label for="date" data-i18n="date"></label>
+        <input type="date" id="date" required />
+      </div>
+      <div>
+        <label for="guests" data-i18n="guests"></label>
+        <div class="guests">
+          <button type="button" id="gMinus" aria-label="-">−</button>
+          <input type="number" id="guests" min="1" value="2" inputmode="numeric" />
+          <button type="button" id="gPlus" aria-label="+">+</button>
+        </div>
+      </div>
+    </div>
+
+    <label data-i18n="time"></label>
+    <div class="slots" id="slots"></div>
+    <div class="hint" id="closedHint"></div>
+
+    <label for="name" data-i18n="name"></label>
+    <input id="name" autocomplete="name" maxlength="60" required />
+
+    <label for="phone" data-i18n="phone"></label>
+    <input id="phone" type="tel" autocomplete="tel" inputmode="tel" maxlength="20" required />
+    <div class="hint" data-i18n="phoneHint"></div>
+
+    <label for="note" data-i18n="note"></label>
+    <textarea id="note" maxlength="300" data-i18n-ph="notePh"></textarea>
+
+    <!-- chống spam bot: người thật không thấy ô này -->
+    <input class="hp" id="website" tabindex="-1" autocomplete="off" aria-hidden="true" />
+
+    <button class="submit" id="submitBtn" type="submit" data-i18n="submit"></button>
+    <div class="err" id="err" role="alert"></div>
+  </form>
+
+  <div class="card done" id="done" hidden>
+    <div class="icon">✅</div>
+    <h2 data-i18n="doneTitle"></h2>
+    <div class="summary" id="summary"></div>
+    <p class="hint" data-i18n="doneHint"></p>
+    <button class="submit" id="againBtn" type="button" data-i18n="again"></button>
+  </div>
+
+  <div class="card info">
+    <h2 data-i18n="infoTitle"></h2>
+    <div id="infoBox"></div>
+    <iframe class="map" id="map" loading="lazy" referrerpolicy="no-referrer-when-downgrade" title="Google Maps"></iframe>
+  </div>
+</div>
+
+<script>
+// ═══════════════ CẤU HÌNH QUÁN — sửa ở đây ═══════════════
+const SHOP = {
+  name: 'Torishin 鳥心',
+  address: '',            // VD: '123 Lê Thánh Tôn, Q.1, TP.HCM'
+  phone: '',              // VD: '0901234567' — hiện nút gọi cho khách
+  mapQuery: 'Torishin',   // Tên/địa chỉ tìm trên Google Maps để hiện bản đồ
+  openTime: '17:00',      // Giờ nhận khách đầu tiên
+  lastTime: '22:00',      // Giờ nhận khách cuối cùng
+  stepMin: 30,            // Mỗi khung giờ cách nhau bao nhiêu phút
+  closedWeekdays: [],     // Ngày nghỉ cố định: 0=CN, 1=T2 ... 6=T7. VD: [1]
+  maxGuests: 30,
+  maxDaysAhead: 60,       // Cho đặt trước tối đa bao nhiêu ngày
+  minLeadMin: 60,         // Hôm nay: phải đặt trước ít nhất bao nhiêu phút
+};
+const DB_URL = 'https://torishin-ace11-default-rtdb.asia-southeast1.firebasedatabase.app';
+// ══════════════════════════════════════════════════════════
+
+const T = {
+  vi:{tagline:'Đặt bàn online',formTitle:'Thông tin đặt bàn',date:'Ngày',guests:'Số người',time:'Giờ đến',
+      name:'Họ tên',phone:'Số điện thoại',phoneHint:'Quán sẽ gọi / nhắn Zalo để xác nhận.',note:'Ghi chú (không bắt buộc)',
+      notePh:'VD: có trẻ em, muốn ngồi quầy, sinh nhật...',submit:'Gửi yêu cầu đặt bàn',sending:'Đang gửi...',
+      doneTitle:'Đã gửi yêu cầu!',doneHint:'Đặt bàn chỉ được giữ sau khi quán xác nhận. Nếu cần gấp, vui lòng gọi điện cho quán.',
+      again:'Đặt thêm bàn khác',infoTitle:'Thông tin quán',addr:'Địa chỉ',tel:'Điện thoại',hours:'Giờ nhận khách',
+      closed:'Quán nghỉ ngày này, vui lòng chọn ngày khác.',noSlot:'Hôm nay đã hết khung giờ nhận đặt online.',
+      eDate:'Vui lòng chọn ngày hợp lệ.',eTime:'Vui lòng chọn giờ đến.',eName:'Vui lòng nhập họ tên.',
+      ePhone:'Số điện thoại không hợp lệ.',eGuests:'Số người không hợp lệ.',eNet:'Gửi thất bại, vui lòng thử lại hoặc gọi cho quán.',
+      people:'người',openMap:'Mở Google Maps',
+      wd:['CN','T2','T3','T4','T5','T6','T7']},
+  ja:{tagline:'オンライン予約',formTitle:'ご予約内容',date:'日付',guests:'人数',time:'来店時間',
+      name:'お名前',phone:'電話番号',phoneHint:'確認のためお店からご連絡します。',note:'備考（任意）',
+      notePh:'例：お子様連れ、カウンター希望、誕生日など',submit:'予約リクエストを送信',sending:'送信中...',
+      doneTitle:'送信しました！',doneHint:'お店からの確認後に予約確定となります。お急ぎの場合はお電話ください。',
+      again:'別の予約をする',infoTitle:'店舗情報',addr:'住所',tel:'電話',hours:'受付時間',
+      closed:'この日は定休日です。別の日をお選びください。',noSlot:'本日のオンライン予約受付は終了しました。',
+      eDate:'正しい日付を選んでください。',eTime:'来店時間を選んでください。',eName:'お名前を入力してください。',
+      ePhone:'電話番号が正しくありません。',eGuests:'人数が正しくありません。',eNet:'送信に失敗しました。再度お試しいただくか、お電話ください。',
+      people:'名',openMap:'Google マップで開く',
+      wd:['日','月','火','水','木','金','土']},
+  en:{tagline:'Online reservation',formTitle:'Reservation details',date:'Date',guests:'Guests',time:'Arrival time',
+      name:'Name',phone:'Phone number',phoneHint:'We will call or message you to confirm.',note:'Note (optional)',
+      notePh:'e.g. children, counter seats, birthday...',submit:'Send reservation request',sending:'Sending...',
+      doneTitle:'Request sent!',doneHint:'Your table is held once the restaurant confirms. For urgent requests, please call us.',
+      again:'Make another booking',infoTitle:'Restaurant info',addr:'Address',tel:'Phone',hours:'Seating hours',
+      closed:'We are closed on this day. Please pick another date.',noSlot:'Online booking for today is closed.',
+      eDate:'Please choose a valid date.',eTime:'Please choose an arrival time.',eName:'Please enter your name.',
+      ePhone:'Invalid phone number.',eGuests:'Invalid number of guests.',eNet:'Sending failed. Please try again or call us.',
+      people:'guests',openMap:'Open in Google Maps',
+      wd:['Sun','Mon','Tue','Wed','Thu','Fri','Sat']},
+};
+
+const $ = id => document.getElementById(id);
+let lang = 'vi', selTime = '';
+try { const s = localStorage.getItem('torishin_booking_lang'); if (T[s]) lang = s; else if ((navigator.language||'').startsWith('ja')) lang='ja'; else if (!(navigator.language||'').startsWith('vi')) lang='en'; } catch(e){}
+
+const pad = n => String(n).padStart(2,'0');
+const ymd = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const toMin = s => { const [h,m] = s.split(':').map(Number); return h*60+m; };
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+function allSlots(){
+  const out = [];
+  for (let m = toMin(SHOP.openTime); m <= toMin(SHOP.lastTime); m += SHOP.stepMin) out.push(`${pad(Math.floor(m/60))}:${pad(m%60)}`);
+  return out;
+}
+function dateObj(s){ const [y,m,d] = s.split('-').map(Number); return new Date(y, m-1, d); }
+function isClosed(s){ return SHOP.closedWeekdays.includes(dateObj(s).getDay()); }
+function slotOk(dateStr, t){
+  const now = new Date();
+  if (dateStr !== ymd(now)) return true;
+  return toMin(t) >= now.getHours()*60 + now.getMinutes() + SHOP.minLeadMin;
+}
+
+function renderSlots(){
+  const d = $('date').value, L = T[lang];
+  const closed = d && isClosed(d);
+  const box = $('slots'); box.innerHTML = '';
+  let any = false;
+  allSlots().forEach(t => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'slot' + (t === selTime ? ' on' : ''); b.textContent = t;
+    b.disabled = !d || closed || !slotOk(d, t);
+    if (!b.disabled) any = true;
+    if (b.disabled && t === selTime) selTime = '';
+    b.onclick = () => { selTime = t; renderSlots(); };
+    box.appendChild(b);
+  });
+  $('closedHint').textContent = !d ? '' : closed ? L.closed : !any ? L.noSlot : '';
+}
+
+function renderInfo(){
+  const L = T[lang], rows = [];
+  if (SHOP.address) rows.push(`<div>📍 <b>${L.addr}:</b> ${esc(SHOP.address)}</div>`);
+  if (SHOP.phone) rows.push(`<div>📞 <b>${L.tel}:</b> <a href="tel:${esc(SHOP.phone.replace(/\s/g,''))}">${esc(SHOP.phone)}</a></div>`);
+  let hrs = `${SHOP.openTime} – ${SHOP.lastTime}`;
+  if (SHOP.closedWeekdays.length) hrs += ` (${SHOP.closedWeekdays.map(i => L.wd[i]).join(', ')}: ✕)`;
+  rows.push(`<div>🕔 <b>${L.hours}:</b> ${hrs}</div>`);
+  const q = encodeURIComponent(SHOP.address ? `${SHOP.mapQuery} ${SHOP.address}` : SHOP.mapQuery);
+  rows.push(`<div>🗺️ <a href="https://www.google.com/maps/search/?api=1&query=${q}" target="_blank" rel="noopener">${L.openMap}</a></div>`);
+  $('infoBox').innerHTML = rows.join('');
+  const src = `https://www.google.com/maps?q=${q}&output=embed&hl=${lang}`;
+  if ($('map').src !== src) $('map').src = src;
+}
+
+function applyLang(){
+  const L = T[lang];
+  document.documentElement.lang = lang;
+  document.querySelectorAll('[data-i18n]').forEach(el => el.textContent = L[el.dataset.i18n]);
+  document.querySelectorAll('[data-i18n-ph]').forEach(el => el.placeholder = L[el.dataset.i18nPh]);
+  document.querySelectorAll('.langs button').forEach(b => b.classList.toggle('on', b.dataset.lang === lang));
+  renderSlots(); renderInfo();
+}
+
+function setGuests(n){ $('guests').value = Math.max(1, Math.min(SHOP.maxGuests, n|0 || 1)); }
+
+async function submit(e){
+  e.preventDefault();
+  const L = T[lang], err = $('err');
+  err.textContent = '';
+  if ($('website').value) return; // bot
+
+  const date = $('date').value, guests = parseInt($('guests').value, 10);
+  const name = $('name').value.trim(), phone = $('phone').value.trim(), note = $('note').value.trim();
+  const today = ymd(new Date()), maxD = new Date(); maxD.setDate(maxD.getDate() + SHOP.maxDaysAhead);
+  if (!date || date < today || date > ymd(maxD) || isClosed(date)) return err.textContent = L.eDate;
+  if (!selTime || !slotOk(date, selTime)) return err.textContent = L.eTime;
+  if (!(guests >= 1 && guests <= SHOP.maxGuests)) return err.textContent = L.eGuests;
+  if (!name) return err.textContent = L.eName;
+  if (!/^\+?[0-9 .\-]{8,20}$/.test(phone) || phone.replace(/\D/g,'').length < 8) return err.textContent = L.ePhone;
+
+  const booking = { date, time: selTime, guests, name, phone, note, lang, status: 'new', createdAt: Date.now() };
+  const btn = $('submitBtn'); btn.disabled = true; btn.textContent = L.sending;
+  try {
+    // POST = Firebase tự tạo khóa mới cho mỗi lần đặt → không ghi đè đặt bàn của người khác
+    const res = await fetch(`${DB_URL}/torishin_bookings.json`, {
+      method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(booking)
+    });
+    if (!res.ok) throw new Error(res.status);
+    const wd = L.wd[dateObj(date).getDay()];
+    $('summary').innerHTML =
+      `<div>📅 ${wd}, ${date.split('-').reverse().join('/')} — 🕔 ${selTime}</div>` +
+      `<div>👥 ${guests} ${L.people}</div><div>👤 ${esc(name)} — ${esc(phone)}</div>` +
+      (note ? `<div>📝 ${esc(note)}</div>` : '');
+    $('form').hidden = true; $('done').hidden = false;
+    window.scrollTo({top:0, behavior:'smooth'});
+  } catch (x) {
+    err.textContent = L.eNet;
+  } finally {
+    btn.disabled = false; btn.textContent = L.submit;
+  }
+}
+
+function init(){
+  const now = new Date(), maxD = new Date(); maxD.setDate(now.getDate() + SHOP.maxDaysAhead);
+  $('date').min = ymd(now); $('date').max = ymd(maxD);
+  let d = new Date(now);
+  // Mặc định: ngày gần nhất còn khung giờ và không phải ngày nghỉ
+  for (let i = 0; i < 14; i++) {
+    const s = ymd(d);
+    if (!isClosed(s) && allSlots().some(t => slotOk(s, t))) break;
+    d.setDate(d.getDate() + 1);
+  }
+  $('date').value = ymd(d);
+  $('guests').max = SHOP.maxGuests;
+  $('date').addEventListener('change', renderSlots);
+  $('gMinus').onclick = () => setGuests(+$('guests').value - 1);
+  $('gPlus').onclick = () => setGuests(+$('guests').value + 1);
+  $('guests').addEventListener('change', () => setGuests(+$('guests').value));
+  $('form').addEventListener('submit', submit);
+  $('againBtn').onclick = () => { $('done').hidden = true; $('form').hidden = false; selTime = ''; $('note').value = ''; renderSlots(); };
+  document.querySelectorAll('.langs button').forEach(b => b.onclick = () => {
+    lang = b.dataset.lang; try { localStorage.setItem('torishin_booking_lang', lang); } catch(e){}
+    applyLang();
+  });
+  applyLang();
+}
+init();
+</script>
+</body>
+</html>
