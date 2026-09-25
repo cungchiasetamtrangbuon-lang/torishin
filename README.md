@@ -64,6 +64,8 @@ Then open `staff_daily.html` locally and it will use `http://127.0.0.1:3000/api/
 - `booking_admin.html` — trang nhân viên xem / xác nhận / hủy đặt bàn (tự tải lại mỗi 30 giây, kêu "bíp" khi có đặt bàn mới). Có nút 📅 Đặt bàn trên trang quản lý chính.
 - Dữ liệu lưu ở Firebase, nhánh `torishin_bookings`.
 
+- `booking_email.gs` — (tùy chọn) Google Apps Script gửi email báo đặt bàn mới về Gmail của quán. Hướng dẫn cài ở đầu file; sau đó dán link Web App vào `EMAIL_WEBHOOK` trong `booking.html`.
+
 Sửa địa chỉ, số điện thoại, giờ mở cửa, ngày nghỉ trong khối `SHOP` ở đầu phần `<script>` của `booking.html`.
 
 ### Gắn nút "Đặt bàn" lên Google Maps

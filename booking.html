@@ -140,6 +140,9 @@ const SHOP = {
   minLeadMin: 60,         // Hôm nay: phải đặt trước ít nhất bao nhiêu phút
 };
 const DB_URL = 'https://torishin-ace11-default-rtdb.asia-southeast1.firebasedatabase.app';
+// Link Web App của Google Apps Script (file booking_email.gs) để gửi mail báo đặt bàn về quán.
+// Để trống = không gửi mail.
+const EMAIL_WEBHOOK = '';
 // ══════════════════════════════════════════════════════════
 
 const T = {
@@ -239,6 +242,16 @@ function applyLang(){
 
 function setGuests(n){ $('guests').value = Math.max(1, Math.min(SHOP.maxGuests, n|0 || 1)); }
 
+// Gửi mail cho quán — lỗi mail không ảnh hưởng việc đặt bàn (đã lưu Firebase rồi)
+function notifyEmail(booking){
+  if (!EMAIL_WEBHOOK) return;
+  try {
+    // text/plain + no-cors: Apps Script không hỗ trợ CORS preflight
+    fetch(EMAIL_WEBHOOK, { method: 'POST', mode: 'no-cors', keepalive: true,
+      headers: {'Content-Type':'text/plain;charset=utf-8'}, body: JSON.stringify(booking) }).catch(() => {});
+  } catch (e) {}
+}
+
 async function submit(e){
   e.preventDefault();
   const L = T[lang], err = $('err');
@@ -262,6 +275,8 @@ async function submit(e){
       method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(booking)
     });
     if (!res.ok) throw new Error(res.status);
+    const saved = await res.json().catch(() => ({}));
+    notifyEmail({ ...booking, id: saved.name || '' });
     const wd = L.wd[dateObj(date).getDay()];
     $('summary').innerHTML =
       `<div>📅 ${wd}, ${date.split('-').reverse().join('/')} — 🕔 ${selTime}</div>` +
