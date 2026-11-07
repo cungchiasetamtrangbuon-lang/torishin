@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="vi">
 <head>
   <meta charset="UTF-8" />
@@ -152,6 +152,16 @@
                 <td><input id="grab" type="number" inputmode="numeric" step="1000" placeholder="0" /></td>
                 <td class="amount" id="grabAmount">0đ</td>
               </tr>
+              <tr>
+                <td class="label">MONSTER 現金 / MONSTER tiền mặt</td>
+                <td><input id="monsterCash" type="number" inputmode="numeric" step="1000" placeholder="0" /></td>
+                <td class="amount" id="monsterCashAmount">0đ</td>
+              </tr>
+              <tr>
+                <td class="label">MONSTER 振込 / MONSTER chuyển khoản</td>
+                <td><input id="monsterTransfer" type="number" inputmode="numeric" step="1000" placeholder="0" /></td>
+                <td class="amount" id="monsterTransferAmount">0đ</td>
+              </tr>
             </tbody>
           </table>
 
@@ -206,7 +216,7 @@
   </div>
 
   <script>
-    const fields = ['cash','card','transfer','capichi','grab'];
+    const fields = ['cash','card','transfer','capichi','grab','monsterCash','monsterTransfer'];
     const BILLS = [500000,200000,100000,50000,20000,10000,5000,2000,1000];
     const STORAGE_KEY = 'torishin_rev_v3';
     let S = {
@@ -269,13 +279,17 @@
       const transfer = parseNum($('transfer')?.value);
       const capichi = parseNum($('capichi')?.value);
       const grab = parseNum($('grab')?.value);
-      const totalPayment = cash + card + transfer + capichi + grab;
+      const monsterCash = parseNum($('monsterCash')?.value);
+      const monsterTransfer = parseNum($('monsterTransfer')?.value);
+      const totalPayment = cash + card + transfer + capichi + grab + monsterCash + monsterTransfer;
       if($('totalValue')) $('totalValue').textContent = fmt(totalPayment);
       if($('cashAmount')) $('cashAmount').textContent = fmt(cash);
       if($('cardAmount')) $('cardAmount').textContent = fmt(card);
       if($('transferAmount')) $('transferAmount').textContent = fmt(transfer);
       if($('capichiAmount')) $('capichiAmount').textContent = fmt(capichi);
       if($('grabAmount')) $('grabAmount').textContent = fmt(grab);
+      if($('monsterCashAmount')) $('monsterCashAmount').textContent = fmt(monsterCash);
+      if($('monsterTransferAmount')) $('monsterTransferAmount').textContent = fmt(monsterTransfer);
       updateDateLabel();
       const billTotal = updateBillSummary();
       if($('closeValue')) $('closeValue').textContent = fmt(billTotal);
@@ -308,11 +322,13 @@
       const transfer = parseNum($('transfer')?.value);
       const capichi = parseNum($('capichi')?.value);
       const grab = parseNum($('grab')?.value);
+      const monsterCash = parseNum($('monsterCash')?.value);
+      const monsterTransfer = parseNum($('monsterTransfer')?.value);
       const bills = {};
       BILLS.forEach(amount => { bills[amount] = parseNum($('bill_' + amount)?.value); });
       const dt = md.doanhThu[idx] || {};
-      dt.rev = cash + card + transfer + capichi + grab;
-      dt.cash = cash; dt.card = card; dt.transfer = transfer; dt.capichi = capichi; dt.grab = grab;
+      dt.rev = cash + card + transfer + capichi + grab + monsterCash + monsterTransfer;
+      dt.cash = cash; dt.card = card; dt.transfer = transfer; dt.capichi = capichi; dt.grab = grab; dt.monsterCash = monsterCash; dt.monsterTransfer = monsterTransfer;
       dt.bills = bills;
       dt.staff = ($('staff')?.value || '').trim();
       dt.note = ($('note')?.value || '').trim();
@@ -340,13 +356,15 @@
       const transfer = parseNum($('transfer')?.value);
       const capichi = parseNum($('capichi')?.value);
       const grab = parseNum($('grab')?.value);
+      const monsterCash = parseNum($('monsterCash')?.value);
+      const monsterTransfer = parseNum($('monsterTransfer')?.value);
       let billDetails = BILLS.map(amount => {
         const count = parseNum($('bill_' + amount)?.value);
         const sub = count * amount;
         return count ? `${amount.toLocaleString('vi-VN')} đ x ${count} = ${fmt(sub)}` : null;
       }).filter(Boolean);
       const billTotal = BILLS.reduce((sum, amount) => sum + parseNum($('bill_' + amount)?.value) * amount, 0);
-      const total = cash + card + transfer + capichi + grab;
+      const total = cash + card + transfer + capichi + grab + monsterCash + monsterTransfer;
       return [
         '売上報告',
         `日付: ${jpDate}`,
@@ -361,6 +379,8 @@
         `振り込み売り上げ: ${fmt(transfer)}`,
         `カピチ売り上げ: ${fmt(capichi)}`,
         `グラブ売り上げ: ${fmt(grab)}`,
+        `MONSTER 現金: ${fmt(monsterCash)}`,
+        `MONSTER 振込: ${fmt(monsterTransfer)}`,
         '',
         'レジ金内訳',
         ...billDetails,
@@ -375,12 +395,14 @@
       const idx = getDayIndex(dateValue);
       const dt = md.doanhThu[idx]||{};
       // Nếu chỉ có .rev (nhập từ index.html, không có breakdown) → đổ vào tiền mặt
-      const hasBreakdown=dt.cash||dt.card||dt.transfer||dt.capichi||dt.grab;
+      const hasBreakdown=dt.cash||dt.card||dt.transfer||dt.capichi||dt.grab||dt.monsterCash||dt.monsterTransfer;
       if($('cash')) $('cash').value = dt.cash ?? (hasBreakdown?'':dt.rev??'');
       if($('card')) $('card').value = dt.card ?? '';
       if($('transfer')) $('transfer').value = dt.transfer ?? '';
       if($('capichi')) $('capichi').value = dt.capichi ?? '';
       if($('grab')) $('grab').value = dt.grab ?? '';
+      if($('monsterCash')) $('monsterCash').value = dt.monsterCash ?? '';
+      if($('monsterTransfer')) $('monsterTransfer').value = dt.monsterTransfer ?? '';
       if(dt.bills){
         BILLS.forEach(amount => { const el = $('bill_' + amount); if(el) el.value = dt.bills[amount] ?? ''; });
       } else {
@@ -401,12 +423,14 @@
       const transfer = parseNum($('transfer')?.value);
       const capichi = parseNum($('capichi')?.value);
       const grab = parseNum($('grab')?.value);
+      const monsterCash = parseNum($('monsterCash')?.value);
+      const monsterTransfer = parseNum($('monsterTransfer')?.value);
       const bills = {};
       BILLS.forEach(amount => { bills[amount] = parseNum($('bill_' + amount)?.value); });
-      const totalPayment = cash + card + transfer + capichi + grab;
+      const totalPayment = cash + card + transfer + capichi + grab + monsterCash + monsterTransfer;
       const dt = md.doanhThu[idx] || {};
       dt.rev = totalPayment;
-      dt.cash = cash; dt.card = card; dt.transfer = transfer; dt.capichi = capichi; dt.grab = grab;
+      dt.cash = cash; dt.card = card; dt.transfer = transfer; dt.capichi = capichi; dt.grab = grab; dt.monsterCash = monsterCash; dt.monsterTransfer = monsterTransfer;
       dt.bills = bills;
       dt.staff = ($('staff')?.value || '').trim(); dt.note = ($('note')?.value || '').trim();
       dt.report = buildLineReport();
@@ -435,6 +459,8 @@
         transfer: parseNum($('transfer')?.value),
         capichi: parseNum($('capichi')?.value),
         grab: parseNum($('grab')?.value),
+        monsterCash: parseNum($('monsterCash')?.value),
+        monsterTransfer: parseNum($('monsterTransfer')?.value),
         note: ($('note')?.value || '').trim() || ''
       };
       const blob = new Blob([JSON.stringify(data,null,2)], {type:'application/json;charset=utf-8'});
@@ -459,7 +485,7 @@
       if($('date')) $('date').value = today;
       initCloudSync();
       window.addEventListener('storage', onStorageChange);
-      ['cash','card','transfer','capichi','grab'].forEach(id=>{
+      ['cash','card','transfer','capichi','grab','monsterCash','monsterTransfer'].forEach(id=>{
         const el = $(id);
         if(el) el.addEventListener('input', ()=>{ _isDirty=true; updateTotals(); });
       });
