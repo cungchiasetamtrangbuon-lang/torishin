@@ -735,7 +735,7 @@ function buildDefault(){
     });
   });
   const days=daysInM(); sched={};
-  const newRules=true; // Quy tắc mới áp dụng cho tất cả các tháng
+  const newRules=(curY>2026)||(curY===2026&&curM>=11); // Cơ chế định biên mới áp dụng từ 11/2026
   const staffOff=newRules?computeStaffOff():null;
   const isOff=(id,d)=>{
     if(staffOff&&staffOff[id])return staffOff[id].has(d);
@@ -760,31 +760,21 @@ function buildDefault(){
       };
       let mainCount=0;
       STAFF.filter(s=>s.type==='main').forEach(s=>{if(addShift(s.id,s.ds||15,LAST,s.defaultBreak??30))mainCount++;});
-      let ptSlots=[];
-      if(w>=1&&w<=4){
-        ptSlots=(mainCount>=3)
-          ?[{s:17,e:24,b:30}]
-          :[{s:16,e:24,b:30},{s:18,e:23.5,b:0}];
-      }else if(w===5||w===6){
-        ptSlots=(mainCount>=3)
-          ?[{s:17,e:24,b:30},{s:17,e:24,b:30}]
-          :[{s:16,e:24,b:30},{s:17,e:24,b:30},{s:18,e:24,b:0}];
-      }else{
-        ptSlots=(mainCount>=3)
-          ?[{s:17,e:22,b:0},{s:18,e:23,b:0}]
-          :[{s:16,e:23,b:30},{s:17,e:24,b:30},{s:18,e:23,b:0}];
+      // Định biên từ 11/2026: T2-T5 cần 4 người; T6-CN cần 5 người.
+      // Chỉ xếp PT bằng phần thiếu so với số NVCT thực tế có mặt.
+      const targetCount=(w>=1&&w<=4)?4:5;
+      const ptNeeded=Math.max(0,targetCount-mainCount);
+      const ptPool=STAFF.filter(s=>s.type==='pt');
+      let ptAssigned=0, ptIndex=0;
+      while(ptAssigned<ptNeeded&&ptIndex<ptPool.length){
+        const pt=ptPool[ptIndex++];
+        const startAt=Math.min(22.5,Math.max(17,pt.ds||17));
+        if(addShift(pt.id,startAt,23,0))ptAssigned++;
       }
-      let i=0;
-      for(const ptId of STAFF.filter(s=>s.type==='pt').map(s=>s.id)){
-        if(i>=ptSlots.length)break;
-        const slot=ptSlots[i];
-        if(addShift(ptId,slot.s,slot.e,slot.b))i++;
-      }
-      // Nếu PT không đủ người → thêm slot Help (màu vàng = cần người bổ sung)
-      while(i<ptSlots.length&&sched[d].length<MAX){
-        const slot=ptSlots[i];
-        sched[d].push({staffId:'__help__',start:slot.s,end:slot.e,breakMin:slot.b,note:'Cần người bổ sung',help:true});
-        i++;
+      // Thiếu nhân sự PT thực tế thì hiển thị số slot cần bổ sung.
+      while(ptAssigned<ptNeeded&&sched[d].length<MAX){
+        sched[d].push({staffId:'__help__',start:18,end:23,breakMin:0,note:'Cần người bổ sung',help:true});
+        ptAssigned++;
       }
       continue;
     }
