@@ -464,13 +464,34 @@ const STAFF=[
   {id:'trung', name:'Trung',  jp:'チュン',type:'main',base:12000000,hex:'#5b30a0',ds:14.5,de:26,  fix:true, defaultBreak:30, requestedOff:[4,11,18,25,30]},
   {id:'thuy',  name:'Thúy',  jp:'トゥイ',type:'main',base:10000000,hex:'#1a7a45',ds:14.5,de:26,  fix:true, defaultBreak:30, requestedOff:[5,12,19,26]},
   {id:'khuong',name:'Khương',jp:'クオン',type:'main',base:10000000,hex:'#1840a0',ds:14.5,de:26,  fix:true, defaultBreak:30, requestedOff:[3,10,17,24]},
-  {id:'kha',   name:'Khá',   jp:'カー',  type:'pt',  rate:30000,   hex:'#b05010',ds:16,  de:23,  fix:false,defaultBreak:0,  requestedOff:[2,9,16,23], kiboHours:{}},
+  {id:'kha',   name:'Khá',   jp:'カー',  type:'main',base:10000000,hex:'#b05010',ds:15,  de:26,  fix:true, defaultBreak:30, requestedOff:[2,9,16,23], kiboHours:{}},
   {id:'tham',  name:'Thắm',  jp:'タム',  type:'pt',  rate:33000,   hex:'#982068',ds:18.5,de:23,  fix:false,defaultBreak:0,  requestedOff:[], kiboHours:{}, weekendFree:true},
   {id:'nhi',   name:'Nhi',   jp:'ニー',  type:'pt',  rate:30000,   hex:'#a81818',ds:18.5,de:23,  fix:false,defaultBreak:0,  requestedOff:[], kiboHours:{}},
 ];
 
 // sched[day] = [{staffId,start,end,breakMin,note}]
 let sched={};
+
+// Chuẩn hóa Khá thành nhân viên chính thức (áp dụng từ tháng 11/2026).
+function enforceKhaOfficial(){
+  const kha=STAFF.find(s=>s.id==='kha');
+  if(kha){
+    Object.assign(kha,{type:'main',base:10000000,ds:15,de:26,fix:true,defaultBreak:30});
+    delete kha.rate;
+  }
+  // Chỉ cập nhật lịch từ tháng 11/2026 trở đi; không sửa dữ liệu các tháng đã qua.
+  Object.entries(monthScheds).forEach(([key,days])=>{
+    const [yy,mm]=key.split('-').map(Number);
+    if(yy<2026||(yy===2026&&mm<11))return;
+    Object.values(days||{}).forEach(shifts=>{
+      (shifts||[]).forEach(sh=>{
+        if(sh.staffId==='kha'){
+          sh.start=15; sh.end=26; sh.breakMin=30;
+        }
+      });
+    });
+  });
+}
 
 // ════════════════════════════════════
 // LOCAL STORAGE — tự lưu vào PC
@@ -549,6 +570,9 @@ async function loadFromCloud(){
         remote.staff.forEach(sv=>{if(sv.kiboHours&&Object.keys(sv.kiboHours).length)monthKiboH[k][sv.id]=sv.kiboHours;});
       }
       if(remote.staff)remote.staff.forEach(sv=>{const s=STAFF.find(x=>x.id===sv.id);if(s)Object.assign(s,sv);});
+      enforceKhaOfficial();
+      remote.staff=STAFF;
+      remote.monthScheds=monthScheds;
       localStorage.setItem(STORAGE_KEY,JSON.stringify(remote));
       loadMonthSched();renderAll();
       setSyncBadge('ok');setTimeout(()=>setSyncBadge(''),3000);
@@ -581,6 +605,7 @@ function loadState(){
       d.staff.forEach(sv=>{if(sv.kiboHours&&Object.keys(sv.kiboHours).length)monthKiboH[k][sv.id]=sv.kiboHours;});
     }
     if(d.staff)d.staff.forEach(sv=>{const s=STAFF.find(x=>x.id===sv.id);if(s)Object.assign(s,sv);});
+    enforceKhaOfficial();
     loadMonthSched();
     return true;
   }catch(e){return false;}
