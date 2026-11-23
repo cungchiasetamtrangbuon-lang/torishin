@@ -370,7 +370,7 @@ function attPayroll(mid){
         if(h&&h.total>0){
           cell.status='done';cell.h=h;
           reg+=h.reg;night+=h.night;workDays++;
-          if(h.total>=6) mealDays++;
+          if(h.total>=p.mealMinHours) mealDays++;
           // Thưởng ngày DT>15M + làm >6h
           if(h.total>p.revenueMinHours&&dayRev(md,i)>p.revenueThreshold) revBonus+=p.revenueBonus;
         }
@@ -784,7 +784,7 @@ function calcStaff(staff, shifts){
     const h=getShiftHours(code);
     reg+=h.r; night+=h.n;
     if(code&&code!=='休'&&h.r+h.n>0) workDays++;
-    if(h.r+h.n>=6) mealDays++;
+    if(h.r+h.n>=getPayrollSettings().mealMinHours) mealDays++;
   });
   const totalHrs=reg+night,p=getPayrollSettings();
   const meal=mealDays*p.mealAmount;
