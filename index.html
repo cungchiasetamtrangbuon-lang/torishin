@@ -356,6 +356,7 @@ function calcAttHours(rec){
 function attPayroll(mid){
   if(!_attData?.records) return null;
   const cfg=monthCfg(mid), md=monthData(mid);
+  const p=getPayrollSettings();
   return STAFF.map(s=>{
     let reg=0,night=0,workDays=0,mealDays=0,revBonus=0;
     const days=[];
@@ -376,7 +377,7 @@ function attPayroll(mid){
       } else if(rec?.clockIn){ cell.status='working'; }
       days.push(cell);
     }
-    const p=getPayrollSettings(),x=p.staff[s.id]||{},staff={...s,...x};
+    const x=p.staff[s.id]||{},staff={...s,...x};
     const totalHrs=reg+night,meal=mealDays*p.mealAmount;
     const pay=payrollPay(staff,reg,night,totalHrs),salary=pay.salary;
     const attBonus=workDays>=p.attendanceDays?p.attendanceBonus:0;
