@@ -241,6 +241,52 @@ tr.sum-row:hover td{background:#f1f5f9}
 .mc-save-btn{padding:9px 24px;background:var(--accent);color:#fff;border:none;border-radius:9px;font-size:14px;font-weight:800;cursor:pointer}
 .mc-save-btn:hover{background:var(--accent2)}
 
+/* ═══ MOBILE RESPONSIVE ═══ */
+@media(max-width:760px){
+  html,body{width:100%;min-width:0;height:100%;min-height:100%;overflow:hidden}
+  body{height:100dvh}
+  .hdr{height:auto;min-height:48px;flex-wrap:wrap;overflow:visible;padding:5px 6px;gap:4px}
+  .hdr-logo{height:38px;padding:0 8px;font-size:15px;border-right:0}
+  .hdr-months{order:3;flex:1 1 100%;height:38px;padding:0 2px;overflow-x:auto}
+  .m-tab{height:36px;padding:0 12px;font-size:12px}
+  .hdr-actions{flex:1 1 auto;min-width:0;overflow-x:auto;padding:0 2px;border-left:0;gap:4px;scrollbar-width:none}
+  .hdr-actions::-webkit-scrollbar{display:none}
+  .hdr-btn{padding:7px 9px;font-size:11px;min-height:32px}
+  .app-body{flex-direction:column;min-height:0;overflow:hidden}
+  .sidebar{order:2;width:100%;height:auto;max-height:76px;flex:0 0 auto;display:flex;flex-direction:row;overflow-x:auto;overflow-y:hidden;padding:4px 6px;gap:3px;scrollbar-width:thin}
+  .nav-section{display:none}
+  .nav-item{flex:0 0 auto;min-width:max-content;padding:9px 11px;border-left:0;border-bottom:3px solid transparent;border-radius:7px;font-size:12px;gap:6px}
+  .nav-item.active{border-left:0;border-bottom-color:var(--accent)}
+  .main{order:1;flex:1 1 auto;width:100%;min-width:0;min-height:0;overflow:auto;padding:12px 10px 16px}
+  .page-hdr{align-items:flex-start;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+  .page-title{font-size:18px}
+  .page-actions{width:100%;flex-wrap:wrap}
+  .page-actions .btn,.page-actions button{min-height:38px}
+  .kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .kpi{padding:12px}
+  .dash-grid{grid-template-columns:minmax(0,1fr)}
+  .salary-grid{grid-template-columns:repeat(2,minmax(0,1fr));padding:10px;gap:8px}
+  .salary-card{padding:10px 6px}
+  .salary-amount{font-size:14px}
+  .main table{font-size:11px}
+  .main th,.main td{padding:6px 5px}
+  .main .card{max-width:100%;min-width:0}
+  .modal{width:calc(100vw - 24px)!important;max-width:560px;max-height:88dvh;overflow:auto;padding:18px}
+  .overlay{padding:12px;align-items:center}
+  .modal-actions{flex-wrap:wrap}
+  input,select,textarea,button{max-width:100%}
+  .main input,.main select,.main textarea{font-size:16px}
+  #payrollSettingsOverlay .modal{width:calc(100vw - 16px)!important;padding:12px}
+  #payrollSettingsOverlay table{min-width:720px}
+  #payrollSettingsOverlay .modal>div[style*="overflow-x"]{overflow-x:auto}
+}
+@media(max-width:420px){
+  .hdr-logo{font-size:13px;padding:0 5px}
+  .hdr-btn{padding:6px 7px;font-size:10px}
+  .nav-item{padding:8px 9px;font-size:11px}
+  .salary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
 /* Print */
 @media print{
   .hdr,.sidebar,.page-actions,.hdr-actions{display:none!important}
