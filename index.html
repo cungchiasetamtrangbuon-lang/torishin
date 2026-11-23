@@ -743,6 +743,38 @@ function getShiftHours(code){
 }
 
 // ═══ CẤU HÌNH LƯƠNG CÓ THỂ TỰ ĐIỀU CHỈNH ═══
+// ═══ KHÓA TRUY CẬP BẢNG LƯƠNG ═══
+let _payrollUnlocked = sessionStorage.getItem('torishin_payroll_unlocked')==='1';
+async function payrollHash(value){
+  const bytes=new TextEncoder().encode(value);
+  const digest=await crypto.subtle.digest('SHA-256',bytes);
+  return Array.from(new Uint8Array(digest)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+async function requirePayrollAccess(){
+  if(_payrollUnlocked) return true;
+  const p=getPayrollSettings();
+  if(!p.payrollPasswordHash){
+    const a=prompt('Thiết lập mật khẩu Bảng Lương (ít nhất 6 ký tự):');
+    if(a===null){S.curTab='dashboard';saveNav();renderShell();renderDashboard();return false;}
+    if(a.length<6){alert('Mật khẩu cần ít nhất 6 ký tự.');return requirePayrollAccess();}
+    const b=prompt('Nhập lại mật khẩu để xác nhận:');
+    if(a!==b){alert('Mật khẩu xác nhận không khớp.');return requirePayrollAccess();}
+    p.payrollPasswordHash=await payrollHash(a);
+    saveToCloud();
+    _payrollUnlocked=true;sessionStorage.setItem('torishin_payroll_unlocked','1');
+    return true;
+  }
+  const entered=prompt('🔒 Nhập mật khẩu để mở Bảng Lương:');
+  if(entered===null){S.curTab='dashboard';saveNav();renderShell();renderDashboard();return false;}
+  if(await payrollHash(entered)!==p.payrollPasswordHash){alert('Mật khẩu không đúng.');return requirePayrollAccess();}
+  _payrollUnlocked=true;sessionStorage.setItem('torishin_payroll_unlocked','1');
+  return true;
+}
+function lockPayroll(){
+  _payrollUnlocked=false;sessionStorage.removeItem('torishin_payroll_unlocked');
+  if(S.curTab==='bangluong'){S.curTab='dashboard';saveNav();renderShell();renderDashboard();}
+}
+
 function getPayrollSettings(){
   if(!S.payrollSettings){
     S.payrollSettings={
@@ -800,12 +832,24 @@ function openPayrollSettings(){
       <label>Phụ trội tăng ca (%)<input id="ps_overtimePremium" type="number" value="${p.overtimePremium}" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px"></label>
       <label>Phụ trội giờ đêm (%)<input id="ps_nightPremium" type="number" value="${p.nightPremium}" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px"></label>
     </div>
+    <h3 style="font-size:14px;margin:18px 0 8px">🔒 Mật khẩu truy cập Bảng Lương</h3>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px">
+      <label>Mật khẩu mới (để trống nếu không đổi)<input id="ps_newPassword" type="password" autocomplete="new-password" placeholder="Tối thiểu 6 ký tự" style="width:100%;padding:9px;border:1px solid var(--border);border-radius:7px"></label>
+      <label>Nhập lại mật khẩu mới<input id="ps_confirmPassword" type="password" autocomplete="new-password" placeholder="Xác nhận mật khẩu" style="width:100%;padding:9px;border:1px solid var(--border);border-radius:7px"></label>
+    </div>
+    <p style="font-size:11px;color:var(--muted);margin-top:6px">Để trống cả hai ô nếu muốn giữ mật khẩu hiện tại. Có hiệu lực sau khi lưu cơ chế.</p>
     <div class="modal-actions"><button class="btn btn-ghost" onclick="document.getElementById('payrollSettingsOverlay').remove()">Hủy</button><button class="btn btn-primary" onclick="savePayrollSettings()">💾 Lưu cơ chế</button></div>
   </div>`;
   document.body.appendChild(box);
 }
-function savePayrollSettings(){
+async function savePayrollSettings(){
   const p=getPayrollSettings();
+  const np=document.getElementById('ps_newPassword').value,cp=document.getElementById('ps_confirmPassword').value;
+  if(np||cp){
+    if(np.length<6){alert('Mật khẩu mới cần ít nhất 6 ký tự.');return;}
+    if(np!==cp){alert('Hai ô mật khẩu không khớp.');return;}
+    p.payrollPasswordHash=await payrollHash(np);
+  }
   const read=id=>Number(document.getElementById('ps_'+id)?.value)||0;
   ['mealAmount','mealMinHours','revenueThreshold','revenueMinHours','revenueBonus','attendanceDays','attendanceBonus','bhxhAmount','overtimeHours','overtimePremium','nightPremium'].forEach(k=>p[k]=read(k));
   STAFF.forEach(st=>{p.staff[st.id]={
@@ -814,7 +858,7 @@ function savePayrollSettings(){
     bhxh:document.getElementById('ps_bhxh_'+st.id).checked,
     languageAllowance:read('lang_'+st.id)
   };});
-  saveToCloud();document.getElementById('payrollSettingsOverlay').remove();renderBangLuong();
+  await saveToCloud();document.getElementById('payrollSettingsOverlay').remove();renderBangLuong();
 }
 function payrollPay(staff,reg,night,totalHrs){
   const p=getPayrollSettings(),x=p.staff[staff.id]||{};
@@ -915,11 +959,13 @@ function renderShell(){
 function setMonth(id){
   S.curMonth=id; saveNav(); renderShell(); renderContent();
 }
-function setTab(id){
+async function setTab(id){
+  if(id==='bangluong' && !(await requirePayrollAccess())) return;
   S.curTab=id; saveNav(); renderShell(); renderContent();
 }
 
 function renderContent(){
+  if(S.curTab==='bangluong'&&!_payrollUnlocked){requirePayrollAccess().then(ok=>{if(ok&&S.curTab==='bangluong')renderBangLuong();});return;}
   const map={dashboard:renderDashboard,baoke:renderBaoKe,doanhthu:renderDoanhThu,thucpham:renderThucPham,ruou:renderRuou,chikhac:renderChiKhac,bangluong:renderBangLuong};
   (map[S.curTab]||renderDashboard)();
 }
