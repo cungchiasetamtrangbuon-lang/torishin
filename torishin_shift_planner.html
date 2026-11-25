@@ -351,11 +351,6 @@ body{font-family:'Sora',sans-serif;background:var(--w2);color:var(--ink);min-hei
       </div>
     </div>
   </div>
-  <div id="leave" class="sec"><div class="leave-wrap">
-  <div class="leave-title">🗓 Đăng ký ngày nghỉ</div><div class="leave-sub">Tất cả nhân viên đều xem được đăng ký nghỉ của nhau để hạn chế trùng ngày.</div>
-  <div class="leave-form"><label>Nhân viên<select id="leaveStaff"></select></label><label>Ngày muốn nghỉ<input id="leaveDate" type="date"></label><label>Lý do (không bắt buộc)<input id="leaveReason" maxlength="120" placeholder="Ví dụ: Việc gia đình"></label><button class="btn au" onclick="submitLeaveRequest()">＋ Gửi đăng ký</button></div>
-  <div id="leaveConflict" class="leave-conflict"></div><div class="leave-legend">🟠 Chờ xác nhận　 🟢 Đã duyệt　 🔴 Không duyệt</div><div id="leaveList"></div>
-  </div></div>
   <!-- TIMELINE -->
   <div id="tl" class="sec">
     <div class="tlpills" id="tlPills"></div>
@@ -1110,6 +1105,30 @@ function renderTl(){
 // ════════════════════════════════════
 // SETTINGS
 // ════════════════════════════════════
+
+let plannerLeaveRequests={};
+firebase.database().ref('torishin_leave_requests').on('value',function(snap){
+ plannerLeaveRequests=snap.val()||{};
+ renderPlannerLeaveCards();
+});
+function renderPlannerLeaveCards(){
+ if(typeof STAFF==='undefined')return;
+ STAFF.forEach(function(st){
+  const el=document.getElementById('leave-staff-'+st.id);
+  if(!el)return;
+  const monthKey=curY+'-'+String(curM).padStart(2,'0');
+  const items=Object.values(plannerLeaveRequests||{}).filter(function(r){
+   return r&&r.staffId===st.id&&r.date&&r.date.slice(0,7)===monthKey;
+  }).sort(function(a,b){return a.date.localeCompare(b.date);});
+  const labels={pending:'Chờ duyệt',approved:'Đã duyệt',rejected:'Không duyệt'};
+  if(!items.length){el.textContent='Chưa có đăng ký nghỉ.';return;}
+  el.innerHTML=items.map(function(r){
+   const reason=String(r.reason||'Không ghi lý do').replace(/[<>]/g,'');
+   const color=r.status==='approved'?'#187343':r.status==='rejected'?'#b52b2b':'#a66a00';
+   return '<div style="display:flex;gap:6px;align-items:center;padding:4px 0;border-top:1px solid var(--bdr)"><b>'+Number(r.date.slice(8,10))+'</b><span style="flex:1">'+reason+'</span><span style="font-size:10px;color:'+color+'">'+(labels[r.status]||labels.pending)+'</span></div>';
+  }).join('');
+ });
+}
 function renderSettings(){
   let html=`
     <div class="set-note">
@@ -1201,29 +1220,9 @@ function renderSettings(){
             <span class="set-field-lbl" style="color:var(--ink4);font-size:11px;">⏰ Nhân viên chính thức — giờ làm cố định</span>
           </div>`:''}
           <div class="set-divider"></div>
-          <div class="kibo-wrap">
-            <div class="kibo-label">
-              <span style="font-size:11.5px;font-weight:600;color:var(--ink2);">希望休 — Ngày xin nghỉ T${curM}</span>
-              <span class="kibo-clear" onclick="clearKibo('${s.id}')">Xóa hết</span>
-            </div>
-            <div style="display:flex;align-items:center;gap:4px;margin-bottom:5px;flex-wrap:wrap;">
-              <span style="font-size:10.5px;color:var(--ink4);">Chọn khoảng:</span>
-              <input class="set-i" type="number" id="kibo-f-${s.id}" min="1" max="${daysInM()}" placeholder="Từ" style="width:42px;">
-              <span style="font-size:10.5px;color:var(--ink4);">–</span>
-              <input class="set-i" type="number" id="kibo-t-${s.id}" min="1" max="${daysInM()}" placeholder="Đến" style="width:42px;">
-              <button class="btn" onclick="selectKiboRange('${s.id}')" style="padding:2px 8px;font-size:11px;">✓ Chọn</button>
-            </div>
-            <div class="kibo-grid" id="kibo-${s.id}">
-              ${(()=>{
-                const days=daysInM();let g='';
-                for(let d=1;d<=days;d++){
-                  const w=getDow(d),isOn=(s.requestedOff||[]).includes(d);
-                  const cls=w===0?'su':w===6?'sa':'';
-                  g+=`<div class="kd ${cls}${isOn?' on':''}" onclick="toggleKibo('${s.id}',${d},this)">${d}</div>`;
-                }
-                return g;
-              })()}
-            </div>
+          <div class="kibo-wrap" style="margin-top:8px;">
+            <div class="kibo-label"><span style="font-size:11.5px;font-weight:600;color:var(--ink2);">🗓 Đăng ký nghỉ T${curM}</span><span style="font-size:10px;color:var(--ink4);">Xem tại đây · đăng ký ở Chấm Công</span></div>
+            <div id="leave-staff-${s.id}" style="font-size:11px;color:var(--ink3);padding:4px 0;">Đang tải…</div>
           </div>
           ${s.type==='pt'?`
           <div class="kibo-wrap" style="margin-top:6px;">
@@ -1317,6 +1316,7 @@ function renderSettings(){
   },50);
 
   document.getElementById('settingsContent').innerHTML=html;
+  renderPlannerLeaveCards();
 }
 
 function applySettings(){
@@ -1588,13 +1588,6 @@ function changeMonth(d){
   if(document.getElementById('tl').classList.contains('on'))renderTl();
   if(document.getElementById('rpt').classList.contains('on')&&rptOpen)renderReport();
 }
-const _leaveRef=firebase.database().ref('torishin_leave_requests');let leaveRequests={};
-_leaveRef.on('value',snap=>{leaveRequests=snap.val()||{};if(document.getElementById('leave')?.classList.contains('on'))renderLeaveRequests();});
-function openLeaveTab(){const sel=document.getElementById('leaveStaff');if(sel&&!sel.options.length)sel.innerHTML=STAFF.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');const d=document.getElementById('leaveDate');if(d&&!d.value)d.value=`${curY}-${String(curM).padStart(2,'0')}-01`;renderLeaveRequests();}
-function leaveDateLabel(v){return new Date(v+'T00:00:00').toLocaleDateString('vi-VN',{weekday:'short',day:'2-digit',month:'2-digit',year:'numeric'});}
-function submitLeaveRequest(){const sid=document.getElementById('leaveStaff').value,date=document.getElementById('leaveDate').value,reason=document.getElementById('leaveReason').value.trim();if(!sid||!date){toast('Vui lòng chọn nhân viên và ngày nghỉ','w');return;}const dt=new Date(date+'T00:00:00');if(dt.getFullYear()<curY||(dt.getFullYear()===curY&&dt.getMonth()+1<curM)){toast('Không thể đăng ký ngày đã qua tháng hiện tại','w');return;}if(Object.values(leaveRequests).some(r=>r&&r.staffId===sid&&r.date===date&&r.status!=='rejected')){toast('Nhân viên này đã đăng ký ngày đó','w');return;}const id='lr_'+Date.now()+'_'+Math.random().toString(36).slice(2,7);_leaveRef.child(id).set({id,staffId:sid,date,reason,status:'pending',createdAt:Date.now()}).then(()=>{document.getElementById('leaveReason').value='';toast('Đã gửi đăng ký nghỉ','s');}).catch(()=>toast('Không gửi được, hãy thử lại','e'));}
-function renderLeaveRequests(){const box=document.getElementById('leaveList');if(!box)return;const rows=Object.values(leaveRequests).filter(r=>r&&r.date&&r.date.startsWith(`${curY}-${String(curM).padStart(2,'0')}-`)).sort((a,b)=>a.date.localeCompare(b.date));const counts={};rows.filter(r=>r.status!=='rejected').forEach(r=>counts[r.date]=(counts[r.date]||0)+1);const clashes=Object.entries(counts).filter(([,n])=>n>1);document.getElementById('leaveConflict').textContent=clashes.length?'⚠ Ngày có nhiều người đăng ký: '+clashes.map(([d,n])=>leaveDateLabel(d)+' ('+n+' người)').join(' · '):'✓ Chưa có ngày nào bị trùng đăng ký.';const labels={pending:'Chờ xác nhận',approved:'Đã duyệt',rejected:'Không duyệt'};box.innerHTML=rows.length?rows.map(r=>{const s=STAFF.find(x=>x.id===r.staffId);return `<div class="leave-item"><div class="leave-date">${leaveDateLabel(r.date)}</div><div><div class="leave-name" style="color:${s?s.hex:'var(--ink)'}">${s?s.name:r.staffId}</div><div class="leave-reason">${r.reason||'Không ghi lý do'}</div></div><span class="leave-status ${r.status||'pending'}">${labels[r.status]||labels.pending}</span></div>`;}).join(''):'<div style="padding:20px;text-align:center;color:var(--ink3)">Chưa có đăng ký nghỉ trong tháng này.</div>';}
-
 function goTab(e,id){
   document.querySelectorAll('.sec').forEach(s=>s.classList.remove('on'));
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
@@ -1603,7 +1596,6 @@ function goTab(e,id){
   if(id==='tl')renderTl();
   if(id==='rpt'&&rptOpen)renderReport();
   if(id==='settings')renderSettings();
-  if(id==='leave')openLeaveTab();
 }
 
 // ════════════════════════════════════
