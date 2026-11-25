@@ -1677,14 +1677,8 @@ function _applyKiboToSched(sid){
 let plannerStaffPins={};
 firebase.database().ref('torishin_attendance/staffConfig').on('value',function(snap){plannerStaffPins=snap.val()||{};});
 function verifyEmployeeKiboAccess(targetStaffId){
- if(isMgr)return gs(targetStaffId);
- const entered=prompt('Nhập mật khẩu/PIN cá nhân để mở phần Kibo:');
- if(entered===null)return null;
- const pin=String(entered).trim();
- const matches=STAFF.filter(function(st){const cfg=plannerStaffPins[st.id]||{};return cfg.pin!==undefined&&cfg.pin!==null&&String(cfg.pin).trim()===pin;});
- if(matches.length===0){toast('Mật khẩu không đúng hoặc nhân viên chưa được cài PIN','e');return null;}
- if(matches.length>1){toast('PIN đang bị trùng giữa nhiều nhân viên. Quản lý cần đặt PIN riêng cho từng người.','e');return null;}
- return matches[0];
+ // Kibo trong phần quản lý: không yêu cầu PIN cá nhân.
+ return gs(targetStaffId);
 }
 window.toggleKibo=function(sid,d,el){
   const s=verifyEmployeeKiboAccess(sid);if(!s)return;
