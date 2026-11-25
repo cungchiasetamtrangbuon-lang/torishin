@@ -1677,19 +1677,19 @@ function _applyKiboToSched(sid){
 
 let plannerStaffPins={};
 firebase.database().ref('torishin_attendance/staffConfig').on('value',function(snap){plannerStaffPins=snap.val()||{};});
-function verifyEmployeeKiboAccess(staffId){
- if(isMgr)return true;
- const staff=gs(staffId);
- const cfg=plannerStaffPins[staffId]||{};
- if(!cfg.pin){toast('Nhân viên chưa được cài PIN. Quản lý hãy đặt PIN trong trang Chấm Công.','e');return false;}
- const entered=prompt('Nhập PIN của '+(staff?staff.name:'nhân viên')+' để đăng ký Kibo:');
- if(entered===null)return false;
- if(String(entered).trim()!==String(cfg.pin)){toast('PIN không đúng','e');return false;}
- return true;
+function verifyEmployeeKiboAccess(targetStaffId){
+ if(isMgr)return gs(targetStaffId);
+ const entered=prompt('Nhập mật khẩu/PIN cá nhân để mở phần Kibo:');
+ if(entered===null)return null;
+ const pin=String(entered).trim();
+ const matches=STAFF.filter(function(st){const cfg=plannerStaffPins[st.id]||{};return cfg.pin!==undefined&&cfg.pin!==null&&String(cfg.pin).trim()===pin;});
+ if(matches.length===0){toast('Mật khẩu không đúng hoặc nhân viên chưa được cài PIN','e');return null;}
+ if(matches.length>1){toast('PIN đang bị trùng giữa nhiều nhân viên. Quản lý cần đặt PIN riêng cho từng người.','e');return null;}
+ return matches[0];
 }
 window.toggleKibo=function(sid,d,el){
-  const s=gs(sid);if(!s)return;
-  if(!verifyEmployeeKiboAccess(sid))return;
+  const s=verifyEmployeeKiboAccess(sid);if(!s)return;
+  sid=s.id;
   if(!s.requestedOff)s.requestedOff=[];
   const idx=s.requestedOff.indexOf(d);
   if(idx>=0){s.requestedOff.splice(idx,1);el.classList.remove('on');}
@@ -1710,10 +1710,11 @@ window.clearKibo=function(sid){
   saveState();renderCal();
 };
 window.selectKiboRange=function(sid){
-  if(!verifyEmployeeKiboAccess(sid))return;
-  const s=gs(sid);if(!s)return;
-  const from=parseInt(document.getElementById('kibo-f-'+sid).value);
-  const to=parseInt(document.getElementById('kibo-t-'+sid).value);
+  const targetId=sid;
+  const s=verifyEmployeeKiboAccess(targetId);if(!s)return;
+  sid=s.id;
+  const from=parseInt(document.getElementById('kibo-f-'+targetId).value);
+  const to=parseInt(document.getElementById('kibo-t-'+targetId).value);
   if(!from||!to||from>to||from<1||to>daysInM()){toast('Khoảng ngày không hợp lệ','e');return;}
   if(!s.requestedOff)s.requestedOff=[];
   for(let d=from;d<=to;d++){if(!s.requestedOff.includes(d))s.requestedOff.push(d);}
