@@ -774,7 +774,7 @@ function confirmPin(){
   if(leavePinMode){
     const entered=document.getElementById('pinInput').value.trim();
     const matches=STAFF.filter(st=>String(state.staffConfig[st.id]?.pin||'').trim()===entered && entered!=='');
-    if(matches.length===1){leaveAuthenticatedStaffId=matches[0].id;leavePinMode=false;closePinModal();selectedLeaveDates=[];renderLeavePage();toast('Đã xác thực: '+matches[0].name);return;}
+    if(matches.length===1){leaveAuthenticatedStaffId=matches[0].id;leavePinMode=false;closePinModal();selectedLeaveDates=[];selectedLeaveCancelIds=[];renderLeavePage();toast('Đã xác thực: '+matches[0].name);return;}
     document.getElementById('pinErr').textContent=matches.length?'PIN bị trùng, báo quản lý kiểm tra':'❌ Sai PIN, thử lại';
     document.getElementById('pinInput').value='';document.getElementById('pinInput').focus();return;
   }
@@ -1586,6 +1586,7 @@ const leaveRef = firebase.database().ref('torishin_leave_requests');
 let leaveRequests = {};
 let leaveMonth = '';
 let selectedLeaveDates = [];
+let selectedLeaveCancelIds = [];
 let leaveAuthenticatedStaffId = null;
 let leavePinMode = false;
 leaveRef.on('value', function(snap){ leaveRequests=snap.val()||{}; if(document.querySelector('.tab.on') && document.querySelector('.tab.on').dataset.tab==='leave') renderLeavePage(); });
@@ -1594,12 +1595,27 @@ function moveLeaveMonth(delta){ const p=leaveMonthKey().split('-').map(Number); 
 function chooseLeaveDate(date){
  if(date<todayKey())return;
  if(!leaveAuthenticatedStaffId){openLeavePinModal();return;}
- const idx=selectedLeaveDates.indexOf(date);
- if(idx>=0)selectedLeaveDates.splice(idx,1);else selectedLeaveDates.push(date);
- selectedLeaveDates.sort();
+ const ownPending=Object.values(leaveRequests||{}).find(function(r){return r&&r.staffId===leaveAuthenticatedStaffId&&r.date===date&&r.status==='pending';});
+ if(ownPending){
+  const idx=selectedLeaveCancelIds.indexOf(ownPending.id);
+  if(idx>=0)selectedLeaveCancelIds.splice(idx,1);else selectedLeaveCancelIds.push(ownPending.id);
+  selectedLeaveDates=selectedLeaveDates.filter(function(d){return d!==date;});
+ }else{
+  const idx=selectedLeaveDates.indexOf(date);
+  if(idx>=0)selectedLeaveDates.splice(idx,1);else selectedLeaveDates.push(date);
+  selectedLeaveDates.sort();
+ }
  renderLeavePage();
 }
-function clearSelectedLeaveDates(){selectedLeaveDates=[];renderLeavePage();}
+function clearSelectedLeaveDates(){selectedLeaveDates=[];selectedLeaveCancelIds=[];renderLeavePage();}
+function cancelSelectedLeaveRequests(){
+ if(!leaveAuthenticatedStaffId)return toast('Hãy đăng nhập bằng PIN trước','w');
+ if(!selectedLeaveCancelIds.length)return toast('Hãy chọn ngày đã đăng ký đang chờ duyệt để hủy','w');
+ if(!confirm('Bạn chắc chắn muốn hủy '+selectedLeaveCancelIds.length+' ngày đã đăng ký?'))return;
+ const ids=selectedLeaveCancelIds.slice(),updates={};
+ ids.forEach(function(id){updates[id+'/status']='cancelled';updates[id+'/cancelledAt']=Date.now();updates[id+'/cancelledBy']=leaveAuthenticatedStaffId;});
+ leaveRef.update(updates).then(function(){selectedLeaveCancelIds=[];renderLeavePage();toast('Đã hủy '+ids.length+' ngày đăng ký');}).catch(function(){toast('Không hủy được đăng ký','e');});
+}
 function submitAttendanceLeave(){
  const sid=leaveAuthenticatedStaffId;
  const reason=document.getElementById('leaveReason').value.trim();
@@ -1625,13 +1641,13 @@ function renderLeavePage(){
  const mk=leaveMonthKey(); const p=mk.split('-').map(Number); const y=p[0],m=p[1],days=new Date(y,m,0).getDate();
  const reqs=Object.values(leaveRequests||{}).filter(function(r){return r&&r.date&&r.date.slice(0,7)===mk;}).sort(function(a,b){return a.date.localeCompare(b.date);});
  let headers=''; for(let d=1;d<=days;d++)headers+='<th>'+d+'</th>';
- let rows=''; STAFF.forEach(function(st){let cells='';for(let d=1;d<=days;d++){const date=mk+'-'+String(d).padStart(2,'0');const found=reqs.some(function(r){return r.staffId===st.id&&r.date===date&&r.status!=='rejected';});const mine=st.id===leaveAuthenticatedStaffId&&selectedLeaveDates.includes(date);cells+='<td class="'+(mine?'lv-selected':'')+'" onclick="chooseLeaveDate(&quot;'+date+'&quot;)">'+(mine?'✓':(found?'●':''))+'</td>';}rows+='<tr><th class="lv-name">'+st.name+'</th>'+cells+'</tr>';});
- const labels={pending:'Chờ duyệt',approved:'Đã duyệt',rejected:'Không duyệt'};
+ let rows=''; STAFF.forEach(function(st){let cells='';for(let d=1;d<=days;d++){const date=mk+'-'+String(d).padStart(2,'0');const found=reqs.some(function(r){return r.staffId===st.id&&r.date===date&&r.status!=='rejected'&&r.status!=='cancelled';});const ownPending=reqs.find(function(r){return r.staffId===leaveAuthenticatedStaffId&&r.date===date&&r.status==='pending';});const cancelPick=!!(ownPending&&selectedLeaveCancelIds.includes(ownPending.id));const mine=st.id===leaveAuthenticatedStaffId&&selectedLeaveDates.includes(date);const cls=cancelPick?'lv-cancel-pick':(mine?'lv-selected':'');const mark=cancelPick?'✕':(mine?'✓':(found?'●':''));cells+='<td class="'+cls+'" onclick="chooseLeaveDate(&quot;'+date+'&quot;)">'+mark+'</td>';}rows+='<tr><th class="lv-name">'+st.name+'</th>'+cells+'</tr>';});
+ const labels={pending:'Chờ duyệt',approved:'Đã duyệt',rejected:'Không duyệt',cancelled:'Đã hủy'};
  let list=''; reqs.forEach(function(r){const st=STAFF.find(function(x){return x.id===r.staffId;});list+='<div class="lv-item"><b>'+r.date.split('-').reverse().join('/')+' · '+(st?st.name:r.staffId)+'</b><span>'+String(r.reason||'Không ghi lý do').replace(/[<>]/g,'')+'</span><em>'+(labels[r.status]||labels.pending)+'</em></div>';});
  if(!list)list='<div style="padding:12px;color:var(--ink4)">Chưa có đăng ký nghỉ trong tháng.</div>';
  const signedStaff=STAFF.find(st=>st.id===leaveAuthenticatedStaffId);
  const signedName=signedStaff?signedStaff.name:'Chưa đăng nhập';
- el.innerHTML='<style>.lv-wrap{background:var(--w);border:1px solid var(--bdr);border-radius:12px;padding:12px;overflow:hidden}.lv-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}.lv-head button{padding:6px 12px;border:1px solid var(--bdr);border-radius:7px;background:var(--bg)}.lv-scroll{overflow:auto}.lv-table{border-collapse:collapse;font-size:11px;white-space:nowrap}.lv-table th,.lv-table td{border:1px solid var(--bdr);min-width:25px;height:30px;text-align:center}.lv-name{position:sticky;left:0;background:var(--w);min-width:65px;text-align:left;padding:4px}.lv-table td{cursor:pointer}.lv-table td.lv-selected{background:#ffe6a8!important;color:#744900;font-weight:900;outline:2px solid #c78b22;outline-offset:-2px}.lv-form{display:grid;gap:8px;margin:12px 0}.lv-form input,.lv-form select{padding:10px;border:1px solid var(--bdr);border-radius:8px;background:var(--w)}.lv-form button{padding:11px;background:var(--ink);color:white;border:0;border-radius:8px;font-weight:700}.lv-item{display:grid;grid-template-columns:120px 1fr auto;gap:8px;padding:9px 0;border-bottom:1px solid var(--bdr);font-size:12px}.lv-item span{color:var(--ink3)}.lv-item em{font-style:normal;font-size:10px}</style><div class="lv-wrap"><div class="lv-head"><button onclick="moveLeaveMonth(-1)">‹</button><b>🗓 Đăng ký nghỉ · '+m+'/'+y+'</b><button onclick="moveLeaveMonth(1)">›</button></div><div style="font-size:11px;color:var(--ink4);margin-bottom:8px">Chọn nhiều ngày; ngày đã chọn của bạn sẽ tô vàng và có dấu ✓. Chấm ● là đã có người đăng ký. Bấm lại ngày đã chọn để bỏ chọn.</div><div class="lv-scroll"><table class="lv-table"><thead><tr><th class="lv-name">Nhân viên</th>'+headers+'</tr></thead><tbody>'+rows+'</tbody></table></div><div class="lv-form"><div style="padding:10px;border:1px solid var(--bdr);border-radius:8px;background:#f7f7f7;font-weight:700">👤 Nhân viên đăng ký: '+signedName+'</div><button type="button" onclick="openLeavePinModal()">🔐 '+(leaveAuthenticatedStaffId?'Đổi nhân viên':'Đăng nhập bằng PIN')+'</button><button type="button" onclick="leaveAuthenticatedStaffId=null;selectedLeaveDates=[];renderLeavePage()">Đăng xuất</button><div style="font-size:12px;color:var(--ink3)">Đã chọn: '+selectedLeaveDates.length+' ngày</div><button type="button" onclick="clearSelectedLeaveDates()" style="background:#fff;color:#a33;border:1px solid #d99;padding:8px">✕ Hủy các ngày đang chọn</button><input id="leaveReason" maxlength="160" placeholder="Lý do xin nghỉ (không bắt buộc)"><button onclick="submitAttendanceLeave()">＋ Gửi đăng ký '+selectedLeaveDates.length+' ngày nghỉ</button></div><b style="font-size:13px">Danh sách đăng ký</b>'+list+'</div>';
+ el.innerHTML='<style>.lv-wrap{background:var(--w);border:1px solid var(--bdr);border-radius:12px;padding:12px;overflow:hidden}.lv-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}.lv-head button{padding:6px 12px;border:1px solid var(--bdr);border-radius:7px;background:var(--bg)}.lv-scroll{overflow:auto}.lv-table{border-collapse:collapse;font-size:11px;white-space:nowrap}.lv-table th,.lv-table td{border:1px solid var(--bdr);min-width:25px;height:30px;text-align:center}.lv-name{position:sticky;left:0;background:var(--w);min-width:65px;text-align:left;padding:4px}.lv-table td{cursor:pointer}.lv-table td.lv-selected{background:#ffe6a8!important;color:#744900;font-weight:900;outline:2px solid #c78b22;outline-offset:-2px}.lv-table td.lv-cancel-pick{background:#f8d7da!important;color:#9b1c28;font-weight:900;outline:2px solid #bd3542;outline-offset:-2px}.lv-form{display:grid;gap:8px;margin:12px 0}.lv-form input,.lv-form select{padding:10px;border:1px solid var(--bdr);border-radius:8px;background:var(--w)}.lv-form button{padding:11px;background:var(--ink);color:white;border:0;border-radius:8px;font-weight:700}.lv-item{display:grid;grid-template-columns:120px 1fr auto;gap:8px;padding:9px 0;border-bottom:1px solid var(--bdr);font-size:12px}.lv-item span{color:var(--ink3)}.lv-item em{font-style:normal;font-size:10px}</style><div class="lv-wrap"><div class="lv-head"><button onclick="moveLeaveMonth(-1)">‹</button><b>🗓 Đăng ký nghỉ · '+m+'/'+y+'</b><button onclick="moveLeaveMonth(1)">›</button></div><div style="font-size:11px;color:var(--ink4);margin-bottom:8px">Chọn ngày trống để đăng ký (vàng ✓). Chọn ngày đã đăng ký đang chờ duyệt của bạn để hủy (đỏ ✕). Chấm ● là ngày có đăng ký của người khác hoặc đã được duyệt.</div><div class="lv-scroll"><table class="lv-table"><thead><tr><th class="lv-name">Nhân viên</th>'+headers+'</tr></thead><tbody>'+rows+'</tbody></table></div><div class="lv-form"><div style="padding:10px;border:1px solid var(--bdr);border-radius:8px;background:#f7f7f7;font-weight:700">👤 Nhân viên đăng ký: '+signedName+'</div><button type="button" onclick="openLeavePinModal()">🔐 '+(leaveAuthenticatedStaffId?'Đổi nhân viên':'Đăng nhập bằng PIN')+'</button><button type="button" onclick="leaveAuthenticatedStaffId=null;selectedLeaveDates=[];renderLeavePage()">Đăng xuất</button><div style="font-size:12px;color:var(--ink3)">Ngày đăng ký mới: '+selectedLeaveDates.length+' · Ngày chọn hủy: '+selectedLeaveCancelIds.length+'</div><button type="button" onclick="cancelSelectedLeaveRequests()" style="background:#a32632;color:#fff;border:0;padding:9px">Hủy '+selectedLeaveCancelIds.length+' ngày đã đăng ký</button><button type="button" onclick="clearSelectedLeaveDates()" style="background:#fff;color:#a33;border:1px solid #d99;padding:8px">✕ Hủy các ngày đang chọn</button><input id="leaveReason" maxlength="160" placeholder="Lý do xin nghỉ (không bắt buộc)"><button onclick="submitAttendanceLeave()">＋ Gửi đăng ký '+selectedLeaveDates.length+' ngày nghỉ</button></div><b style="font-size:13px">Danh sách đăng ký</b>'+list+'</div>';
  const scroll=el.querySelector('.lv-scroll');if(scroll)scroll.scrollLeft=previousScroll;
 }
 // ══════════════════════════════════════════════════════
