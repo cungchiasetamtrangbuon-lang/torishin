@@ -293,7 +293,7 @@ body{font-family:'Sora',sans-serif;background:var(--w2);color:var(--ink);min-hei
   .print-toolbar{display:none!important;}
   @page{size:A4 landscape;margin:8mm;}
 }
-</style>
+.leave-wrap{max-width:1000px;margin:auto;background:var(--w);border:1px solid var(--bdr);border-radius:12px;padding:18px}.leave-title{font-size:18px;font-weight:750;color:var(--ink)}.leave-sub{font-size:12px;color:var(--ink3);margin:5px 0 14px}.leave-form{display:grid;grid-template-columns:1fr 1fr 1.5fr auto;gap:9px;align-items:end;padding:14px;background:var(--bg);border-radius:9px}.leave-form label{font-size:11px;font-weight:600;color:var(--ink3);display:flex;flex-direction:column;gap:5px}.leave-form input,.leave-form select{width:100%;min-width:0;padding:9px;border:1px solid var(--bdr2);border-radius:7px;background:#fff;font:inherit;font-size:13px}.leave-conflict{font-size:12px;margin:10px 0;color:#9b5a00}.leave-legend{font-size:11px;color:var(--ink3);margin:12px 0}.leave-item{display:grid;grid-template-columns:120px 1fr auto;gap:10px;align-items:center;padding:11px;border:1px solid var(--bdr);border-radius:8px;margin-bottom:7px}.leave-date,.leave-name{font-weight:700;font-size:13px}.leave-reason{font-size:11px;color:var(--ink3);margin-top:3px}.leave-status{font-size:10px;font-weight:700;padding:4px 8px;border-radius:20px;white-space:nowrap}.leave-status.pending{background:#fff2d8;color:#996000}.leave-status.approved{background:#e4f5eb;color:#187343}.leave-status.rejected{background:#fde8e8;color:#b52b2b}@media(max-width:680px){.leave-form{grid-template-columns:1fr 1fr}.leave-form label:nth-child(3),.leave-form button{grid-column:1/-1}.leave-form button{min-height:40px}.leave-item{grid-template-columns:1fr auto}.leave-date{grid-column:1/-1}.leave-wrap{padding:12px}}</style>
 </head>
 <body>
 <div id="ghost"></div>
@@ -327,6 +327,7 @@ body{font-family:'Sora',sans-serif;background:var(--w2);color:var(--ink);min-hei
 <div class="tabs">
   <button class="tab on" onclick="goTab(event,'cal')">📅 Lịch làm</button>
   <button class="tab" onclick="goTab(event,'tl')">⏱ Timeline</button>
+  <button class="tab" onclick="goTab(event,'leave')">🗓 Đăng ký nghỉ</button>
   <button class="tab" id="rTab" onclick="handleRTab(event)">📊 Báo cáo 🔒</button>
   <button class="tab" onclick="goTab(event,'settings')">⚙ Cài đặt</button>
 </div>
@@ -350,6 +351,11 @@ body{font-family:'Sora',sans-serif;background:var(--w2);color:var(--ink);min-hei
       </div>
     </div>
   </div>
+  <div id="leave" class="sec"><div class="leave-wrap">
+  <div class="leave-title">🗓 Đăng ký ngày nghỉ</div><div class="leave-sub">Tất cả nhân viên đều xem được đăng ký nghỉ của nhau để hạn chế trùng ngày.</div>
+  <div class="leave-form"><label>Nhân viên<select id="leaveStaff"></select></label><label>Ngày muốn nghỉ<input id="leaveDate" type="date"></label><label>Lý do (không bắt buộc)<input id="leaveReason" maxlength="120" placeholder="Ví dụ: Việc gia đình"></label><button class="btn au" onclick="submitLeaveRequest()">＋ Gửi đăng ký</button></div>
+  <div id="leaveConflict" class="leave-conflict"></div><div class="leave-legend">🟠 Chờ xác nhận　 🟢 Đã duyệt　 🔴 Không duyệt</div><div id="leaveList"></div>
+  </div></div>
   <!-- TIMELINE -->
   <div id="tl" class="sec">
     <div class="tlpills" id="tlPills"></div>
@@ -1582,6 +1588,13 @@ function changeMonth(d){
   if(document.getElementById('tl').classList.contains('on'))renderTl();
   if(document.getElementById('rpt').classList.contains('on')&&rptOpen)renderReport();
 }
+const _leaveRef=firebase.database().ref('torishin_leave_requests');let leaveRequests={};
+_leaveRef.on('value',snap=>{leaveRequests=snap.val()||{};if(document.getElementById('leave')?.classList.contains('on'))renderLeaveRequests();});
+function openLeaveTab(){const sel=document.getElementById('leaveStaff');if(sel&&!sel.options.length)sel.innerHTML=STAFF.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');const d=document.getElementById('leaveDate');if(d&&!d.value)d.value=`${curY}-${String(curM).padStart(2,'0')}-01`;renderLeaveRequests();}
+function leaveDateLabel(v){return new Date(v+'T00:00:00').toLocaleDateString('vi-VN',{weekday:'short',day:'2-digit',month:'2-digit',year:'numeric'});}
+function submitLeaveRequest(){const sid=document.getElementById('leaveStaff').value,date=document.getElementById('leaveDate').value,reason=document.getElementById('leaveReason').value.trim();if(!sid||!date){toast('Vui lòng chọn nhân viên và ngày nghỉ','w');return;}const dt=new Date(date+'T00:00:00');if(dt.getFullYear()<curY||(dt.getFullYear()===curY&&dt.getMonth()+1<curM)){toast('Không thể đăng ký ngày đã qua tháng hiện tại','w');return;}if(Object.values(leaveRequests).some(r=>r&&r.staffId===sid&&r.date===date&&r.status!=='rejected')){toast('Nhân viên này đã đăng ký ngày đó','w');return;}const id='lr_'+Date.now()+'_'+Math.random().toString(36).slice(2,7);_leaveRef.child(id).set({id,staffId:sid,date,reason,status:'pending',createdAt:Date.now()}).then(()=>{document.getElementById('leaveReason').value='';toast('Đã gửi đăng ký nghỉ','s');}).catch(()=>toast('Không gửi được, hãy thử lại','e'));}
+function renderLeaveRequests(){const box=document.getElementById('leaveList');if(!box)return;const rows=Object.values(leaveRequests).filter(r=>r&&r.date&&r.date.startsWith(`${curY}-${String(curM).padStart(2,'0')}-`)).sort((a,b)=>a.date.localeCompare(b.date));const counts={};rows.filter(r=>r.status!=='rejected').forEach(r=>counts[r.date]=(counts[r.date]||0)+1);const clashes=Object.entries(counts).filter(([,n])=>n>1);document.getElementById('leaveConflict').textContent=clashes.length?'⚠ Ngày có nhiều người đăng ký: '+clashes.map(([d,n])=>leaveDateLabel(d)+' ('+n+' người)').join(' · '):'✓ Chưa có ngày nào bị trùng đăng ký.';const labels={pending:'Chờ xác nhận',approved:'Đã duyệt',rejected:'Không duyệt'};box.innerHTML=rows.length?rows.map(r=>{const s=STAFF.find(x=>x.id===r.staffId);return `<div class="leave-item"><div class="leave-date">${leaveDateLabel(r.date)}</div><div><div class="leave-name" style="color:${s?s.hex:'var(--ink)'}">${s?s.name:r.staffId}</div><div class="leave-reason">${r.reason||'Không ghi lý do'}</div></div><span class="leave-status ${r.status||'pending'}">${labels[r.status]||labels.pending}</span></div>`;}).join(''):'<div style="padding:20px;text-align:center;color:var(--ink3)">Chưa có đăng ký nghỉ trong tháng này.</div>';}
+
 function goTab(e,id){
   document.querySelectorAll('.sec').forEach(s=>s.classList.remove('on'));
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
@@ -1590,6 +1603,7 @@ function goTab(e,id){
   if(id==='tl')renderTl();
   if(id==='rpt'&&rptOpen)renderReport();
   if(id==='settings')renderSettings();
+  if(id==='leave')openLeaveTab();
 }
 
 // ════════════════════════════════════
