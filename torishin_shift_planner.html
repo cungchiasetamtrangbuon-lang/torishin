@@ -1118,7 +1118,6 @@ firebase.database().ref('torishin_leave_requests').on('value',function(snap){
  renderPlannerLeaveCards();
 });
 function setPlannerLeaveStatus(requestId,status){
- if(!isMgr){toast('Cần đăng nhập quản lý để duyệt nghỉ','e');return;}
  const request=plannerLeaveRequests[requestId];
  if(!request)return toast('Không tìm thấy yêu cầu nghỉ','e');
  const update={status:status,reviewedAt:Date.now()};
@@ -1158,7 +1157,7 @@ function renderPlannerLeaveCards(){
   el.innerHTML=items.map(function(r){
    const reason=String(r.reason||'Không ghi lý do').replace(/[<>]/g,'');
    const color=r.status==='approved'?'#187343':r.status==='rejected'?'#b52b2b':'#a66a00';
-   const actions=isMgr?'<span style="display:flex;gap:4px;flex-wrap:wrap"><button class="btn" style="padding:3px 7px;font-size:10px" onclick="setPlannerLeaveStatus(\''+r.id+'\',\'approved\')">✓ Duyệt</button><button class="btn" style="padding:3px 7px;font-size:10px" onclick="setPlannerLeaveStatus(\''+r.id+'\',\'rejected\')">✕ Từ chối</button></span>':'';
+   const actions='<span style="display:flex;gap:4px;flex-wrap:wrap"><button class="btn" style="padding:3px 7px;font-size:10px" onclick="setPlannerLeaveStatus(\''+r.id+'\',\'approved\')">✓ Duyệt</button><button class="btn" style="padding:3px 7px;font-size:10px" onclick="setPlannerLeaveStatus(\''+r.id+'\',\'rejected\')">✕ Từ chối</button></span>';
    return '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding:5px 0;border-top:1px solid var(--bdr)"><b>'+Number(r.date.slice(8,10))+'</b><span style="flex:1;min-width:90px">'+reason+'</span><span style="font-size:10px;color:'+color+'">'+(labels[r.status]||labels.pending)+'</span>'+actions+'</div>';
   }).join('');
  });
