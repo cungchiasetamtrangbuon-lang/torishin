@@ -668,7 +668,7 @@ function calcShift(sh){
 //   金・土: 社員3人時 → PT 17–24 (br30) ×2                  | 社員2人時 → PT 16–24 (br30), 17–24 (br30), 18–24
 //   日:    社員3人時 → PT 17–22, 18–23                      | 社員2人時 → PT 16–23 (br30), 17–24 (br30), 18–23
 // Tính ngày nghỉ:
-//   NVCT: giữ kibo + tự thêm 1 ngày nghỉ/tuần (tuần chưa có kibo), không được 2 NVCT cùng nghỉ 1 ngày.
+//   NVCT: giữ nguyên các ngày Kibo + tự thêm ngày nghỉ để đủ định mức; cho phép nhiều NVCT nghỉ cùng ngày.
 //   PT  : giữ kibo + bù thêm để không vượt 26 ngày/tháng, tránh cùng nghỉ nhau.
 function computeStaffOff(){
   const dm=daysInM();
@@ -678,28 +678,6 @@ function computeStaffOff(){
     off[s.id]=new Set(((s.requestedOff)||[]).filter(d=>d>=1&&d<=dm));
   });
 
-  // ── Sửa xung đột kibo NVCT (kibo được ưu tiên, dời sang ngày gần nhất) ──
-  for(let d=1;d<=dm;d++){
-    const clash=MAINS.filter(id=>off[id].has(d));
-    if(clash.length<2)continue;
-    for(let i=1;i<clash.length;i++){
-      const id=clash[i];
-      off[id].delete(d);
-      let moved=false;
-      const ws=Math.floor((d-1)/7)*7+1;
-      for(let d2=ws;d2<=Math.min(ws+6,dm)&&!moved;d2++){
-        if(!off[id].has(d2)&&!MAINS.filter(m=>m!==id).some(m=>off[m].has(d2))){
-          off[id].add(d2);moved=true;
-        }
-      }
-      for(let d2=1;d2<=dm&&!moved;d2++){
-        if(!off[id].has(d2)&&!MAINS.filter(m=>m!==id).some(m=>off[m].has(d2))){
-          off[id].add(d2);moved=true;
-        }
-      }
-    }
-  }
-
   // ── NVCT: thêm ngày nghỉ extra để đủ 26 công/tháng ──
   const TARGET_WORK_MAIN=26;
   const needOffMain=Math.max(0,dm-TARGET_WORK_MAIN);
@@ -707,11 +685,10 @@ function computeStaffOff(){
   MAINS.forEach(id=>{
     let extra=needOffMain-off[id].size;
     if(extra<=0)return;
-    // Chỉ chọn ngày không có NVCT khác nghỉ
+    // Có thể chọn ngày mà NVCT khác cũng nghỉ.
     const cands=[];
     for(let d=1;d<=dm;d++){
       if(off[id].has(d))continue;
-      if(MAINS.filter(m=>m!==id).some(m=>off[m].has(d)))continue;
       cands.push(d);
     }
     for(const d of cands){
