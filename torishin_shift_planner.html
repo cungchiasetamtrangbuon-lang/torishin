@@ -855,6 +855,13 @@ function buildDay(d){
   const dn='dn'+(w===0?' su':w===6?' sa':'');
   const cnt=active.length,bc=cnt>=5?'c5':cnt===4?'c4':cnt===3?'c3':'cx';
   cell.innerHTML+=`<div class="dt"><div><div class="${dn}">${d}</div><div class="ddow">${JP[w]}</div></div><div class="dcnt ${bc}">${cnt}</div></div>`;
+  const offStaff=STAFF.filter(st=>((monthKibo[monthKey()]||{})[st.id]||[]).includes(d));
+  if(offStaff.length){
+    const kibo=document.createElement('div');
+    kibo.style.cssText='font-size:9px;line-height:1.35;color:#a66a00;background:#fff5d8;border:1px solid #f0d58a;border-radius:5px;padding:2px 4px;margin:2px 0;';
+    kibo.textContent='Kibo: '+offStaff.map(st=>st.name).join(', ');
+    cell.appendChild(kibo);
+  }
   const chips=document.createElement('div');chips.className='chips';
   active.forEach(sh=>{
     const chip=document.createElement('div');chip.className='chip';
@@ -1130,8 +1137,12 @@ function applyApprovedLeaveToKibo(request){
  if(y===curY&&m===curM){
   const staff=gs(sid);
   if(staff){staff.requestedOff=[...monthKibo[key][sid]];_applyKiboToSched(sid);}
+  loadMonthSched();
+  renderAll();
+  renderSettings();
  }
- saveState();renderAll();renderSettings();
+ saveState();
+ saveToCloud();
 }
 function renderPlannerLeaveCards(){
  if(typeof STAFF==='undefined')return;
