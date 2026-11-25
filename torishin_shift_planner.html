@@ -1112,9 +1112,26 @@ firebase.database().ref('torishin_leave_requests').on('value',function(snap){
 });
 function setPlannerLeaveStatus(requestId,status){
  if(!isMgr){toast('Cần đăng nhập quản lý để duyệt nghỉ','e');return;}
- firebase.database().ref('torishin_leave_requests/'+requestId+'/status').set(status).then(function(){
-  toast(status==='approved'?'Đã duyệt ngày nghỉ':'Đã từ chối ngày nghỉ','ok');
+ const request=plannerLeaveRequests[requestId];
+ if(!request)return toast('Không tìm thấy yêu cầu nghỉ','e');
+ const update={status:status,reviewedAt:Date.now()};
+ firebase.database().ref('torishin_leave_requests/'+requestId).update(update).then(function(){
+  if(status==='approved')applyApprovedLeaveToKibo(request);
+  toast(status==='approved'?'Đã duyệt và thêm vào Kibo':'Đã từ chối ngày nghỉ','ok');
  }).catch(function(){toast('Không cập nhật được trạng thái','e');});
+}
+function applyApprovedLeaveToKibo(request){
+ const parts=String(request.date||'').split('-').map(Number);
+ if(parts.length!==3||!parts[0]||!parts[1]||!parts[2])return;
+ const y=parts[0],m=parts[1],day=parts[2],key=y+'-'+m,sid=request.staffId;
+ if(!monthKibo[key])monthKibo[key]={};
+ if(!monthKibo[key][sid])monthKibo[key][sid]=[];
+ if(!monthKibo[key][sid].includes(day))monthKibo[key][sid].push(day);
+ if(y===curY&&m===curM){
+  const staff=gs(sid);
+  if(staff){staff.requestedOff=[...monthKibo[key][sid]];_applyKiboToSched(sid);}
+ }
+ saveState();renderAll();renderSettings();
 }
 function renderPlannerLeaveCards(){
  if(typeof STAFF==='undefined')return;
@@ -1646,8 +1663,22 @@ function _applyKiboToSched(sid){
     if(offDays.has(di))sched[di]=(sched[di]||[]).filter(sh=>sh.staffId!==sid);
   });
 }
+
+let plannerStaffPins={};
+firebase.database().ref('torishin_attendance/staffConfig').on('value',function(snap){plannerStaffPins=snap.val()||{};});
+function verifyEmployeeKiboAccess(staffId){
+ if(isMgr)return true;
+ const staff=gs(staffId);
+ const cfg=plannerStaffPins[staffId]||{};
+ if(!cfg.pin){toast('Nhân viên chưa được cài PIN. Quản lý hãy đặt PIN trong trang Chấm Công.','e');return false;}
+ const entered=prompt('Nhập PIN của '+(staff?staff.name:'nhân viên')+' để đăng ký Kibo:');
+ if(entered===null)return false;
+ if(String(entered).trim()!==String(cfg.pin)){toast('PIN không đúng','e');return false;}
+ return true;
+}
 window.toggleKibo=function(sid,d,el){
   const s=gs(sid);if(!s)return;
+  if(!verifyEmployeeKiboAccess(sid))return;
   if(!s.requestedOff)s.requestedOff=[];
   const idx=s.requestedOff.indexOf(d);
   if(idx>=0){s.requestedOff.splice(idx,1);el.classList.remove('on');}
@@ -1658,6 +1689,7 @@ window.toggleKibo=function(sid,d,el){
   saveState();renderCal();
 };
 window.clearKibo=function(sid){
+  if(!isMgr){toast('Chỉ quản lý mới được xóa Kibo','e');return;}
   const s=gs(sid);if(!s)return;
   s.requestedOff=[];
   if(!monthKibo[monthKey()])monthKibo[monthKey()]={};
@@ -1667,6 +1699,7 @@ window.clearKibo=function(sid){
   saveState();renderCal();
 };
 window.selectKiboRange=function(sid){
+  if(!verifyEmployeeKiboAccess(sid))return;
   const s=gs(sid);if(!s)return;
   const from=parseInt(document.getElementById('kibo-f-'+sid).value);
   const to=parseInt(document.getElementById('kibo-t-'+sid).value);
